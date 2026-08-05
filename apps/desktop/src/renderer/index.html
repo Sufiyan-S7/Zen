@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zen</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="sidebar" aria-label="Zen navigation">
+        <a class="brand" href="#home"><span class="brand-mark">Z</span><span>Zen</span></a>
+        <div class="nav-group">
+          <button class="nav-item active" type="button">Home</button>
+          <button class="nav-item" type="button" disabled>Conversations <span>soon</span></button>
+          <button class="nav-item" type="button" disabled>Memory <span>soon</span></button>
+          <button class="nav-item" type="button" disabled>Activity <span>soon</span></button>
+        </div>
+        <p class="sidebar-note">Private by default.<br />Local by design.</p>
+      </nav>
+      <section class="content" id="home">
+        <header>
+          <p class="eyebrow">ZEN / DAY 01</p>
+          <div class="header-row"><h1>Your workspace is ready.</h1><span class="status"><i></i> Local foundation</span></div>
+          <p class="intro">The shell is running. Next, Zen connects to a local model and begins its first conversation.</p>
+        </header>
+        <section class="cards" aria-label="Project status">
+          <article class="card complete"><p class="card-label">Desktop app</p><strong>Ready</strong><span>Secure Electron shell</span></article>
+          <article class="card complete"><p class="card-label">Project design</p><strong>Ready</strong><span>PRD, architecture, roadmap</span></article>
+          <article class="card pending"><p class="card-label">Local AI</p><strong>Next</strong><span>Install and connect Ollama</span></article>
+        </section>
+        <section class="next-step">
+          <div><p class="eyebrow">NEXT MILESTONE</p><h2>Connect Zen to its local brain.</h2><p>Ollama will let Zen run an AI model on this computer, keeping normal chats private and subscription-free.</p></div>
+          <button id="celebrate" type="button">Foundation complete <span>→</span></button>
+        </section>
+        <p class="footer">Zen <span id="version"></span> · <span id="mode"></span></p>
+      </section>
+    </main>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
+

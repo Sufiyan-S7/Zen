@@ -1,0 +1,17 @@
+{
+  "name": "zen-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first AI desktop assistant",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main/main.js && node --check src/main/preload.js && node --check src/renderer/renderer.js"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  },
+  "allowScripts": {
+    "electron@35.7.5": true
+  }
+}
