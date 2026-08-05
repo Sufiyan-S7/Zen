@@ -11,8 +11,8 @@
       <nav class="sidebar" aria-label="Zen navigation">
         <a class="brand" href="#home"><span class="brand-mark">Z</span><span>Zen</span></a>
         <div class="nav-group">
-          <button class="nav-item active" type="button">Home</button>
-          <button class="nav-item" type="button" disabled>Conversations <span>soon</span></button>
+          <button class="nav-item active" type="button">Chat</button>
+          <button class="nav-item" id="clear-chat" type="button">New conversation</button>
           <button class="nav-item" type="button" disabled>Memory <span>soon</span></button>
           <button class="nav-item" type="button" disabled>Activity <span>soon</span></button>
         </div>
@@ -20,24 +20,22 @@
       </nav>
       <section class="content" id="home">
         <header>
-          <p class="eyebrow">ZEN / DAY 01</p>
-          <div class="header-row"><h1>Your workspace is ready.</h1><span class="status"><i></i> Local foundation</span></div>
-          <p class="intro">The shell is running. Next, Zen connects to a local model and begins its first conversation.</p>
+          <p class="eyebrow">ZEN / LOCAL CHAT</p>
+          <div class="header-row"><h1>What can I help you make?</h1><span class="status"><i></i> <span id="model-status">Connecting…</span></span></div>
+          <p class="intro">Private chat powered by Ollama on your computer. Nothing in this conversation is sent to a cloud AI service.</p>
         </header>
-        <section class="cards" aria-label="Project status">
-          <article class="card complete"><p class="card-label">Desktop app</p><strong>Ready</strong><span>Secure Electron shell</span></article>
-          <article class="card complete"><p class="card-label">Project design</p><strong>Ready</strong><span>PRD, architecture, roadmap</span></article>
-          <article class="card pending"><p class="card-label">Local AI</p><strong>Next</strong><span>Install and connect Ollama</span></article>
+        <section class="chat-panel" aria-label="Conversation with Zen">
+          <div class="messages" id="messages" aria-live="polite"></div>
+          <form class="composer" id="composer">
+            <label class="sr-only" for="message-input">Message Zen</label>
+            <textarea id="message-input" rows="1" maxlength="4000" placeholder="Ask Zen anything…" autofocus></textarea>
+            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button id="send-button" type="submit">Send <span>↗</span></button></div>
+          </form>
         </section>
-        <section class="next-step">
-          <div><p class="eyebrow">NEXT MILESTONE</p><h2>Connect Zen to its local brain.</h2><p>Ollama will let Zen run an AI model on this computer, keeping normal chats private and subscription-free.</p></div>
-          <button id="celebrate" type="button">Foundation complete <span>→</span></button>
-        </section>
-        <p class="footer">Zen <span id="version"></span> · <span id="mode"></span></p>
+        <p class="footer">Zen <span id="version"></span> · <span id="mode"></span> · Conversations are stored locally in this app.</p>
       </section>
     </main>
     <div id="toast" role="status" aria-live="polite"></div>
     <script src="renderer.js"></script>
   </body>
 </html>
-

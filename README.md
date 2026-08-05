@@ -15,8 +15,8 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Git repository and workspace layout
 - [x] Product, architecture, roadmap, and coding-standard documents
 - [x] Minimal Electron desktop application
-- [ ] Install Ollama and a local model
-- [ ] Connect the app to Ollama
+- [x] Install Ollama and local models
+- [x] Connect the app to Ollama with private local chat
 
 ## Technology choices
 
@@ -46,4 +46,3 @@ The first command downloads Electron once. The application currently opens a loc
 - [Architecture](docs/Architecture.md)
 - [Roadmap](docs/Roadmap.md)
 - [Coding standards](docs/CodingStandards.md)
-
