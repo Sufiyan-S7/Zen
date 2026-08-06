@@ -25,6 +25,17 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 ### Latest checkpoint — August 6, 2026
 
+- Day 4 settings implementation is complete and committed to Git.
+- Zen now has a Settings page with locally saved Ollama model selection, dark/light theme selection, and a confirmation-protected clear-all-conversations control.
+- The model list comes from local Ollama through Electron's preload bridge; model names are validated in the main process before each chat request.
+- Settings are stored only in browser-local storage. Clearing conversations stops active local generations, removes migrated legacy history, and starts one fresh local conversation.
+- Validation passed: `npm.cmd run check` and `git diff --check`.
+- Current Git state: all tracked Day 4 files are committed; pre-existing untracked `deliverables/` remains untouched.
+- Manual in-app validation on August 6, 2026: the user confirmed that the completed Day 4 experience works correctly.
+- August 6, 2026 input fix: Zen no longer disables the message field while a reply is generating. The user can type the next message with a visible caret, while Send remains disabled until the active reply ends or is stopped. Creating a new conversation now clears any unsent draft instead of carrying it into the new chat.
+- Validation after the input fix passed: `npm.cmd run check` and `git diff --check`.
+- Exact next recommended step: begin Day 5 voice preparation by evaluating offline speech-to-text and text-to-speech options, then define explicit microphone-permission rules.
+
 - Day 3 response-streaming implementation is complete and committed as `b368961 feat: complete Day 3 streaming experience`.
 - Zen now progressively displays responses from `llama3.2:3b`, shows a Thinking state, and provides a Stop generating button. Stopping retains the response received so far.
 - A renderer guard now disables chat and explains that Zen must be opened through its Electron desktop app when `window.zen` is unavailable.

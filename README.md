@@ -39,6 +39,17 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [ ] Manual in-app verification of streaming and Stop generating
 - [x] Day 3 changes committed as `b368961`
 
+## Day 4 status
+
+- [x] Local Settings page with model, theme, and data controls
+- [x] Installed Ollama model list and per-message model selection
+- [x] Dark/light preference saved locally
+- [x] Confirmed clear-all-conversations control
+- [x] Editable message draft while a reply generates
+- [x] New conversations start with an empty draft
+- [x] Manual in-app verification
+- [x] Day 4 settings work committed to Git
+
 ## Technology choices
 
 | Area | Choice |

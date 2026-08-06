@@ -2,9 +2,11 @@ const version = window.zen?.version ?? 'development';
 const mode = window.zen?.mode ?? 'local-first';
 const storageKey = 'zen-local-conversations-v2';
 const legacyStorageKey = 'zen-local-conversation-v1';
+const settingsStorageKey = 'zen-local-settings-v1';
 const welcomeText = 'Hello, I’m Zen. I’m running locally on your computer. What would you like to work on?';
 let conversations = loadConversations();
 let activeConversationId = conversations[0].id;
+let settings = loadSettings();
 
 document.querySelector('#version').textContent = `v${version}`;
 document.querySelector('#mode').textContent = mode;
@@ -18,6 +20,14 @@ const historyElement = document.querySelector('#conversation-history');
 const titleElement = document.querySelector('#conversation-title');
 const metaElement = document.querySelector('#conversation-meta');
 const conversationCountElement = document.querySelector('#conversation-count');
+const chatPage = document.querySelector('#home');
+const settingsPage = document.querySelector('#settings-page');
+const chatButton = document.querySelector('#chat-button');
+const settingsButton = document.querySelector('#settings-button');
+const modelSelect = document.querySelector('#model-select');
+const modelHelp = document.querySelector('#model-help');
+const themeSelect = document.querySelector('#theme-select');
+const clearConversationsButton = document.querySelector('#clear-conversations');
 const generations = new Map();
 let streamingMessageBody = null;
 
@@ -50,7 +60,19 @@ function loadConversations() {
   return [createConversation()];
 }
 
+function loadSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(settingsStorageKey));
+    return {
+      model: typeof stored?.model === 'string' ? stored.model : '',
+      theme: stored?.theme === 'light' ? 'light' : 'dark'
+    };
+  } catch { return { model: '', theme: 'dark' }; }
+}
+
 function saveConversations() { localStorage.setItem(storageKey, JSON.stringify(conversations)); }
+function saveSettings() { localStorage.setItem(settingsStorageKey, JSON.stringify(settings)); }
+function applyTheme() { document.body.dataset.theme = settings.theme; themeSelect.value = settings.theme; }
 function activeConversation() { return conversations.find((conversation) => conversation.id === activeConversationId); }
 function formatTimestamp(value) { return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value)); }
 function formatConversationDate(value) {
@@ -163,14 +185,62 @@ function renderHeader() {
 }
 function render() { renderHeader(); renderMessages(); renderConversationHistory(); setBusy(); }
 
+function showPage(page) {
+  const showingSettings = page === 'settings';
+  chatPage.hidden = showingSettings;
+  settingsPage.hidden = !showingSettings;
+  chatButton.classList.toggle('active', !showingSettings);
+  settingsButton.classList.toggle('active', showingSettings);
+  if (!showingSettings) input.focus();
+}
+
+function updateModelStatus() {
+  document.querySelector('#model-status').textContent = `${settings.model || 'No model selected'} · local`;
+}
+
+async function loadModels() {
+  try {
+    const models = await window.zen.getModels();
+    if (!models.length) throw new Error('No local models are installed.');
+    if (!models.includes(settings.model)) {
+      settings.model = models.includes('llama3.2:3b') ? 'llama3.2:3b' : models[0];
+      saveSettings();
+    }
+    modelSelect.innerHTML = '';
+    models.forEach((model) => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = model;
+      modelSelect.append(option);
+    });
+    modelSelect.value = settings.model;
+    modelSelect.disabled = false;
+    modelHelp.textContent = `${models.length} local model${models.length === 1 ? '' : 's'} available.`;
+    updateModelStatus();
+  } catch (error) {
+    modelSelect.innerHTML = '<option>Local models unavailable</option>';
+    modelSelect.disabled = true;
+    modelHelp.textContent = `${error.message} Start Ollama, then reopen Settings.`;
+    document.querySelector('#model-status').textContent = 'Local service unavailable';
+  }
+}
+
 function setBusy(busy = Boolean(generationForConversation())) {
-  input.disabled = busy;
+  if (!window.zen) {
+    input.disabled = true;
+    sendButton.disabled = true;
+    stopButton.hidden = true;
+    return;
+  }
+  input.disabled = false;
+  input.readOnly = false;
   sendButton.disabled = busy;
   stopButton.hidden = !busy;
   sendButton.innerHTML = busy ? 'Thinking <span class="spinner"></span>' : 'Send <span>↗</span>';
 }
 
 async function initialise() {
+  applyTheme();
   render();
   if (!window.zen) {
     document.querySelector('#model-status').textContent = 'Open Zen through its desktop app';
@@ -180,7 +250,9 @@ async function initialise() {
   }
   try {
     const status = await window.zen.getStatus();
-    document.querySelector('#model-status').textContent = `${status.model} · local`;
+    if (!settings.model) settings.model = status.model;
+    updateModelStatus();
+    loadModels();
   } catch { document.querySelector('#model-status').textContent = 'Local service unavailable'; }
 }
 
@@ -230,7 +302,7 @@ form.addEventListener('submit', async (event) => {
   generations.set(generation.requestId, generation);
   setBusy();
   renderMessages();
-  window.zen.startChat(generation.requestId, messagePayload());
+  window.zen.startChat(generation.requestId, messagePayload(), settings.model);
 });
 
 input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
@@ -243,7 +315,36 @@ document.querySelector('#new-chat').addEventListener('click', () => {
   const conversation = createConversation();
   conversations.unshift(conversation);
   activeConversationId = conversation.id;
+  input.value = '';
+  input.style.height = 'auto';
   saveConversations();
+  showPage('chat');
+  render();
+  input.focus();
+});
+
+chatButton.addEventListener('click', () => showPage('chat'));
+settingsButton.addEventListener('click', () => showPage('settings'));
+modelSelect.addEventListener('change', () => {
+  settings.model = modelSelect.value;
+  saveSettings();
+  updateModelStatus();
+  modelHelp.textContent = `${settings.model} will be used for new messages.`;
+});
+themeSelect.addEventListener('change', () => {
+  settings.theme = themeSelect.value;
+  saveSettings();
+  applyTheme();
+});
+clearConversationsButton.addEventListener('click', () => {
+  if (!window.confirm('Clear every saved conversation from this computer? This cannot be undone.')) return;
+  generations.forEach((generation) => window.zen.stopChat(generation.requestId));
+  generations.clear();
+  conversations = [createConversation()];
+  activeConversationId = conversations[0].id;
+  localStorage.removeItem(legacyStorageKey);
+  saveConversations();
+  showPage('chat');
   render();
   input.focus();
 });

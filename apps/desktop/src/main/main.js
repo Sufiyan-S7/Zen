@@ -26,6 +26,14 @@ function validateMessages(messages) {
   });
 }
 
+function validateModel(model) {
+  if (model === undefined) return DEFAULT_MODEL;
+  if (typeof model !== 'string' || !/^[a-zA-Z0-9._:-]{1,120}$/.test(model)) {
+    throw new Error('The selected model is invalid.');
+  }
+  return model;
+}
+
 function requestKey(webContents, requestId) {
   if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(requestId)) {
     throw new Error('The chat request is invalid.');
@@ -43,12 +51,13 @@ function localModelError(error) {
   return error.message || 'The local model could not complete that response.';
 }
 
-ipcMain.on('zen:chat:start', async (event, { requestId, messages } = {}) => {
+ipcMain.on('zen:chat:start', async (event, { requestId, messages, model } = {}) => {
   let key;
   let controller;
   try {
     key = requestKey(event.sender, requestId);
     if (activeRequests.has(key)) throw new Error('This chat request is already running.');
+    const selectedModel = validateModel(model);
     controller = new AbortController();
     activeRequests.set(key, controller);
     const response = await fetch(OLLAMA_URL, {
@@ -56,12 +65,12 @@ ipcMain.on('zen:chat:start', async (event, { requestId, messages } = {}) => {
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model: selectedModel,
         stream: true,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...validateMessages(messages)]
       })
     });
-    if (!response.ok) throw new Error(`Ollama could not respond (${response.status}). Check that ${DEFAULT_MODEL} is installed.`);
+    if (!response.ok) throw new Error(`Ollama could not respond (${response.status}). Check that ${selectedModel} is installed.`);
     if (!response.body) throw new Error('Ollama did not provide a response stream.');
 
     const reader = response.body.getReader();
@@ -131,6 +140,14 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
+  ipcMain.handle('zen:models', async () => {
+    const response = await fetch('http://127.0.0.1:11434/api/tags');
+    if (!response.ok) throw new Error(`Ollama could not list models (${response.status}).`);
+    const data = await response.json();
+    return Array.isArray(data?.models)
+      ? data.models.map((model) => model?.name).filter((model) => typeof model === 'string')
+      : [];
+  });
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
