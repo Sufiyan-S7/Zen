@@ -33,7 +33,7 @@
           <form class="composer" id="composer">
             <label class="sr-only" for="message-input">Message Zen</label>
             <textarea id="message-input" rows="1" maxlength="4000" placeholder="Ask Zen anything…" autofocus></textarea>
-            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><button id="send-button" type="submit">Send <span>↗</span></button></div>
+            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="stop-button" type="button" hidden>Stop generating</button><button id="send-button" type="submit">Send <span>↗</span></button></div></div>
           </form>
         </section>
         <p class="footer">Zen <span id="version"></span> · <span id="mode"></span> · Conversations are stored locally in this app.</p>

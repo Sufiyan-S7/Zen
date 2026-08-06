@@ -25,6 +25,22 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 ### Latest checkpoint — August 6, 2026
 
+- Day 3 response-streaming implementation is complete but has not yet been committed.
+- Zen now progressively displays responses from `llama3.2:3b`, shows a Thinking state, and provides a Stop generating button. Stopping retains the response received so far.
+- A renderer guard now disables chat and explains that Zen must be opened through its Electron desktop app when `window.zen` is unavailable.
+- Offline Ollama failures now instruct the user to start Ollama; unavailable-model responses identify the configured model.
+- Validation passed: `npm.cmd run check`, `git diff --check`, and a direct streamed `llama3.2:3b` response returned three chunks with a completed stream marker.
+- Ollama is reachable and reports `deepseek-r1:8b`, `llama3.2:3b`, and `gemma4:12b`; only Zen's configured `llama3.2:3b` was exercised because model selection is Day 4 work.
+- Current Git state: modified, uncommitted Day 3 files in `apps/desktop/src/main/main.js`, `apps/desktop/src/main/preload.js`, and the renderer HTML, JavaScript, and CSS; pre-existing untracked `deliverables/` remains untouched.
+- Known issue: the live app interaction (including Stop generating) still needs a manual desktop test.
+- August 6, 2026 bug fix: streamed output no longer rebuilds the entire messages panel for every chunk, eliminating the visible flicker and scroll jump reported by the user. The in-progress assistant bubble is updated in place.
+- August 6, 2026 bug fix: generation state is now per conversation. A background reply no longer puts other conversations into a Thinking state or prevents the user from sending a message there; Stop generating always affects the selected conversation.
+- The chat-switch timestamp issue identified in review is fixed: final response metadata is now applied to the conversation that received the response, not whichever chat happens to be selected.
+- Stream handling now also processes a final chunk that lacks a trailing newline and avoids removing an active request when a duplicate request identifier is rejected.
+- Validation after the fix passed: `npm.cmd run check`, `git diff --check`, and a direct streamed `llama3.2:3b` response returned three chunks with a completed stream marker.
+- Manual in-app validation on August 6, 2026: the user confirmed that the response flickering is gone after the incremental-update fix.
+- Exact next recommended step: manually test two chats generating at once, confirm each has independent controls and saved partial responses, then continue with Day 4 settings work.
+
 - Day 2 conversation-history work passed static validation and manual in-app testing: chat creation, switching, deletion, and saved-history behaviour were verified by the user.
 - Day 2 was committed as `a5e71eb feat: complete Day 2 chat experience`.
 - Zen can now be started from the desktop shortcut at `C:\Users\khans\OneDrive\Desktop\Zen.lnk`.
@@ -107,10 +123,10 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 
 ### Day 3 — Stream AI responses
 
-- Display responses progressively.
-- Add a thinking indicator and Stop Generating control.
-- Make Ollama-offline errors clear.
-- Test with every installed model.
+- Display responses progressively. **Implemented; static and direct-stream checked.**
+- Add a thinking indicator and Stop Generating control. **Implemented; requires manual in-app verification.**
+- Make Ollama-offline errors clear. **Implemented.**
+- Test with every installed model. **Deferred until Day 4 model selection exposes those models in Zen.**
 
 ### Day 4 — Settings
 
