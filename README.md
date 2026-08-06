@@ -18,6 +18,13 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Install Ollama and local models
 - [x] Connect the app to Ollama with private local chat
 
+## Day 2 status
+
+- [x] Local conversation history with new and delete controls
+- [x] Named conversations and message timestamps
+- [x] Improved local-model loading and error states
+- [x] Manual testing of chat creation, switching, deletion, and saved history
+
 ## Technology choices
 
 | Area | Choice |
@@ -40,9 +47,18 @@ npm.cmd start
 
 The first command downloads Electron once. The application currently opens a local, offline dashboard that confirms the foundation is ready.
 
+### Desktop shortcut
+
+`Zen.lnk` is available on the Windows desktop. It now launches Electron directly and uses Zen's custom AI-engine icon. Double-click it to start Zen without opening PowerShell first; right-click the shortcut and select **Pin to taskbar** for even faster access.
+
 ## Documentation
 
 - [Product requirements](docs/PRD.md)
 - [Architecture](docs/Architecture.md)
 - [Roadmap](docs/Roadmap.md)
 - [Coding standards](docs/CodingStandards.md)
+- [Project handoff](HANDOFF.md)
+
+## Project continuity
+
+When work is completed, update `HANDOFF.md` with the current state and next step. Update this README whenever the project status or usage instructions change. This keeps the project ready to transfer to a new agent at any time.

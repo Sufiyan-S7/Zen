@@ -12,16 +12,20 @@
         <a class="brand" href="#home"><span class="brand-mark">Z</span><span>Zen</span></a>
         <div class="nav-group">
           <button class="nav-item active" type="button">Chat</button>
-          <button class="nav-item" id="clear-chat" type="button">New conversation</button>
+          <button class="nav-item" id="new-chat" type="button">New conversation <span>+</span></button>
           <button class="nav-item" type="button" disabled>Memory <span>soon</span></button>
           <button class="nav-item" type="button" disabled>Activity <span>soon</span></button>
         </div>
+        <section class="conversation-list" aria-labelledby="conversation-heading">
+          <div class="conversation-heading"><p id="conversation-heading">Recent chats</p><span id="conversation-count"></span></div>
+          <div id="conversation-history" role="list"></div>
+        </section>
         <p class="sidebar-note">Private by default.<br />Local by design.</p>
       </nav>
       <section class="content" id="home">
         <header>
           <p class="eyebrow">ZEN / LOCAL CHAT</p>
-          <div class="header-row"><h1>What can I help you make?</h1><span class="status"><i></i> <span id="model-status">Connecting…</span></span></div>
+          <div class="header-row"><div><h1 id="conversation-title">What can I help you make?</h1><p class="conversation-meta" id="conversation-meta">New conversation</p></div><span class="status"><i></i> <span id="model-status">Connecting…</span></span></div>
           <p class="intro">Private chat powered by Ollama on your computer. Nothing in this conversation is sent to a cloud AI service.</p>
         </header>
         <section class="chat-panel" aria-label="Conversation with Zen">
