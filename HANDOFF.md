@@ -25,13 +25,13 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 ### Latest checkpoint — August 6, 2026
 
-- Day 3 response-streaming implementation is complete but has not yet been committed.
+- Day 3 response-streaming implementation is complete and committed as `b368961 feat: complete Day 3 streaming experience`.
 - Zen now progressively displays responses from `llama3.2:3b`, shows a Thinking state, and provides a Stop generating button. Stopping retains the response received so far.
 - A renderer guard now disables chat and explains that Zen must be opened through its Electron desktop app when `window.zen` is unavailable.
 - Offline Ollama failures now instruct the user to start Ollama; unavailable-model responses identify the configured model.
 - Validation passed: `npm.cmd run check`, `git diff --check`, and a direct streamed `llama3.2:3b` response returned three chunks with a completed stream marker.
 - Ollama is reachable and reports `deepseek-r1:8b`, `llama3.2:3b`, and `gemma4:12b`; only Zen's configured `llama3.2:3b` was exercised because model selection is Day 4 work.
-- Current Git state: modified, uncommitted Day 3 files in `apps/desktop/src/main/main.js`, `apps/desktop/src/main/preload.js`, and the renderer HTML, JavaScript, and CSS; pre-existing untracked `deliverables/` remains untouched.
+- Current Git state after the Day 3 commit: no tracked working-tree changes; pre-existing untracked `deliverables/` remains untouched.
 - Known issue: the live app interaction (including Stop generating) still needs a manual desktop test.
 - August 6, 2026 bug fix: streamed output no longer rebuilds the entire messages panel for every chunk, eliminating the visible flicker and scroll jump reported by the user. The in-progress assistant bubble is updated in place.
 - August 6, 2026 bug fix: generation state is now per conversation. A background reply no longer puts other conversations into a Thinking state or prevents the user from sending a message there; Stop generating always affects the selected conversation.

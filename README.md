@@ -36,6 +36,7 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Clear Ollama-offline and missing desktop-bridge guidance
 - [x] Static checks and a streamed `llama3.2:3b` response check
 - [ ] Manual in-app verification of streaming and Stop generating
+- [x] Day 3 changes committed as `b368961`
 
 ## Technology choices
 
