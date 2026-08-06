@@ -1,8 +1,29 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
+const fsp = require('node:fs/promises');
+const { spawn } = require('node:child_process');
+const crypto = require('node:crypto');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
+const VOICE_POLICY = {
+  processing: 'local-only',
+  listening: 'push-to-talk',
+  microphone: 'requested-on-record',
+  retainAudio: false,
+  cloudFallback: false
+};
+const VOICE_RUNTIME = path.resolve(__dirname, '../../../../vendor/whisper-runtime');
+const WHISPER_CLI = path.join(VOICE_RUNTIME, 'bin', 'Release', 'whisper-cli.exe');
+const WHISPER_MODEL = path.join(VOICE_RUNTIME, 'models', 'ggml-base.en.bin');
+const PIPER_RUNTIME = path.resolve(__dirname, '../../../../vendor/piper-runtime');
+const PIPER_CLI = path.join(PIPER_RUNTIME, 'venv', 'Scripts', 'piper.exe');
+const PIPER_VOICES = {
+  'en_US-lessac-medium': { label: 'Lessac', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-lessac-medium.onnx') },
+  'en_US-amy-medium': { label: 'Amy', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-amy-medium.onnx') },
+  'en_US-ryan-medium': { label: 'Ryan', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-ryan-medium.onnx') }
+};
 const SYSTEM_PROMPT = [
   'You are Zen, a private local desktop assistant.',
   'Be concise, practical, and honest about what you can do.',
@@ -10,6 +31,7 @@ const SYSTEM_PROMPT = [
   'Never request or reveal sensitive personal information unless the user explicitly needs it.'
 ].join(' ');
 const activeRequests = new Map();
+const activeSpeech = new Map();
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
@@ -49,6 +71,59 @@ function localModelError(error) {
   if (error.name === 'AbortError') return null;
   if (error instanceof TypeError) return 'Ollama is not running. Start the Ollama app, then try again.';
   return error.message || 'The local model could not complete that response.';
+}
+
+function voiceInputReady() { return fs.existsSync(WHISPER_CLI) && fs.existsSync(WHISPER_MODEL); }
+
+function voiceStatus() {
+  const inputAvailable = voiceInputReady();
+  const voices = Object.entries(PIPER_VOICES).filter(([, voice]) => fs.existsSync(voice.model)).map(([id, voice]) => ({ id, label: voice.label }));
+  const outputAvailable = fs.existsSync(PIPER_CLI) && voices.length > 0;
+  return {
+    available: inputAvailable || outputAvailable,
+    input: {
+      available: inputAvailable,
+      engine: 'whisper.cpp',
+      reason: inputAvailable ? '' : 'Local speech-to-text is not installed yet.'
+    },
+    output: { available: outputAvailable, engine: 'Piper', voices, reason: outputAvailable ? '' : 'Local text-to-speech is not installed yet.' },
+    policy: VOICE_POLICY
+  };
+}
+
+function runWhisper(inputPath, outputBase) {
+  return new Promise((resolve, reject) => {
+    const process = spawn(WHISPER_CLI, ['-m', WHISPER_MODEL, '-f', inputPath, '-nt', '-otxt', '-of', outputBase], { windowsHide: true });
+    let stderr = '';
+    process.stderr.on('data', (chunk) => { stderr += chunk; });
+    process.on('error', reject);
+    process.on('close', (code) => code === 0 ? resolve() : reject(new Error(stderr.trim() || `Local transcription stopped (${code}).`)));
+  });
+}
+
+function runPiper(webContents, model, text, outputPath) {
+  return new Promise((resolve, reject) => {
+    const process = spawn(PIPER_CLI, ['-m', model, '-f', outputPath, '--', text], { windowsHide: true });
+    activeSpeech.set(webContents.id, process);
+    let stderr = '';
+    process.stderr.on('data', (chunk) => { stderr += chunk; });
+    process.on('error', reject);
+    process.on('close', (code) => {
+      if (activeSpeech.get(webContents.id) === process) activeSpeech.delete(webContents.id);
+      code === 0 ? resolve() : reject(new Error(stderr.trim() || 'Local read aloud was stopped.'));
+    });
+  });
+}
+
+function validateSpeechText(text) {
+  if (typeof text !== 'string' || !text.trim() || text.length > 4_000) throw new Error('The text for read aloud is invalid.');
+  return text.trim();
+}
+
+function selectPiperVoice(voiceId) {
+  const voice = PIPER_VOICES[voiceId];
+  if (!voice || !fs.existsSync(voice.model)) throw new Error('The selected local voice is unavailable.');
+  return voice;
 }
 
 ipcMain.on('zen:chat:start', async (event, { requestId, messages, model } = {}) => {
@@ -132,6 +207,27 @@ function createWindow() {
 
   window.loadFile(path.join(__dirname, '../renderer/index.html'));
 
+  let holdShortcutActive = false;
+  window.webContents.on('before-input-event', (event, input) => {
+    const key = typeof input.key === 'string' ? input.key.toLowerCase() : '';
+    if (input.type === 'keyDown' && key === 'f8' && !input.isAutoRepeat) {
+      event.preventDefault();
+      holdShortcutActive = true;
+      sendStreamEvent(window.webContents, 'zen:voice-shortcut', { action: 'hold', type: 'down' });
+      return;
+    }
+    if (holdShortcutActive && input.type === 'keyUp' && key === 'f8') {
+      event.preventDefault();
+      holdShortcutActive = false;
+      sendStreamEvent(window.webContents, 'zen:voice-shortcut', { action: 'hold', type: 'up' });
+      return;
+    }
+    if (input.type === 'keyDown' && key === 'f9' && !input.isAutoRepeat) {
+      event.preventDefault();
+      sendStreamEvent(window.webContents, 'zen:voice-shortcut', { action: 'locked', type: 'down' });
+    }
+  });
+
   window.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
@@ -140,6 +236,38 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
+  ipcMain.handle('zen:voice-status', () => voiceStatus());
+  ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {
+    if (!voiceInputReady()) throw new Error('Local speech-to-text is not installed yet.');
+    if (!(audio instanceof Uint8Array) || audio.byteLength < 44 || audio.byteLength > 12_000_000) {
+      throw new Error('The voice recording is invalid or too long.');
+    }
+    const id = crypto.randomUUID();
+    const inputPath = path.join(app.getPath('temp'), `zen-voice-${id}.wav`);
+    const outputBase = path.join(app.getPath('temp'), `zen-voice-${id}`);
+    const outputPath = `${outputBase}.txt`;
+    try {
+      await fsp.writeFile(inputPath, audio);
+      await runWhisper(inputPath, outputBase);
+      const text = (await fsp.readFile(outputPath, 'utf8')).trim();
+      if (!text) throw new Error('Zen could not detect speech in that recording.');
+      return text;
+    } finally {
+      await Promise.allSettled([fsp.unlink(inputPath), fsp.unlink(outputPath)]);
+    }
+  });
+  ipcMain.handle('zen:voice:speak', async (event, text, voiceId) => {
+    if (!voiceStatus().output.available) throw new Error('Local text-to-speech is not installed yet.');
+    activeSpeech.get(event.sender.id)?.kill();
+    const outputPath = path.join(app.getPath('temp'), `zen-speech-${crypto.randomUUID()}.wav`);
+    try {
+      await runPiper(event.sender, selectPiperVoice(voiceId).model, validateSpeechText(text), outputPath);
+      return new Uint8Array(await fsp.readFile(outputPath));
+    } finally {
+      await fsp.unlink(outputPath).catch(() => {});
+    }
+  });
+  ipcMain.on('zen:voice:stop-speaking', (event) => activeSpeech.get(event.sender.id)?.kill());
   ipcMain.handle('zen:models', async () => {
     const response = await fetch('http://127.0.0.1:11434/api/tags');
     if (!response.ok) throw new Error(`Ollama could not list models (${response.status}).`);

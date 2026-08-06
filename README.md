@@ -50,6 +50,25 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Manual in-app verification
 - [x] Day 4 settings work committed to Git
 
+## Day 5 voice preparation
+
+- [x] Select `whisper.cpp` as the offline speech-to-text target
+- [x] Define explicit local-only, push-to-talk microphone rules
+- [x] Add a safe local-voice readiness state and Settings guidance
+- [x] Prevent all voice use while local engines are unavailable
+- [x] Review and install official local `whisper.cpp` Windows runtime and English model
+- [x] Implement push-to-talk transcription with temporary-audio cleanup
+- [x] Fix the local runtime path and verify the installed executable and model are detected
+- [x] Add locally saved microphone selection
+- [x] Add separate reliable keyboard controls: F8 hold-to-speak and F9 locked recording
+- [x] Manually verify real push-to-talk transcription with the selected microphone
+- [x] Test denied permission, cancellation, empty speech, and headset disconnection
+- [x] Review Piper GPL-3.0 licensing and install it as a local-only dependency
+- [x] Add local Read aloud, Stop speaking, and voice-selection controls
+- [x] Manually verify Read aloud and Stop speaking through the desktop app
+- [x] Verify Lessac, Amy, and Ryan local voice models
+- [x] Commit completed Day 5 work
+
 ## Technology choices
 
 | Area | Choice |

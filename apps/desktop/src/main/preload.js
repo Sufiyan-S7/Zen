@@ -16,5 +16,10 @@ contextBridge.exposeInMainWorld('zen', {
   onChatError: (callback) => subscribe('zen:chat:error', callback),
   onChatCancelled: (callback) => subscribe('zen:chat:cancelled', callback),
   getStatus: () => ipcRenderer.invoke('zen:status'),
-  getModels: () => ipcRenderer.invoke('zen:models')
+  getModels: () => ipcRenderer.invoke('zen:models'),
+  getVoiceStatus: () => ipcRenderer.invoke('zen:voice-status'),
+  transcribeVoice: (audio) => ipcRenderer.invoke('zen:voice:transcribe', audio),
+  onVoiceShortcut: (callback) => subscribe('zen:voice-shortcut', callback),
+  speakVoice: (text, voiceId) => ipcRenderer.invoke('zen:voice:speak', text, voiceId),
+  stopVoiceSpeech: () => ipcRenderer.send('zen:voice:stop-speaking')
 });

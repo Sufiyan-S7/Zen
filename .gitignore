@@ -5,3 +5,6 @@ out/
 .env
 *.log
 .DS_Store
+vendor/whisper.cpp/
+vendor/whisper-runtime/
+vendor/piper-runtime/

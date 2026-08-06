@@ -28,8 +28,22 @@ const modelSelect = document.querySelector('#model-select');
 const modelHelp = document.querySelector('#model-help');
 const themeSelect = document.querySelector('#theme-select');
 const clearConversationsButton = document.querySelector('#clear-conversations');
+const voiceInputButton = document.querySelector('#voice-input-button');
+const voiceStatusElement = document.querySelector('#voice-status');
+const stopSpeakingButton = document.querySelector('#stop-speaking-button');
+const voiceSelect = document.querySelector('#voice-select');
+const voiceHelp = document.querySelector('#voice-help');
+const voiceInputSelect = document.querySelector('#voice-input-select');
+const refreshVoiceInputsButton = document.querySelector('#refresh-voice-inputs');
+const voiceDeviceHelp = document.querySelector('#voice-device-help');
 const generations = new Map();
 let streamingMessageBody = null;
+let voiceRecording = null;
+let voiceKeyboardHeld = false;
+let voiceStartPending = false;
+let voiceLocked = false;
+let voiceOutputReady = false;
+let activeSpeechAudio = null;
 
 function createConversation() {
   const now = new Date().toISOString();
@@ -65,9 +79,11 @@ function loadSettings() {
     const stored = JSON.parse(localStorage.getItem(settingsStorageKey));
     return {
       model: typeof stored?.model === 'string' ? stored.model : '',
-      theme: stored?.theme === 'light' ? 'light' : 'dark'
+      theme: stored?.theme === 'light' ? 'light' : 'dark',
+      voiceInputId: typeof stored?.voiceInputId === 'string' ? stored.voiceInputId : '',
+      voiceOutputVoice: typeof stored?.voiceOutputVoice === 'string' ? stored.voiceOutputVoice : ''
     };
-  } catch { return { model: '', theme: 'dark' }; }
+  } catch { return { model: '', theme: 'dark', voiceInputId: '', voiceOutputVoice: '' }; }
 }
 
 function saveConversations() { localStorage.setItem(storageKey, JSON.stringify(conversations)); }
@@ -107,6 +123,15 @@ function renderMessages() {
     timestamp.dateTime = message.createdAt;
     timestamp.textContent = formatTimestamp(message.createdAt);
     article.append(label, body, timestamp);
+    if (message.role === 'assistant') {
+      const readAloudButton = document.createElement('button');
+      readAloudButton.className = 'read-aloud-button';
+      readAloudButton.type = 'button';
+      readAloudButton.textContent = 'Read aloud';
+      readAloudButton.disabled = !voiceOutputReady;
+      readAloudButton.addEventListener('click', () => speakText(message.content));
+      article.append(readAloudButton);
+    }
     messagesElement.append(article);
   });
   if (generation?.conversationId === conversation.id) {
@@ -225,6 +250,212 @@ async function loadModels() {
   }
 }
 
+async function loadVoiceStatus() {
+  try {
+    const voice = await window.zen.getVoiceStatus();
+    const input = voice.input.available ? `${voice.input.engine} is ready for push-to-talk.` : voice.input.reason;
+    const output = voice.output.available ? `${voice.output.engine} is ready for read aloud.` : voice.output.reason;
+    voiceOutputReady = voice.output.available;
+    const voices = Array.isArray(voice.output.voices) ? voice.output.voices : [];
+    voiceSelect.innerHTML = '';
+    voices.forEach((voice) => voiceSelect.append(new Option(voice.label, voice.id)));
+    if (voices.length) {
+      if (!voices.some((voice) => voice.id === settings.voiceOutputVoice)) settings.voiceOutputVoice = voices[0].id;
+      voiceSelect.value = settings.voiceOutputVoice;
+      voiceSelect.disabled = false;
+      voiceHelp.textContent = `${voiceSelect.options[voiceSelect.selectedIndex].text} is selected for local read aloud.`;
+      saveSettings();
+    } else {
+      voiceSelect.append(new Option('No local voices available', ''));
+      voiceSelect.disabled = true;
+    }
+    voiceStatusElement.textContent = `${input} ${output}`;
+    voiceStatusElement.classList.toggle('ready', voice.available);
+    voiceInputButton.disabled = !voice.input.available;
+    voiceInputButton.textContent = voice.input.available ? 'Hold to speak' : 'Voice input unavailable';
+    renderMessages();
+  } catch {
+    voiceStatusElement.textContent = 'Zen could not check local voice setup.';
+  }
+}
+
+function stopSpeaking() {
+  window.zen?.stopVoiceSpeech();
+  if (activeSpeechAudio) {
+    activeSpeechAudio.pause();
+    URL.revokeObjectURL(activeSpeechAudio.src);
+    activeSpeechAudio = null;
+  }
+  stopSpeakingButton.hidden = true;
+}
+
+async function speakText(text) {
+  if (!voiceOutputReady) {
+    setVoiceHelp('Local read aloud is not ready yet.');
+    return;
+  }
+  stopSpeaking();
+  stopSpeakingButton.hidden = false;
+  stopSpeakingButton.textContent = 'Preparing voice…';
+  stopSpeakingButton.disabled = true;
+  try {
+    const audioBytes = await window.zen.speakVoice(text, settings.voiceOutputVoice);
+    const audio = new Audio(URL.createObjectURL(new Blob([audioBytes], { type: 'audio/wav' })));
+    activeSpeechAudio = audio;
+    audio.addEventListener('ended', () => stopSpeaking());
+    await audio.play();
+    stopSpeakingButton.textContent = 'Stop speaking';
+    stopSpeakingButton.disabled = false;
+  } catch (error) {
+    stopSpeakingButton.hidden = true;
+    stopSpeakingButton.disabled = false;
+    setVoiceHelp(error.message || 'Zen could not read that response aloud.');
+  }
+}
+
+async function loadVoiceInputs() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    voiceDeviceHelp.textContent = 'Zen cannot list microphones in this desktop environment.';
+    return;
+  }
+  try {
+    const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'audioinput');
+    voiceInputSelect.innerHTML = '';
+    const systemDefault = new Option('System default microphone', '');
+    voiceInputSelect.append(systemDefault);
+    inputs.forEach((device, index) => voiceInputSelect.append(new Option(device.label || `Microphone ${index + 1}`, device.deviceId)));
+    if (settings.voiceInputId && inputs.some((device) => device.deviceId === settings.voiceInputId)) {
+      voiceInputSelect.value = settings.voiceInputId;
+    } else if (settings.voiceInputId) {
+      settings.voiceInputId = '';
+      saveSettings();
+    }
+    voiceInputSelect.disabled = false;
+    voiceDeviceHelp.textContent = inputs.length
+      ? 'Choose your Bluetooth headset microphone here when it is connected. Device names appear after Windows has granted microphone access once.'
+      : 'No microphone was detected. Connect your Bluetooth headset, then select Refresh.';
+  } catch {
+    voiceDeviceHelp.textContent = 'Zen could not list microphones. Connect your headset, then try Refresh.';
+  }
+}
+
+function setVoiceHelp(message) { document.querySelector('#voice-input-help').textContent = message; }
+
+function handleVoiceShortcut(shortcut) {
+  if (shortcut.action === 'hold') {
+    if (shortcut.type === 'down' && !voiceLocked) {
+      voiceKeyboardHeld = true;
+      startVoiceRecording('hold');
+    }
+    if (shortcut.type === 'up') {
+      voiceKeyboardHeld = false;
+      if (voiceRecording?.trigger === 'hold') stopVoiceRecording();
+    }
+    return;
+  }
+  if (shortcut.action === 'locked' && shortcut.type === 'down') {
+    if (voiceLocked) {
+      voiceLocked = false;
+      stopVoiceRecording();
+    } else if (!voiceRecording && !voiceStartPending) {
+      voiceLocked = true;
+      startVoiceRecording('locked');
+    }
+  }
+}
+
+function makeWav(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const text = (offset, value) => [...value].forEach((character, index) => view.setUint8(offset + index, character.charCodeAt(0)));
+  text(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); text(8, 'WAVE'); text(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true); text(36, 'data'); view.setUint32(40, samples.length * 2, true);
+  samples.forEach((sample, index) => view.setInt16(44 + index * 2, Math.max(-1, Math.min(1, sample)) * 0x7fff, true));
+  return new Uint8Array(buffer);
+}
+
+function downsample(chunks, inputRate) {
+  const inputLength = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const input = new Float32Array(inputLength);
+  let offset = 0;
+  chunks.forEach((chunk) => { input.set(chunk, offset); offset += chunk.length; });
+  const outputLength = Math.floor(inputLength * 16000 / inputRate);
+  const output = new Float32Array(outputLength);
+  for (let index = 0; index < outputLength; index += 1) output[index] = input[Math.floor(index * inputRate / 16000)] || 0;
+  return output;
+}
+
+function selectedVoiceConstraints() {
+  const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true };
+  if (settings.voiceInputId) audio.deviceId = { exact: settings.voiceInputId };
+  return audio;
+}
+
+async function startVoiceRecording(trigger = 'button') {
+  if (voiceRecording || voiceStartPending || voiceInputButton.disabled) return;
+  voiceStartPending = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: selectedVoiceConstraints() });
+    if ((trigger === 'hold' && !voiceKeyboardHeld) || (trigger === 'locked' && !voiceLocked)) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    const context = new AudioContext();
+    loadVoiceInputs();
+    const source = context.createMediaStreamSource(stream);
+    const processor = context.createScriptProcessor(4096, 1, 1);
+    const chunks = [];
+    processor.onaudioprocess = (event) => chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    source.connect(processor); processor.connect(context.destination);
+    voiceRecording = { stream, context, source, processor, chunks, sampleRate: context.sampleRate, trigger };
+    voiceInputButton.classList.add('recording');
+    if (voiceLocked && trigger === 'locked') {
+      voiceInputButton.textContent = 'Recording locked · press F9 to stop';
+      setVoiceHelp('Recording is locked. Press F9 again to stop and transcribe.');
+    } else {
+      voiceInputButton.textContent = 'Recording… release to stop';
+      setVoiceHelp('Recording locally. Release to stop; Zen will delete the temporary audio after transcription.');
+    }
+  } catch (error) {
+    setVoiceHelp(error.name === 'NotAllowedError'
+      ? 'Microphone permission was denied. Zen will not retry until you hold voice input again.'
+      : error.name === 'OverconstrainedError' || error.name === 'NotFoundError'
+        ? 'The selected microphone is unavailable. Connect your headset and choose it again in Settings.'
+        : 'Zen could not start the microphone. Check that it is connected and not in use by another app.');
+  } finally {
+    voiceStartPending = false;
+  }
+}
+
+async function stopVoiceRecording() {
+  if (!voiceRecording) return;
+  voiceKeyboardHeld = false;
+  voiceLocked = false;
+  const recording = voiceRecording;
+  voiceRecording = null;
+  recording.stream.getTracks().forEach((track) => track.stop());
+  recording.source.disconnect(); recording.processor.disconnect(); await recording.context.close();
+  voiceInputButton.classList.remove('recording');
+  voiceInputButton.disabled = true;
+  voiceInputButton.textContent = 'Transcribing…';
+  setVoiceHelp('Transcribing with whisper.cpp on this computer…');
+  try {
+    const samples = downsample(recording.chunks, recording.sampleRate);
+    if (samples.length < 1600) throw new Error('That recording was too short. Hold to speak and try again.');
+    const text = await window.zen.transcribeVoice(makeWav(samples, 16000));
+    input.value = input.value ? `${input.value} ${text}` : text;
+    input.dispatchEvent(new Event('input'));
+    setVoiceHelp('Voice input is ready. Hold to speak; your audio is processed locally and removed after transcription.');
+    input.focus();
+  } catch (error) {
+    setVoiceHelp(error.message || 'Zen could not transcribe that recording. Please try again.');
+  } finally {
+    voiceInputButton.disabled = false;
+    voiceInputButton.textContent = 'Hold to speak';
+  }
+}
+
 function setBusy(busy = Boolean(generationForConversation())) {
   if (!window.zen) {
     input.disabled = true;
@@ -241,6 +472,7 @@ function setBusy(busy = Boolean(generationForConversation())) {
 
 async function initialise() {
   applyTheme();
+  loadVoiceInputs();
   render();
   if (!window.zen) {
     document.querySelector('#model-status').textContent = 'Open Zen through its desktop app';
@@ -248,6 +480,7 @@ async function initialise() {
     sendButton.disabled = true;
     return;
   }
+  loadVoiceStatus();
   try {
     const status = await window.zen.getStatus();
     if (!settings.model) settings.model = status.model;
@@ -285,6 +518,7 @@ if (window.zen) {
     finishGeneration(requestId, `I couldn’t reach the local model. ${message}`);
   });
   window.zen.onChatCancelled(({ requestId }) => finishGeneration(requestId, 'Generation stopped.'));
+  window.zen.onVoiceShortcut(handleVoiceShortcut);
 }
 
 form.addEventListener('submit', async (event) => {
@@ -311,6 +545,14 @@ stopButton.addEventListener('click', () => {
   const generation = generationForConversation();
   if (generation) window.zen.stopChat(generation.requestId);
 });
+stopSpeakingButton.addEventListener('click', stopSpeaking);
+voiceInputButton.addEventListener('pointerdown', (event) => { event.preventDefault(); startVoiceRecording('button'); });
+document.addEventListener('pointerup', () => { if (voiceRecording?.trigger === 'button') stopVoiceRecording(); });
+window.addEventListener('blur', () => {
+  voiceKeyboardHeld = false;
+  voiceLocked = false;
+  if (voiceRecording?.trigger === 'hold' || voiceRecording?.trigger === 'locked') stopVoiceRecording();
+});
 document.querySelector('#new-chat').addEventListener('click', () => {
   const conversation = createConversation();
   conversations.unshift(conversation);
@@ -324,7 +566,18 @@ document.querySelector('#new-chat').addEventListener('click', () => {
 });
 
 chatButton.addEventListener('click', () => showPage('chat'));
-settingsButton.addEventListener('click', () => showPage('settings'));
+settingsButton.addEventListener('click', () => { showPage('settings'); loadVoiceInputs(); });
+voiceInputSelect.addEventListener('change', () => {
+  settings.voiceInputId = voiceInputSelect.value;
+  saveSettings();
+  voiceDeviceHelp.textContent = voiceInputSelect.value ? 'Selected microphone saved locally. Hold to speak to test it.' : 'Zen will use the Windows default microphone.';
+});
+refreshVoiceInputsButton.addEventListener('click', loadVoiceInputs);
+voiceSelect.addEventListener('change', () => {
+  settings.voiceOutputVoice = voiceSelect.value;
+  saveSettings();
+  voiceHelp.textContent = `${voiceSelect.options[voiceSelect.selectedIndex].text} is selected for local read aloud.`;
+});
 modelSelect.addEventListener('change', () => {
   settings.model = modelSelect.value;
   saveSettings();

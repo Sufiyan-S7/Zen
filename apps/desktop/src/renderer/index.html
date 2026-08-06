@@ -34,7 +34,8 @@
           <form class="composer" id="composer">
             <label class="sr-only" for="message-input">Message Zen</label>
             <textarea id="message-input" rows="1" maxlength="4000" placeholder="Ask Zen anything…" autofocus></textarea>
-            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="stop-button" type="button" hidden>Stop generating</button><button id="send-button" type="submit">Send <span>↗</span></button></div></div>
+            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="voice-input-button" class="voice-button" type="button" disabled aria-describedby="voice-input-help">Voice input unavailable</button><button id="stop-speaking-button" class="voice-button" type="button" hidden>Stop speaking</button><button id="stop-button" type="button" hidden>Stop generating</button><button id="send-button" type="submit">Send <span>↗</span></button></div></div>
+            <p class="voice-composer-help" id="voice-input-help">Voice input will only listen while you hold the button. Local voice setup is not complete.</p>
           </form>
         </section>
         <p class="footer">Zen <span id="version"></span> · <span id="mode"></span> · Conversations are stored locally in this app.</p>
@@ -60,6 +61,25 @@
             <p>Choose the look that is most comfortable for you.</p>
             <label for="theme-select">Theme</label>
             <select id="theme-select"><option value="dark">Dark</option><option value="light">Light</option></select>
+          </section>
+          <section class="settings-card" aria-labelledby="voice-setting-title">
+            <p class="settings-label">VOICE &amp; PRIVACY</p>
+            <h2 id="voice-setting-title">Voice stays in your control</h2>
+            <p>Zen will use only locally installed voice engines. It never listens in the background, never stores recordings, and never sends audio to a cloud service.</p>
+            <div class="voice-status" id="voice-status" aria-live="polite">Checking local voice setup…</div>
+            <label for="voice-input-select">Microphone</label>
+            <div class="setting-row"><select id="voice-input-select" disabled><option>Checking available microphones…</option></select><button class="secondary-button" id="refresh-voice-inputs" type="button">Refresh</button></div>
+            <p class="settings-help" id="voice-device-help">Connect your Bluetooth headset, then refresh this list to select its microphone.</p>
+            <label for="voice-select">Read-aloud voice</label>
+            <select id="voice-select" disabled><option>Checking local voices…</option></select>
+            <p class="settings-help" id="voice-help">Read aloud uses the selected local voice.</p>
+            <p class="settings-label">KEYBOARD CONTROLS</p>
+            <p class="settings-help" id="voice-shortcut-help"><strong>F8</strong> — hold to speak; release to stop. <strong>F9</strong> — press once to start locked recording, then once more to stop.</p>
+            <ul class="voice-rules">
+              <li>Microphone access is requested only after you press and hold voice input.</li>
+              <li>Release or cancel immediately stops the recording.</li>
+              <li>Read aloud uses only a locally installed voice.</li>
+            </ul>
           </section>
           <section class="settings-card danger-card" aria-labelledby="data-setting-title">
             <p class="settings-label">LOCAL DATA</p>
