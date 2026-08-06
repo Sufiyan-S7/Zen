@@ -26,6 +26,7 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 ### Latest checkpoint — August 6, 2026
 
 - Day 2 conversation-history work passed static validation and manual in-app testing: chat creation, switching, deletion, and saved-history behaviour were verified by the user.
+- Day 2 was committed as `a5e71eb feat: complete Day 2 chat experience`.
 - Zen can now be started from the desktop shortcut at `C:\Users\khans\OneDrive\Desktop\Zen.lnk`.
 - The shortcut launches Electron directly and uses the modern `assets\zen-icon.ico` design, allowing it to be pinned to the Windows taskbar.
 - The immediate next action is to add a friendly missing-Electron-bridge guard, then begin Day 3 response streaming.
@@ -38,7 +39,7 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
   - `1af19f9 Day 1 Foundation Complete`
   - `66d5d43 feat: add local Ollama chat`
 
-### Day 2 — Complete and ready to commit
+### Day 2 — Complete and committed
 
 The following changes are present but **not committed**:
 
@@ -64,7 +65,7 @@ npm.cmd run check
 git diff --check
 ```
 
-Both passed on August 6, 2026. Manual in-app testing by the user also confirmed that chats can be created, switched, deleted, and retained locally after use.
+Both passed on August 6, 2026 when run from `apps/desktop`. Manual in-app testing by the user also confirmed that chats can be created, switched, deleted, and retained locally after use.
 
 ## Diagnosed Startup Issue
 

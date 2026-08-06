@@ -24,6 +24,7 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Named conversations and message timestamps
 - [x] Improved local-model loading and error states
 - [x] Manual testing of chat creation, switching, deletion, and saved history
+- [x] Day 2 changes committed as `a5e71eb`
 
 ## Technology choices
 
