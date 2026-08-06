@@ -32,6 +32,7 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Smooth incremental message updates without panel flicker
 - [x] Thinking state and Stop generating control
 - [x] Independent generation controls for each conversation
+- [x] Independent desktop scrolling for chat history and conversation content
 - [x] Partial responses retained after stopping
 - [x] Clear Ollama-offline and missing desktop-bridge guidance
 - [x] Static checks and a streamed `llama3.2:3b` response check
