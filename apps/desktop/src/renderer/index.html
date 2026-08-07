@@ -14,7 +14,7 @@
           <button class="nav-item active" id="chat-button" type="button">Chat</button>
           <button class="nav-item" id="new-chat" type="button">New conversation <span>+</span></button>
           <button class="nav-item" id="settings-button" type="button">Settings <span>⚙</span></button>
-          <button class="nav-item" type="button" disabled>Memory <span>soon</span></button>
+          <button class="nav-item" id="memory-button" type="button">Memory <span>✦</span></button>
           <button class="nav-item" id="activity-button" type="button">Activity <span>↗</span></button>
         </div>
         <section class="conversation-list" aria-labelledby="conversation-heading">
@@ -116,6 +116,32 @@
           </section>
         </div>
         <p class="footer">Settings are saved locally in this app.</p>
+      </section>
+      <section class="content memory-page" id="memory-page" hidden aria-labelledby="memory-title">
+        <header>
+          <p class="eyebrow">ZEN / YOUR MEMORY</p>
+          <h1 id="memory-title">Keep the useful things.</h1>
+          <p class="intro">Memories are created only when you add them, stay on this computer, and are never silently saved from chat.</p>
+        </header>
+        <div class="settings-stack">
+          <section class="settings-card" aria-labelledby="add-memory-title">
+            <p class="settings-label">EXPLICITLY SAVED</p>
+            <h2 id="add-memory-title">Add a memory</h2>
+            <p>Save a preference, a fact, or a standing instruction you want to keep. You can edit or remove it at any time.</p>
+            <form class="memory-form" id="memory-form">
+              <label for="memory-text">Memory</label>
+              <textarea id="memory-text" rows="3" maxlength="500" placeholder="For example: I prefer concise project updates." required></textarea>
+              <div class="setting-row"><button class="primary-button" type="submit">Save memory</button><span class="settings-help" id="memory-help" aria-live="polite"></span></div>
+            </form>
+          </section>
+          <section class="settings-card" aria-labelledby="saved-memories-title">
+            <p class="settings-label">LOCAL ONLY</p>
+            <h2 id="saved-memories-title">Saved memories</h2>
+            <p>Zen does not yet add these memories to model prompts. That connection will be a separate, clearly controlled step.</p>
+            <div class="memory-list" id="memory-list" aria-live="polite"></div>
+          </section>
+        </div>
+        <p class="footer">Memory is stored locally in this app. Export, document import, and automatic recall are not enabled.</p>
       </section>
       <section class="content activity-page" id="activity-page" hidden aria-labelledby="activity-title">
         <header>

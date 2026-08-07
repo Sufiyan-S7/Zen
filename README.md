@@ -106,6 +106,17 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Add a confirmed browser-web-app option with a fixed user name, Chromium launcher, and HTTPS destination.
 - [x] Manually verify browser-web-app opening, cancellation, persistence after restart, and approval removal.
 
+## Day 10 local memory — complete
+
+- [x] Add a dedicated **Memory** page for manually saved local preferences, facts, and standing instructions.
+- [x] Keep memory separate from conversations; clearing chats does not erase saved memories.
+- [x] Support editing and confirmation-protected removal of a memory.
+- [x] Keep saved memories out of model prompts for now, so there is no invisible recall or automatic collection.
+- [x] Document the local-memory boundary in [docs/Memory.md](docs/Memory.md).
+- [x] Manually verify add, edit, removal, cancellation, and persistence after restarting Zen.
+- [x] Replace the unreliable browser edit prompt with Zen's inline Save changes and Cancel editor.
+- [x] Day 10 changes committed as `feat: complete Day 10 local memory`.
+
 ## Technology choices
 
 | Area | Choice |
@@ -160,6 +171,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Coding standards](docs/CodingStandards.md)
 - [Release readiness](docs/Release.md)
 - [Voice rules and licensing](docs/Voice.md)
+- [Local memory scope](docs/Memory.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

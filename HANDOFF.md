@@ -23,6 +23,15 @@ Every future agent working in this repository must update this handoff before re
 
 The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the same required workflow so it is automatically available to coding agents working in this repository.
 
+#### Day 10 — local memory complete (August 7, 2026)
+
+- Added the **Memory** page, replacing the disabled placeholder. A person can manually save a short local preference, fact, or standing instruction; edit it with an inline **Save changes** / **Cancel** editor; or remove it after confirmation. Memory entries use their own renderer-local storage key and are intentionally independent from conversations, so clearing chats does not remove memories.
+- Memory is deliberately not supplied to Ollama prompts in this slice. Zen never auto-extracts chat content into memory, and document import, semantic retrieval, exports, and model recall remain out of scope. `docs/Memory.md` states the privacy boundaries and the planned opt-in recall requirement.
+- The initial browser-style **Edit** prompt did not work reliably in the desktop app. It was replaced with an inline Memory-page editor that avoids the unsupported prompt flow and gives visible Save changes and Cancel controls.
+- Validation passed: `npm.cmd --prefix apps\\desktop run check` (including the existing computer-control safety suite) and `git diff --check`. The user manually verified add, removal, cancellation, restart persistence, and conversation-clearing independence; they reported the original edit issue, which is addressed by the inline editor.
+- Git state: Day 10 is committed separately as `feat: complete Day 10 local memory`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
+- Exact next recommended step: scope Day 11 document import as a user-selected, local-only flow; do not grant automatic file access or enable memory recall without a new explicit control.
+
 ### Latest checkpoint — August 7, 2026
 
 #### Day 7 — release preparation complete

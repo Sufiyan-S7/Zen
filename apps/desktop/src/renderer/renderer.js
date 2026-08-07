@@ -4,11 +4,14 @@ const storageKey = 'zen-local-conversations-v2';
 const legacyStorageKey = 'zen-local-conversation-v1';
 const settingsStorageKey = 'zen-local-settings-v1';
 const activityStorageKey = 'zen-local-activity-v1';
+const memoryStorageKey = 'zen-local-memories-v1';
 const welcomeText = 'Hello, I’m Zen. I’m running locally on your computer. What would you like to work on?';
 let conversations = loadConversations();
 let activeConversationId = conversations[0].id;
 let settings = loadSettings();
 let activityLog = loadActivityLog();
+let memories = loadMemories();
+let editingMemoryId = '';
 
 document.querySelector('#version').textContent = `v${version}`;
 document.querySelector('#mode').textContent = mode;
@@ -25,9 +28,15 @@ const conversationCountElement = document.querySelector('#conversation-count');
 const chatPage = document.querySelector('#home');
 const settingsPage = document.querySelector('#settings-page');
 const activityPage = document.querySelector('#activity-page');
+const memoryPage = document.querySelector('#memory-page');
 const chatButton = document.querySelector('#chat-button');
 const settingsButton = document.querySelector('#settings-button');
 const activityButton = document.querySelector('#activity-button');
+const memoryButton = document.querySelector('#memory-button');
+const memoryForm = document.querySelector('#memory-form');
+const memoryText = document.querySelector('#memory-text');
+const memoryHelp = document.querySelector('#memory-help');
+const memoryList = document.querySelector('#memory-list');
 const websiteForm = document.querySelector('#website-form');
 const websiteInput = document.querySelector('#website-input');
 const websiteHelp = document.querySelector('#website-help');
@@ -125,6 +134,14 @@ function loadActivityLog() {
   } catch { return []; }
 }
 
+function loadMemories() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(memoryStorageKey));
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((memory) => memory && typeof memory.id === 'string' && typeof memory.text === 'string' && memory.text.trim() && memory.text.length <= 500 && typeof memory.createdAt === 'string').map((memory) => ({ id: memory.id, text: memory.text.trim(), createdAt: memory.createdAt, updatedAt: typeof memory.updatedAt === 'string' ? memory.updatedAt : memory.createdAt }));
+  } catch { return []; }
+}
+
 function loadSettings() {
   try {
     const stored = JSON.parse(localStorage.getItem(settingsStorageKey));
@@ -151,6 +168,94 @@ function loadSettings() {
 function saveConversations() { localStorage.setItem(storageKey, JSON.stringify(conversations)); }
 function saveSettings() { localStorage.setItem(settingsStorageKey, JSON.stringify(settings)); }
 function saveActivityLog() { localStorage.setItem(activityStorageKey, JSON.stringify(activityLog.slice(0, 200))); }
+function saveMemories() { localStorage.setItem(memoryStorageKey, JSON.stringify(memories)); }
+function renderMemories() {
+  memoryList.innerHTML = '';
+  if (!memories.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No memories saved yet. Zen will not retain chat details unless you add them here.';
+    memoryList.append(empty);
+    return;
+  }
+  memories.forEach((memory) => {
+    const item = document.createElement('article');
+    item.className = 'memory-entry';
+    const meta = document.createElement('span');
+    meta.textContent = `Saved ${formatConversationDate(memory.createdAt)}`;
+    if (editingMemoryId === memory.id) {
+      const form = document.createElement('form');
+      form.className = 'memory-edit-form';
+      const label = document.createElement('label');
+      label.className = 'sr-only';
+      label.htmlFor = `memory-edit-${memory.id}`;
+      label.textContent = 'Edit memory';
+      const editor = document.createElement('textarea');
+      editor.id = `memory-edit-${memory.id}`;
+      editor.rows = 3;
+      editor.maxLength = 500;
+      editor.value = memory.text;
+      const actions = document.createElement('div');
+      actions.className = 'memory-actions';
+      const save = document.createElement('button');
+      save.className = 'primary-button';
+      save.type = 'submit';
+      save.textContent = 'Save changes';
+      const cancel = document.createElement('button');
+      cancel.className = 'secondary-button';
+      cancel.type = 'button';
+      cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', () => { editingMemoryId = ''; renderMemories(); memoryHelp.textContent = 'Memory edit cancelled.'; });
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const text = editor.value.trim();
+        if (!text || text.length > 500) { memoryHelp.textContent = 'A memory must contain 1–500 characters.'; editor.focus(); return; }
+        memory.text = text;
+        memory.updatedAt = new Date().toISOString();
+        editingMemoryId = '';
+        saveMemories();
+        renderMemories();
+        memoryHelp.textContent = 'Memory updated locally.';
+      });
+      form.append(label, editor, actions);
+      actions.append(save, cancel);
+      item.append(form, meta);
+      requestAnimationFrame(() => editor.focus());
+    } else {
+      const text = document.createElement('p');
+      text.textContent = memory.text;
+      const actions = document.createElement('div');
+      actions.className = 'memory-actions';
+      const edit = document.createElement('button');
+      edit.className = 'secondary-button';
+      edit.type = 'button';
+      edit.textContent = 'Edit';
+      edit.addEventListener('click', () => editMemory(memory.id));
+      const remove = document.createElement('button');
+      remove.className = 'danger-button';
+      remove.type = 'button';
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', () => removeMemory(memory.id));
+      actions.append(edit, remove);
+      item.append(text, meta, actions);
+    }
+    memoryList.append(item);
+  });
+}
+function editMemory(id) {
+  if (!memories.some((entry) => entry.id === id)) return;
+  editingMemoryId = id;
+  renderMemories();
+  memoryHelp.textContent = 'Edit the memory below, then save or cancel.';
+}
+function removeMemory(id) {
+  const memory = memories.find((entry) => entry.id === id);
+  if (!memory || !window.confirm(`Remove this local memory?\n\n${memory.text}`)) return;
+  memories = memories.filter((entry) => entry.id !== id);
+  saveMemories();
+  renderMemories();
+  memoryHelp.textContent = 'Memory removed locally.';
+}
 function createActivity(action, preview) {
   const entry = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), action, preview, status: 'requested', decidedAt: '', completedAt: '', result: '', errorCode: '' };
   activityLog.unshift(entry);
@@ -430,9 +535,11 @@ function showPage(page) {
   chatPage.hidden = !showingChat;
   settingsPage.hidden = !showingSettings;
   activityPage.hidden = page !== 'activity';
+  memoryPage.hidden = page !== 'memory';
   chatButton.classList.toggle('active', showingChat);
   settingsButton.classList.toggle('active', showingSettings);
   activityButton.classList.toggle('active', page === 'activity');
+  memoryButton.classList.toggle('active', page === 'memory');
   if (showingChat) input.focus();
 }
 
@@ -988,6 +1095,7 @@ async function initialise() {
   applyTheme();
   loadVoiceInputs();
   render();
+  renderMemories();
   if (!window.zen) {
     document.querySelector('#model-status').textContent = 'Open Zen through its desktop app';
     input.disabled = true;
@@ -1099,6 +1207,18 @@ document.querySelector('#new-chat').addEventListener('click', () => {
 chatButton.addEventListener('click', () => showPage('chat'));
 settingsButton.addEventListener('click', () => { showPage('settings'); loadVoiceInputs(); });
 activityButton.addEventListener('click', () => { showPage('activity'); renderActivityLog(); });
+memoryButton.addEventListener('click', () => { showPage('memory'); renderMemories(); });
+memoryForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const text = memoryText.value.trim();
+  if (!text || text.length > 500) { memoryHelp.textContent = 'A memory must contain 1–500 characters.'; return; }
+  const now = new Date().toISOString();
+  memories.unshift({ id: crypto.randomUUID(), text, createdAt: now, updatedAt: now });
+  saveMemories();
+  memoryText.value = '';
+  memoryHelp.textContent = 'Memory saved locally. It is not sent to Zen’s model yet.';
+  renderMemories();
+});
 websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
