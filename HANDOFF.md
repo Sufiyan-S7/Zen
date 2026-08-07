@@ -25,6 +25,24 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 ### Latest checkpoint — August 7, 2026
 
+#### Day 6 — reliability validation started
+
+- Scope: verify startup, saved local state, conversation lifecycle, failure recovery, and release readiness after the completed Day 5 voice work.
+- Baseline: commit `4329df9 feat: complete Day 5 local voice`; no tracked changes are pending. The existing untracked `deliverables/` directory remains intentionally untouched.
+- Initial checklist is mirrored in `README.md`. No product code has changed as part of Day 6 yet.
+- Preflight passed: `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed. Ollama was reachable at `127.0.0.1:11434` and reported `deepseek-r1:8b`, `llama3.2:3b`, and `gemma4:12b`.
+- User validation passed: a full Zen restart preserved saved state; Ollama/model recovery messaging also passed.
+- Confirmed Day 6 defect: the light theme had incomplete color overrides, leaving several text, status, and control combinations inconsistent or difficult to read. The light palette now sets native light controls and explicit high-contrast colors for navigation, status, cards, messages, composer, voice controls, and destructive actions.
+- User confirmation: the revised Light theme is "100% fine and perfect." `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed after the CSS change.
+- User validation complete: conversation create/switch/save, delete confirmation, clear-history cancellation safeguard, and normal typing all passed. The earlier intermittent missing-text-caret report did not recur and is not a confirmed defect.
+- Day 6 reliability validation is complete. The user requested one scoped addition before the next Git commit/release preparation: add their own permitted personal local read-aloud voice.
+- August 7, 2026 voice addition: the user chose the official `en_US-bryce-medium` Piper voice for now. Its `.onnx` model and matching `.onnx.json` configuration were downloaded to ignored `vendor/piper-runtime/voices/`; Bryce was registered as a selectable local read-aloud voice. The model is not tracked by Git.
+- Validation passed: Bryce generated a 146,988-byte local WAV successfully; that temporary verification file was removed. `npm.cmd --prefix apps\\desktop run check` and `git diff --check` also passed after the change.
+- User confirmation: Bryce works perfectly through Zen's Settings selector and Read aloud control. Day 6 is complete.
+- Git state: Day 6 documentation, light-theme CSS changes, and Bryce voice registration are committed on `main` as `feat: complete Day 6 reliability`; pre-existing untracked `deliverables/` remains untouched. All Piper runtime and voice files remain ignored.
+- Known issue: none confirmed.
+- Exact next recommended step: begin Day 7 release preparation: documentation/privacy review, final regression verification, and a release tag or package plan. A personal voice can later replace or supplement Bryce once it exists as a consented Piper `.onnx` plus `.onnx.json` model.
+
 - Day 5 voice preparation is complete. The user confirmed normal voice input, Bluetooth microphone selection, saved preferences, F8 hold-to-speak, F9 locked recording, all requested input safety cases, local Read aloud, and Stop speaking work correctly in the desktop app.
 - August 7, 2026 completion: added locally selectable Lessac, Amy, and Ryan Piper voices and committed the completed Day 5 work.
 - Zen now provides fully local speech-to-text through `whisper.cpp`, selectable Windows microphone input, two independent keyboard recording controls, and fully local Piper read aloud. The selectable local Piper voices are Lessac, Amy, and Ryan; the selected voice is saved locally.

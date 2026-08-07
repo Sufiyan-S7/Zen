@@ -22,7 +22,8 @@ const PIPER_CLI = path.join(PIPER_RUNTIME, 'venv', 'Scripts', 'piper.exe');
 const PIPER_VOICES = {
   'en_US-lessac-medium': { label: 'Lessac', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-lessac-medium.onnx') },
   'en_US-amy-medium': { label: 'Amy', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-amy-medium.onnx') },
-  'en_US-ryan-medium': { label: 'Ryan', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-ryan-medium.onnx') }
+  'en_US-ryan-medium': { label: 'Ryan', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-ryan-medium.onnx') },
+  'en_US-bryce-medium': { label: 'Bryce', model: path.join(PIPER_RUNTIME, 'voices', 'en_US-bryce-medium.onnx') }
 };
 const SYSTEM_PROMPT = [
   'You are Zen, a private local desktop assistant.',

@@ -4,7 +4,7 @@
 
 Zen voice is local-first. `whisper.cpp` is the selected speech-to-text integration target because it supports Windows and CPU-only operation. Piper is the selected text-to-speech runtime for this PC, installed as a local machine dependency and not bundled into Zen's source because it is GPL-3.0 licensed.
 
-The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin` English model are installed locally under `vendor/whisper-runtime/`. Piper v1.6.0 and the `en_US-lessac-medium`, `en_US-amy-medium`, and `en_US-ryan-medium` English voices are installed locally under `vendor/piper-runtime/`. Both runtime folders are ignored by Git because they are machine-local dependencies.
+The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin` English model are installed locally under `vendor/whisper-runtime/`. Piper v1.6.0 and the `en_US-lessac-medium`, `en_US-amy-medium`, `en_US-ryan-medium`, and `en_US-bryce-medium` English voices are installed locally under `vendor/piper-runtime/`. Both runtime folders are ignored by Git because they are machine-local dependencies.
 
 ## Permission rules
 
@@ -23,7 +23,7 @@ The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin`
 - Capture short browser microphone audio only after push-to-talk begins, downsample it to a 16 kHz WAV file, and send it through Electron's secure preload bridge.
 - Run the installed local binary from Electron's main process. Return text only to the renderer, then remove the temporary WAV and transcript files.
 - Piper v1.6.0 is GPL-3.0 licensed. It is installed only as an ignored local dependency for this PC; any future distributed Zen package must complete a GPL compliance review before including it.
-- Piper offers three selected local English voices: Lessac, Amy, and Ryan. The selected voice is stored locally. The Electron main process returns in-memory WAV bytes to the renderer; **Stop speaking** stops both active synthesis and playback.
+- Piper offers four selected local English voices: Lessac, Amy, Ryan, and Bryce. The selected voice is stored locally. The Electron main process returns in-memory WAV bytes to the renderer; **Stop speaking** stops both active synthesis and playback.
 
 ## Test cases before enabling voice
 

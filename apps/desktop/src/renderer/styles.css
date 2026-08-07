@@ -97,22 +97,45 @@ body[data-theme="light"] .composer textarea { caret-color: #476b50; }
 @keyframes appear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes voice-pulse { 50% { box-shadow: 0 0 0 5px rgba(159, 79, 69, .22); } }
-body[data-theme="light"] { background: radial-gradient(circle at 78% 15%, #cbe8d5 0, transparent 32rem), #f4f8f2; color: #173025; }
-body[data-theme="light"] .sidebar { border-color: #c3d7c8; background: rgba(241, 247, 240, .88); }
-body[data-theme="light"] .nav-item { color: #496b55; }
-body[data-theme="light"] .nav-item:not(:disabled):hover, body[data-theme="light"] .nav-item.active { background: #dceee0; color: #173025; }
-body[data-theme="light"] .conversation-item:hover, body[data-theme="light"] .conversation-item.active { border-color: #afcdb6; background: #e3f0e5; }
-body[data-theme="light"] .conversation-select, body[data-theme="light"] .conversation-item.active .conversation-select { color: #264c35; }
-body[data-theme="light"] .chat-panel, body[data-theme="light"] .settings-card { border-color: #b5d0bb; background: rgba(255, 255, 255, .72); }
-body[data-theme="light"] .message { border-color: #b6d1ba; background: #e8f3e9; }
-body[data-theme="light"] .message.user { border-color: #c8d6a7; background: #eff4de; }
-body[data-theme="light"] .message-body { color: #173025; }
-body[data-theme="light"] .composer { border-color: #b5d0bb; background: rgba(238, 247, 239, .7); }
-body[data-theme="light"] .composer textarea, body[data-theme="light"] .settings-card select { background: #fff; color: #173025; }
-body[data-theme="light"] .secondary-button { border-color: #afcdb6; background: #e3f0e5; color: #264c35; }
-body[data-theme="light"] .read-aloud-button { border-color: #afcdb6; color: #315b3c; }
-body[data-theme="light"] .intro, body[data-theme="light"] .settings-card > p:not(.settings-label):not(.settings-help) { color: #496b55; }
-body[data-theme="light"] .footer, body[data-theme="light"] .conversation-meta, body[data-theme="light"] .settings-help { color: #5a7963; }
-body[data-theme="light"] .voice-rules { color: #496b55; }
-body[data-theme="light"] .voice-status { border-color: #d6bf87; background: #fff9e9; color: #70551d; }
+body[data-theme="light"] { color-scheme: light; background: radial-gradient(circle at 78% 15%, #d9f0e0 0, transparent 32rem), #f7faf7; color: #183526; }
+body[data-theme="light"] .sidebar { border-color: #c6d9c9; background: rgba(248, 252, 248, .94); }
+body[data-theme="light"] .nav-item { color: #365d45; }
+body[data-theme="light"] .nav-item span, body[data-theme="light"] .conversation-heading, body[data-theme="light"] .conversation-actions { color: #52745d; }
+body[data-theme="light"] .nav-item:not(:disabled):hover, body[data-theme="light"] .nav-item.active { background: #d8eddd; color: #153a25; }
+body[data-theme="light"] .conversation-heading span { background: #d8eddd; color: #254e34; }
+body[data-theme="light"] .conversation-item:hover, body[data-theme="light"] .conversation-item.active { border-color: #9fc7a8; background: #e5f3e7; }
+body[data-theme="light"] .conversation-select, body[data-theme="light"] .conversation-item.active .conversation-select { color: #1e482e; }
+body[data-theme="light"] .delete-conversation { background: #dce9de; color: #284e35; }
+body[data-theme="light"] .delete-conversation:hover { background: #a53d36; color: #fff; }
+body[data-theme="light"] .chat-panel, body[data-theme="light"] .settings-card { border-color: #b4d0ba; background: rgba(255, 255, 255, .88); box-shadow: 0 18px 48px rgba(25, 64, 38, .09); }
+body[data-theme="light"] .eyebrow, body[data-theme="light"] .settings-label, body[data-theme="light"] .message-label { color: #28633b; }
+body[data-theme="light"] .status { border-color: #a7c9ad; background: #f8fcf8; color: #234b30; }
+body[data-theme="light"] .status i { background: #4a9b5e; box-shadow: 0 0 9px rgba(74, 155, 94, .55); }
+body[data-theme="light"] .intro, body[data-theme="light"] .settings-card > p:not(.settings-label):not(.settings-help), body[data-theme="light"] .voice-rules { color: #3d6349; }
+body[data-theme="light"] .card { border-color: #b4d0ba; background: #fafffa; }
+body[data-theme="light"] .card.pending { border-color: #d2bf83; background: #fffbed; }
+body[data-theme="light"] .card-label, body[data-theme="light"] .card span { color: #52745d; }
+body[data-theme="light"] .card strong { color: #183526; }
+body[data-theme="light"] .next-step { border-color: #9fc7a8; background: linear-gradient(125deg, #edf8ef, #dcefe1); }
+body[data-theme="light"] .next-step p:not(.eyebrow) { color: #31583e; }
+body[data-theme="light"] .message { border-color: #b3d2ba; background: #eef8ef; }
+body[data-theme="light"] .message.user { border-color: #c9cf9c; background: #f4f8df; }
+body[data-theme="light"] .message.user .message-label { color: #53651d; }
+body[data-theme="light"] .message-body { color: #183526; }
+body[data-theme="light"] .message-time { color: #52745d; }
+body[data-theme="light"] .composer { border-color: #b4d0ba; background: #f6fbf7; }
+body[data-theme="light"] .composer textarea, body[data-theme="light"] .settings-card select { background: #fff; color: #183526; }
+body[data-theme="light"] .composer textarea::placeholder { color: #5c7d66; }
+body[data-theme="light"] .composer-bottom { color: #52745d; }
+body[data-theme="light"] .composer .voice-button, body[data-theme="light"] .secondary-button { border: 1px solid #a7c9ad; background: #e4f2e7; color: #234b30; }
+body[data-theme="light"] .composer .voice-button:hover:not(:disabled), body[data-theme="light"] .secondary-button:hover { background: #d2e9d7; }
+body[data-theme="light"] .composer #stop-button { background: #dce9de; color: #244a30; }
+body[data-theme="light"] .read-aloud-button { border-color: #8fbf99; color: #245e36; }
+body[data-theme="light"] .read-aloud-button:hover:not(:disabled) { background: #e4f2e7; }
+body[data-theme="light"] .footer, body[data-theme="light"] .conversation-meta, body[data-theme="light"] .settings-help, body[data-theme="light"] .sidebar-note { color: #52745d; }
+body[data-theme="light"] .voice-status { border-color: #d5b96b; background: #fff8df; color: #604a17; }
+body[data-theme="light"] .voice-status.ready { border-color: #9fc7a8; background: #e9f5eb; color: #245437; }
+body[data-theme="light"] .danger-card { border-color: #d99c96; }
+body[data-theme="light"] .danger-button { border-color: #c96860; background: #fff0ee; color: #8b2923; }
+body[data-theme="light"] .danger-button:hover { background: #f7d9d5; }
 @media (max-width: 720px) { body { height: auto; overflow: auto; } .shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; overflow: visible; } .sidebar { display: block; overflow: visible; padding: 20px; border-right: 0; border-bottom: 1px solid #244236; } .nav-group { display: flex; margin: 18px 0 0; overflow-x: auto; } .conversation-list { margin-top: 22px; } #conversation-history { display: flex; max-height: 92px; overflow-x: auto; overflow-y: hidden; } .conversation-item { flex: 0 0 175px; } .sidebar-note { display: none; } .content { overflow: visible; padding-top: 54px; } .cards { grid-template-columns: 1fr; } .next-step { display: grid; } #celebrate { justify-self: start; } .status { display: none; } }

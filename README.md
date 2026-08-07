@@ -67,7 +67,24 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Add local Read aloud, Stop speaking, and voice-selection controls
 - [x] Manually verify Read aloud and Stop speaking through the desktop app
 - [x] Verify Lessac, Amy, and Ryan local voice models
+- [x] Add and verify the local Bryce voice model
 - [x] Commit completed Day 5 work
+
+## Day 6 reliability validation — complete
+
+- [x] Run preflight checks and confirm the local model service is reachable.
+- [x] Verify chats, settings, selected microphone, and selected read-aloud voice survive a full app restart.
+- [x] Verify conversation lifecycle: create, switch, save, delete, and clear-history safeguards.
+- [x] Verify clear recovery messages when Ollama or a selected model is unavailable, then confirm recovery once it is back.
+- [x] Fix and manually verify the confirmed light-theme color issue.
+- [x] Complete the conversation-lifecycle check and record the final Day 6 results.
+- [x] Add and verify Bryce as an additional permitted local read-aloud voice.
+
+## Day 7 release preparation
+
+- [ ] Review the completed Week 1 feature set and known licensing obligations.
+- [ ] Update user-facing setup, privacy, and voice documentation for a clean handoff.
+- [ ] Run final regression checks and prepare a release tag or package plan.
 
 ## Technology choices
 
