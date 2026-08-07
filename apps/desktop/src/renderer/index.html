@@ -164,6 +164,12 @@
             <p>Remove deletes Zen’s locally stored text, never the original document. Search and chat recall are not enabled yet.</p>
             <div class="document-list" id="document-list" aria-live="polite"></div>
           </section>
+          <section class="settings-card" aria-labelledby="document-search-title">
+            <p class="settings-label">LOCAL SEARCH</p><h2 id="document-search-title">Find imported text</h2>
+            <p>Searches only text Zen already stored from your imports. Zen does not reopen source files or send results to the chat model.</p>
+            <form id="document-search-form" class="website-form"><label for="document-search-input">Search imported documents</label><div class="setting-row"><input id="document-search-input" type="search" maxlength="200" autocomplete="off" placeholder="Search text" required /><button type="submit">Search</button></div></form>
+            <p class="settings-help" id="document-search-help" aria-live="polite">Up to 50 matching documents are shown.</p><div class="document-search-results" id="document-search-results" hidden aria-live="polite"></div>
+          </section>
         </div>
         <p class="footer">Document access is local and per import. Zen does not watch folders or change source files.</p>
       </section>

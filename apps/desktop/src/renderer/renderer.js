@@ -42,6 +42,10 @@ const memoryList = document.querySelector('#memory-list');
 const chooseDocumentsButton = document.querySelector('#choose-documents');
 const documentsHelp = document.querySelector('#documents-help');
 const documentList = document.querySelector('#document-list');
+const documentSearchForm = document.querySelector('#document-search-form');
+const documentSearchInput = document.querySelector('#document-search-input');
+const documentSearchHelp = document.querySelector('#document-search-help');
+const documentSearchResults = document.querySelector('#document-search-results');
 const websiteForm = document.querySelector('#website-form');
 const websiteInput = document.querySelector('#website-input');
 const websiteHelp = document.querySelector('#website-help');
@@ -301,6 +305,16 @@ async function chooseDocuments() {
     updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_DOCUMENT_SELECTION' });
     documentsHelp.textContent = error.message || 'Zen could not validate that document selection.';
   }
+}
+async function searchImportedDocuments(event) {
+  event.preventDefault(); documentSearchResults.hidden = true; documentSearchHelp.textContent = '';
+  try {
+    const result = await window.zen.searchDocuments(documentSearchInput.value);
+    documentSearchResults.innerHTML = ''; documentSearchResults.hidden = false;
+    if (!result.results.length) { documentSearchHelp.textContent = `No imported documents contain “${result.query}”.`; return; }
+    documentSearchHelp.textContent = result.capped ? 'Showing the first 50 matching documents.' : `${result.results.length} imported document${result.results.length === 1 ? '' : 's'} matched.`;
+    result.results.forEach((match) => { const row = document.createElement('article'); row.className = 'document-search-result'; const title = document.createElement('strong'); title.textContent = `${match.displayName} · ${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`; const snippet = document.createElement('p'); snippet.textContent = match.snippet; row.append(title, snippet); documentSearchResults.append(row); });
+  } catch (error) { documentSearchHelp.textContent = error.message || 'Zen could not search imported documents.'; }
 }
 async function removeImportedDocument(document) {
   const entry = createActivity('remove-document', document.displayName);
@@ -1285,6 +1299,7 @@ activityButton.addEventListener('click', () => { showPage('activity'); renderAct
 memoryButton.addEventListener('click', () => { showPage('memory'); renderMemories(); });
 documentsButton.addEventListener('click', () => { showPage('documents'); loadDocuments(); });
 chooseDocumentsButton.addEventListener('click', chooseDocuments);
+documentSearchForm.addEventListener('submit', searchImportedDocuments);
 memoryForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const text = memoryText.value.trim();

@@ -368,6 +368,15 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Git state: Day 11 documentation is committed separately; pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
 - Exact next recommended step: implement Day 12's native picker, one-use import token, main-process validators, atomic local store, and confirmation UI exactly to this design; do not implement indexing or chat recall yet.
 
+## Day 13 — local document search complete (August 7, 2026)
+
+- Added a local-only plain-text search over the extracted text already stored by Day 12. It never reopens source files, exposes source paths, or sends document text, queries, snippets, or results to Ollama.
+- Documents now offers a case-insensitive search field with main-process query validation, a 200-character query limit, a 50-document result cap, match counts, and short whitespace-normalized snippets.
+- Validation passed: `npm.cmd --prefix apps\\desktop run check`, including document import/search tests for case-insensitive matches, snippets, and invalid queries; `git diff --check` passed.
+- Manual validation passed: the user verified matches, no-match behavior, invalid queries, restart behavior, and normal local document searching.
+- Git state: Day 13 is committed separately as `feat: complete Day 13 local document search`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
+- Exact next recommended step: plan Day 14 document-result refinement. Preserve the local-only boundary: improve result navigation and safe snippets without opening source files, adding document Q&A, or sending document text to Ollama.
+
 ## Working Rules
 
 - Keep core functionality local and private by default.

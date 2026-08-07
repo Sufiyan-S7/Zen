@@ -134,6 +134,14 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [ ] PDF extraction, document search, and chat recall remain disabled.
 - [x] Day 12 changes committed as `feat: complete Day 12 local document import`.
 
+## Day 13 local document search — complete
+
+- [x] Search only Zen's already imported local text; never reopen source files.
+- [x] Add case-insensitive plain-text search, capped local snippets, and invalid-query safeguards.
+- [x] Keep searches and results out of Ollama requests.
+- [x] Manually verify matching, no-match, invalid-query, and restart behavior.
+- [x] Day 13 changes committed as `feat: complete Day 13 local document search`.
+
 ## Technology choices
 
 | Area | Choice |
