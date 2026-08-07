@@ -82,31 +82,48 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 
 ## Day 7 release preparation
 
-- [ ] Review the completed Week 1 feature set and known licensing obligations.
-- [ ] Update user-facing setup, privacy, and voice documentation for a clean handoff.
-- [ ] Run final regression checks and prepare a release tag or package plan.
+- [x] Review the completed Week 1 feature set and known licensing obligations.
+- [x] Update user-facing setup, privacy, and voice documentation for a clean handoff.
+- [x] Run final regression checks and prepare a source-release tag plan.
 
 ## Technology choices
 
 | Area | Choice |
 | --- | --- |
 | Desktop app | Electron |
-| UI | HTML, CSS, JavaScript (Day 1); React + TypeScript planned |
+| UI | HTML, CSS, JavaScript |
 | Local AI | Ollama |
-| Storage | SQLite (planned) |
-| Voice | whisper.cpp + Piper (planned) |
+| Storage | Browser local storage inside the Electron app |
+| Voice | whisper.cpp speech-to-text + Piper text-to-speech |
 | Browser automation | Playwright (planned) |
 
 ## Run the desktop app
 
-From the `apps/desktop` folder, run:
+### Prerequisites
+
+- Windows, Node.js, and Ollama installed locally.
+- Ollama running with at least one local model, such as `llama3.2:3b`.
+- Voice is optional. The machine-local `vendor/whisper-runtime/` and `vendor/piper-runtime/` folders are intentionally not included in Git. Without them, chat still works but voice controls remain unavailable.
+
+From the project folder, run:
 
 ```powershell
-npm.cmd install
-npm.cmd start
+npm.cmd --prefix apps/desktop install
+npm.cmd --prefix apps/desktop start
 ```
 
-The first command downloads Electron once. The application currently opens a local, offline dashboard that confirms the foundation is ready.
+The first command downloads Electron once. Zen opens as a local desktop chat app and uses Ollama only on your computer.
+
+## Using Zen
+
+- Create and switch conversations in the sidebar. Conversations and preferences stay in the app's local storage.
+- Open **Settings** to select an installed Ollama model, Light or Dark theme, microphone, and read-aloud voice.
+- Hold **F8** to speak; release it to transcribe locally. Press **F9** once to start locked recording and again to stop it.
+- Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce.
+
+## Release status
+
+Zen v0.1.0 is currently a tested local-development build, not a packaged Windows installer. Do not distribute the bundled voice runtimes or Piper models until their GPL and individual model-license obligations have been reviewed. See the [release readiness guide](docs/Release.md) and [voice rules](docs/Voice.md).
 
 ### Desktop shortcut
 
@@ -118,6 +135,8 @@ The first command downloads Electron once. The application currently opens a loc
 - [Architecture](docs/Architecture.md)
 - [Roadmap](docs/Roadmap.md)
 - [Coding standards](docs/CodingStandards.md)
+- [Release readiness](docs/Release.md)
+- [Voice rules and licensing](docs/Voice.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

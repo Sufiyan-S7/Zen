@@ -18,11 +18,11 @@ The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin`
 8. The microphone picker lists audio inputs reported by Windows, including Bluetooth headset microphones. Zen uses the selected device only for the next push-to-talk request; selecting a device does not start recording.
 9. Keyboard control is deliberately split into two independent keys: `F8` is hold-to-speak and stops immediately on release; `F9` starts locked recording and a later `F9` stops and transcribes. The `Fn` key is handled by keyboard hardware and is not reliably available to Windows applications, so it cannot be used as a Zen shortcut.
 
-## Planned local integration
+## Current local integration
 
-- Capture short browser microphone audio only after push-to-talk begins, downsample it to a 16 kHz WAV file, and send it through Electron's secure preload bridge.
-- Run the installed local binary from Electron's main process. Return text only to the renderer, then remove the temporary WAV and transcript files.
-- Piper v1.6.0 is GPL-3.0 licensed. It is installed only as an ignored local dependency for this PC; any future distributed Zen package must complete a GPL compliance review before including it.
+- Zen captures microphone audio only after push-to-talk begins, downsampling it to a 16 kHz WAV before passing it through Electron's secure preload bridge.
+- Electron runs the installed local binary, returns only text to the renderer, and removes temporary WAV and transcript files after processing.
+- Piper v1.6.0 is GPL-3.0 licensed and is installed only as an ignored local dependency for this PC. A distributed Zen package must complete a GPL compliance review before including Piper. Each downloaded voice model also needs its own model-card and license review; Bryce's model card lists its dataset as public domain.
 - Piper offers four selected local English voices: Lessac, Amy, Ryan, and Bryce. The selected voice is stored locally. The Electron main process returns in-memory WAV bytes to the renderer; **Stop speaking** stops both active synthesis and playback.
 
 ## Test cases before enabling voice
@@ -40,3 +40,4 @@ The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin`
 - The v1.9.2 Windows x64 runtime and 147,964,211-byte `base.en` model were downloaded from the official project and model locations.
 - `whisper-cli` successfully transcribed the supplied `samples/jfk.wav` locally. No microphone audio was involved in this verification.
 - Piper v1.6.0 successfully generated local WAVs using the Lessac, Amy, and Ryan voices. Every verification WAV was deleted after its check.
+- Bryce successfully generated a 146,988-byte local verification WAV, and the user confirmed that Bryce works through Zen's Settings selector and Read aloud control. The verification file was deleted.
