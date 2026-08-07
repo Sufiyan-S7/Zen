@@ -11,10 +11,11 @@ No capability in this document is enabled merely by sending a chat message. The 
 | Action | Allowed input | Effect | Level |
 | --- | --- | --- | --- |
 | Open an installed app | A `.exe` selected through Zen's native picker and saved in the local approved-app list | Starts that exact app | Confirm every time |
+| Open a browser web app | A selected Chromium-based browser launcher, user-provided display name, and user-provided `https:` URL | Starts the selected browser with Zen-generated `--app={validated URL}` only | Confirm every time |
 | Open a website | A user-provided `https:` URL | Opens the URL using Windows' default browser | Confirm every time |
 | Search selected folders | Plain-text search term and a folder explicitly granted in the current session | Reads matching file names and paths only | Confirm the folder grant; show results before opening anything |
 
-Zen stores an app only after the user selects a `.exe` in the native picker and confirms its displayed path. The main process revalidates the path when saving and launching it; chat text cannot create an approval or supply executable arguments. Zen must never infer an executable path from chat text or run a shell command, script, installer, or PowerShell command.
+Zen stores an app only after the user selects a `.exe` in the native picker and confirms its displayed path. The main process revalidates the path when saving and launching it; chat text cannot create an approval or supply executable arguments. The one exception is a browser web-app record: Zen creates its single `--app={validated HTTPS URL}` argument itself from the reviewed URL and does not accept any other argument. Zen must never infer an executable path from chat text or run a shell command, script, installer, or PowerShell command.
 
 ## Explicit exclusions
 
@@ -61,6 +62,8 @@ Closing the modal, pressing Escape, or any validation failure is a cancellation.
 - The requested app ID must exactly match a registry entry.
 - Each entry contains a fixed display name, fixed executable path, and `exists` check.
 - Approvals are created only from a one-use native-picker selection token; chat content cannot create or amend them.
+- The regular approved-app flow rejects browsers and browser web-app launchers, so a generic app approval never invokes a browser without a fixed destination.
+- The separate browser-web-app flow accepts only Chrome, Edge, Brave, Opera, Vivaldi, or their supported proxy launchers. It stores a fixed label, browser path, and normalized HTTPS URL, then generates only `--app={URL}` at launch; it never stores or accepts user-provided browser arguments.
 - If the app is unavailable, Zen displays an error and logs the failed attempt without launching anything.
 
 ### Websites
@@ -69,6 +72,7 @@ Closing the modal, pressing Escape, or any validation failure is a cancellation.
 - Parse using the platform URL parser; allow only `https:`.
 - Reject URLs with embedded credentials, fragments that conceal a different destination, control characters, or parsing errors.
 - Store and present the normalized URL before approval.
+- URL validation verifies only the address format and safety boundary. It does not determine whether a website page exists, is public, or will return a 404/sign-in page.
 
 ### Folder search
 

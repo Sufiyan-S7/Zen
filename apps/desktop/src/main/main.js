@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
-const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, listApprovedApps, approveApp, removeApprovedApp, approvedApp, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
+const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -30,13 +30,14 @@ const SYSTEM_PROMPT = [
   'You are Zen, a private local desktop assistant.',
   'Be concise, practical, and honest about what you can do.',
   'Never say or imply that you opened, launched, navigated to, or completed any computer action. Chat cannot execute actions.',
-  'If asked to open File Explorer, tell the user to use Activity → Choose what Zen may open. If asked to open a website, direct them to Activity → Open a website. If asked to list or find files or folders, direct them to Activity → Search a folder.',
+  'If asked to open File Explorer, tell the user to use Activity → Choose what Zen may open. If asked to open a website or a browser-installed web app, direct them to Activity → Open a website. If asked to list or find files or folders, direct them to Activity → Search a folder.',
   'Do not claim to control files, apps, or the browser beyond those user-confirmed Activity actions.',
   'Never request or reveal sensitive personal information unless the user explicitly needs it.'
 ].join(' ');
 const activeRequests = new Map();
 const activeSpeech = new Map();
 const pendingAppSelections = new Map();
+const pendingBrowserWebAppSelections = new Map();
 const pendingFolderSelections = new Map();
 
 function validateMessages(messages) {
@@ -273,12 +274,30 @@ app.whenReady().then(() => {
     if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) throw new Error('Choose the app again before approving it.');
     return approveApp(selection.executable);
   });
+  ipcMain.handle('zen:tools:choose-browser-web-app', async (event, label, url) => {
+    validateBrowserWebAppLabel(label);
+    websitePreview(url);
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Choose Chrome, Edge, or a browser web-app launcher', properties: ['openFile'], filters: [{ name: 'Windows applications', extensions: ['exe'] }]
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const preview = previewBrowserWebApp(result.filePaths[0], label, url);
+    const token = crypto.randomUUID();
+    pendingBrowserWebAppSelections.set(token, { webContentsId: event.sender.id, executable: preview.executable, label: preview.label, url: preview.url, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, ...preview };
+  });
+  ipcMain.handle('zen:tools:approve-browser-web-app', (event, token) => {
+    const selection = pendingBrowserWebAppSelections.get(token);
+    pendingBrowserWebAppSelections.delete(token);
+    if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) throw new Error('Choose the browser launcher again before approving it.');
+    return approveBrowserWebApp(selection.executable, selection.label, selection.url);
+  });
   ipcMain.handle('zen:tools:remove-approved-app', (_event, appId) => removeApprovedApp(appId));
   ipcMain.handle('zen:tools:open-approved-app', (_event, appId) => {
     const appEntry = approvedApp(appId);
-    const process = spawn(appEntry.executable, [], { detached: true, stdio: 'ignore', windowsHide: true });
+    const process = spawn(appEntry.executable, appEntry.arguments || [], { detached: true, stdio: 'ignore', windowsHide: true });
     process.unref();
-    return { id: appEntry.id, label: appEntry.label, destination: appEntry.executable };
+    return { id: appEntry.id, label: appEntry.label, destination: appEntry.url || appEntry.executable, kind: appEntry.kind || 'app' };
   });
   ipcMain.handle('zen:tools:preview-search-query', (_event, query) => ({ query: validateSearchQuery(query) }));
   ipcMain.handle('zen:tools:choose-folder', async (event) => {

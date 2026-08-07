@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('zen', {
   listApprovedApps: () => ipcRenderer.invoke('zen:tools:list-approved-apps'),
   chooseApprovedApp: () => ipcRenderer.invoke('zen:tools:choose-app'),
   approveApp: (token) => ipcRenderer.invoke('zen:tools:approve-app', token),
+  chooseBrowserWebApp: (label, url) => ipcRenderer.invoke('zen:tools:choose-browser-web-app', label, url),
+  approveBrowserWebApp: (token) => ipcRenderer.invoke('zen:tools:approve-browser-web-app', token),
   removeApprovedApp: (appId) => ipcRenderer.invoke('zen:tools:remove-approved-app', appId),
   openApprovedApp: (appId) => ipcRenderer.invoke('zen:tools:open-approved-app', appId),
   previewSearchQuery: (query) => ipcRenderer.invoke('zen:tools:preview-search-query', query),

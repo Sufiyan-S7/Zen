@@ -129,13 +129,20 @@
             <h2 id="approved-apps-title">Choose what Zen may open</h2>
             <p>Select a Windows application. Zen shows its exact path before saving your approval, asks again every time before launching it, and lets you remove approval at any time.</p>
             <button class="primary-button" id="choose-approved-app" type="button">Add an approved app</button>
+            <form id="browser-web-app-form" class="website-form">
+              <label for="browser-web-app-name">Browser web-app name</label>
+              <input id="browser-web-app-name" type="text" autocomplete="off" placeholder="My web app" maxlength="80" required />
+              <label for="browser-web-app-url">Website address</label>
+              <div class="setting-row"><input id="browser-web-app-url" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com" maxlength="2048" required /><button type="submit">Choose browser</button></div>
+            </form>
+            <p class="settings-help">For a Chrome, Edge, Brave, Opera, or Vivaldi web app, name it, enter its HTTPS address, then choose its browser launcher. Zen stores that fixed name, browser, and address only.</p>
             <p class="settings-help" id="approved-apps-help" aria-live="polite">Only applications you choose are listed here.</p>
             <div class="approved-app-list" id="approved-app-list" aria-live="polite"></div>
           </section>
           <section class="settings-card" aria-labelledby="website-tool-title">
             <p class="settings-label">CONFIRMATION REQUIRED</p>
             <h2 id="website-tool-title">Open a website</h2>
-            <p>Paste an HTTPS address. Zen will validate it, show you the normalized destination, and wait for your approval before opening your default browser.</p>
+            <p>Paste an HTTPS address. Zen validates the address format, shows the normalized destination, and waits for your approval before opening your default browser. A website may still return a 404 or sign-in page.</p>
             <form id="website-form" class="website-form">
               <label for="website-input">Website address</label>
               <div class="setting-row"><input id="website-input" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com" maxlength="2048" required /><button id="website-preview-button" type="submit">Review website</button></div>

@@ -102,6 +102,9 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Manually verify approved-app approval, cancellation, opening, revocation, chat guidance, and local activity records.
 - [x] Add file search limited to folders the user explicitly selects, with a native folder grant, confirmation, 100-result cap, and filename/path-only results.
 - [x] Manually verify approved-app, HTTPS-website, and selected-folder-search confirmations, cancellation, errors, and local activity records.
+- [x] Add automated safety checks for URL restrictions, search validation, selected-folder boundaries, result caps, and confirmation-required tools.
+- [x] Add a confirmed browser-web-app option with a fixed user name, Chromium launcher, and HTTPS destination.
+- [x] Manually verify browser-web-app opening, cancellation, persistence after restart, and approval removal.
 
 ## Technology choices
 
@@ -135,8 +138,8 @@ The first command downloads Electron once. Zen opens as a local desktop chat app
 
 - Create and switch conversations in the sidebar. Conversations and preferences stay in the app's local storage.
 - Open **Settings** to select an installed Ollama model, Light or Dark theme, microphone, and read-aloud voice.
-- Open **Activity** to review a user-provided HTTPS website before opening it. Zen shows the normalized destination and requires your confirmation; activity records stay local.
-- In **Activity → Choose what Zen may open**, select a Windows app to approve. Zen saves the approval locally, asks again before every launch, and lets you remove it at any time.
+- Open **Activity** to review a user-provided HTTPS website before opening it. Zen shows the normalized destination and requires your confirmation; activity records stay local. Zen validates the address, not whether the remote site will return a 404 or sign-in page.
+- In **Activity → Choose what Zen may open**, select a Windows app to approve. Zen saves the approval locally, asks again before every launch, and lets you remove it at any time. For a Chrome/Edge/Brave/Opera/Vivaldi web app, use the browser-web-app form to save a fixed name, browser launcher, and HTTPS address; Zen will not accept arbitrary browser arguments.
 - In **Settings → Appearance**, use live theme preview cards and choose any safe appearance shortcut to cycle presets while Zen is focused. F8 and F9 remain reserved for voice recording.
 - Hold **F8** to speak; release it to transcribe locally. Press **F9** once to start locked recording and again to stop it.
 - Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce; Settings can save a slower, normal, faster, or fastest read-aloud speed.

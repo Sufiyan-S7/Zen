@@ -36,6 +36,9 @@ const folderSearchInput = document.querySelector('#folder-search-input');
 const folderSearchHelp = document.querySelector('#folder-search-help');
 const folderSearchResults = document.querySelector('#folder-search-results');
 const chooseApprovedAppButton = document.querySelector('#choose-approved-app');
+const browserWebAppForm = document.querySelector('#browser-web-app-form');
+const browserWebAppName = document.querySelector('#browser-web-app-name');
+const browserWebAppUrl = document.querySelector('#browser-web-app-url');
 const approvedAppsHelp = document.querySelector('#approved-apps-help');
 const approvedAppList = document.querySelector('#approved-app-list');
 const toolStatusList = document.querySelector('#tool-status-list');
@@ -183,6 +186,7 @@ function renderActivityLog() {
       'open-website': 'Open website',
       'open-approved-app': 'Open app',
       'approve-app': 'Approve app',
+      'approve-browser-web-app': 'Approve browser web app',
       'remove-app-approval': 'Remove app approval',
       'search-folder': 'Search folder'
     })[entry.action] || entry.action;
@@ -226,6 +230,8 @@ function renderApprovedApps(apps = []) {
     label.textContent = app.label;
     const path = document.createElement('p');
     path.textContent = app.executable;
+    const destination = app.kind === 'browser-web-app' ? document.createElement('p') : null;
+    if (destination) destination.textContent = app.url;
     const actions = document.createElement('div');
     actions.className = 'approved-app-actions';
     const open = document.createElement('button');
@@ -238,7 +244,7 @@ function renderApprovedApps(apps = []) {
     remove.textContent = 'Remove approval';
     remove.addEventListener('click', () => removeApprovedApp(app));
     actions.append(open, remove);
-    row.append(label, path, actions);
+    row.append(label, path, ...(destination ? [destination] : []), actions);
     approvedAppList.append(row);
   });
 }
@@ -486,7 +492,7 @@ async function reviewWebsite(event) {
     try {
       const result = await window.zen.openWebsite(preview.url);
       updateActivity(entry, 'completed', { result: result.url });
-      websiteHelp.textContent = `Opened ${result.hostname} in your default browser.`;
+      websiteHelp.textContent = `Zen sent ${result.hostname} to your default browser. A 404 or sign-in page is a response from that website; Zen cannot verify that a page exists.`;
       websiteInput.value = '';
     } catch (error) {
       updateActivity(entry, 'failed', { errorCode: 'OPEN_WEBSITE_FAILED' });
@@ -503,13 +509,16 @@ async function reviewWebsite(event) {
 }
 
 async function openApprovedApp(app) {
-  const entry = createActivity('open-approved-app', app.executable);
+  const destination = app.kind === 'browser-web-app' ? app.url : app.executable;
+  const entry = createActivity('open-approved-app', destination);
   try {
     const approved = await requestActionConfirmation({
       title: `Open ${app.label}?`,
-      description: 'Zen will start this approved application on your computer.',
-      destination: app.executable,
-      approveLabel: 'Open app'
+      description: app.kind === 'browser-web-app'
+        ? 'Zen will open this fixed HTTPS address using the selected browser launcher.'
+        : 'Zen will start this approved application on your computer.',
+      destination,
+      approveLabel: app.kind === 'browser-web-app' ? 'Open web app' : 'Open app'
     });
     if (!approved) {
       updateActivity(entry, 'cancelled');
@@ -518,10 +527,45 @@ async function openApprovedApp(app) {
     }
     const result = await window.zen.openApprovedApp(app.id);
     updateActivity(entry, 'completed', { result: result.destination });
-    approvedAppsHelp.textContent = `${result.label} was opened.`;
+    approvedAppsHelp.textContent = result.kind === 'browser-web-app'
+      ? `${result.label} was sent to its approved browser launcher.`
+      : `${result.label} was opened.`;
   } catch (error) {
     updateActivity(entry, 'failed', { errorCode: 'OPEN_APPROVED_APP_FAILED' });
     approvedAppsHelp.textContent = error.message || `Zen could not open ${app.label}.`;
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function addBrowserWebApp(event) {
+  event.preventDefault();
+  approvedAppsHelp.textContent = '';
+  try {
+    const selected = await window.zen.chooseBrowserWebApp(browserWebAppName.value, browserWebAppUrl.value);
+    if (!selected) {
+      approvedAppsHelp.textContent = 'No browser launcher was selected.';
+      return;
+    }
+    const entry = createActivity('approve-browser-web-app', selected.url);
+    const approved = await requestActionConfirmation({
+      title: `Approve ${selected.label}?`,
+      description: 'Zen will save this fixed browser launcher and HTTPS address. It will still ask before every launch.',
+      destination: `${selected.label} → ${selected.url}\n${selected.executable}`,
+      approveLabel: 'Approve web app'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      approvedAppsHelp.textContent = 'Browser web-app approval cancelled.';
+      return;
+    }
+    const app = await window.zen.approveBrowserWebApp(selected.token);
+    updateActivity(entry, 'completed', { result: app.url });
+    approvedAppsHelp.textContent = `${app.label} is approved locally.`;
+    browserWebAppForm.reset();
+    await loadApprovedApps();
+  } catch (error) {
+    approvedAppsHelp.textContent = error.message || 'Zen could not approve that browser web app.';
   } finally {
     confirmationApproveButton.textContent = 'Open website';
   }
@@ -1058,6 +1102,7 @@ activityButton.addEventListener('click', () => { showPage('activity'); renderAct
 websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
+browserWebAppForm.addEventListener('submit', addBrowserWebApp);
 confirmationApproveButton.addEventListener('click', () => closeWebsiteConfirmation(true));
 confirmationCancelButton.addEventListener('click', () => closeWebsiteConfirmation(false));
 confirmationModal.addEventListener('click', (event) => {

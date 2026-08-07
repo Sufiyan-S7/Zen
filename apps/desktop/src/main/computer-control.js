@@ -6,6 +6,14 @@ let approvedAppsPath = '';
 
 const MAX_SEARCH_RESULTS = 100;
 const MAX_SEARCH_QUERY_LENGTH = 200;
+const BROWSER_LAUNCHER_NAMES = new Set([
+  'brave.exe', 'chrome.exe', 'chrome_proxy.exe', 'firefox.exe',
+  'msedge.exe', 'msedge_proxy.exe', 'opera.exe', 'vivaldi.exe'
+]);
+const BROWSER_WEB_APP_LAUNCHER_NAMES = new Set([
+  'brave.exe', 'chrome.exe', 'chrome_proxy.exe', 'msedge.exe',
+  'msedge_proxy.exe', 'opera.exe', 'vivaldi.exe'
+]);
 
 const TOOL_REGISTRY = Object.freeze({
   'open-website': Object.freeze({ id: 'open-website', label: 'Open a website', requiresConfirmation: true, enabled: true }),
@@ -19,10 +27,43 @@ function appEntry(executable) {
   const details = fs.statSync(resolved);
   if (!details.isFile()) throw new Error('Choose an application file, not a folder.');
   const verified = fs.realpathSync(resolved);
+  if (isBrowserLauncher(verified)) {
+    throw new Error('Browsers and browser web-app launchers cannot be approved as apps. Use Activity → Open a website instead.');
+  }
   return {
     id: crypto.createHash('sha256').update(verified.toLowerCase()).digest('hex').slice(0, 24),
     label: path.basename(verified, '.exe'),
     executable: verified,
+    approvedAt: new Date().toISOString()
+  };
+}
+
+function isBrowserLauncher(executable) {
+  return typeof executable === 'string' && BROWSER_LAUNCHER_NAMES.has(path.basename(executable).toLowerCase());
+}
+
+function validateBrowserWebAppLabel(label) {
+  if (typeof label !== 'string' || !label.trim() || label.trim().length > 80 || /[\u0000-\u001f\u007f]/.test(label)) {
+    throw new Error('Enter a browser web-app name up to 80 characters long.');
+  }
+  return label.trim();
+}
+
+function browserWebAppEntry(executable, label, url) {
+  const resolved = path.resolve(executable);
+  if (path.extname(resolved).toLowerCase() !== '.exe') throw new Error('Choose a Chrome or Edge application file (.exe).');
+  const details = fs.statSync(resolved);
+  if (!details.isFile()) throw new Error('Choose an application file, not a folder.');
+  const verified = fs.realpathSync(resolved);
+  if (!BROWSER_WEB_APP_LAUNCHER_NAMES.has(path.basename(verified).toLowerCase())) throw new Error('Choose a Chromium-based browser or browser web-app launcher.');
+  const website = websitePreview(url);
+  return {
+    id: crypto.createHash('sha256').update(`browser-web-app:${verified.toLowerCase()}:${website.url}`).digest('hex').slice(0, 24),
+    kind: 'browser-web-app',
+    label: validateBrowserWebAppLabel(label),
+    executable: verified,
+    url: website.url,
+    arguments: [`--app=${website.url}`],
     approvedAt: new Date().toISOString()
   };
 }
@@ -39,7 +80,8 @@ function readApprovedApps() {
   try {
     const stored = JSON.parse(fs.readFileSync(approvedAppsPath, 'utf8'));
     if (!Array.isArray(stored)) throw new Error('Invalid approval list.');
-    return stored.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.label === 'string' && typeof entry.executable === 'string');
+    return stored.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.label === 'string' && typeof entry.executable === 'string'
+      && (entry.kind !== 'browser-web-app' || typeof entry.url === 'string'));
   } catch (error) {
     if (error.code === 'ENOENT') return [];
     throw new Error('Zen could not read the local approved-app list.');
@@ -58,11 +100,26 @@ function previewApp(executable) {
 }
 
 function listApprovedApps() {
-  return readApprovedApps().map(({ id, label, executable, approvedAt }) => ({ id, label, executable, approvedAt }));
+  return readApprovedApps().map(({ id, label, executable, approvedAt, kind, url }) => ({ id, label, executable, approvedAt, kind: kind || 'app', url: kind === 'browser-web-app' ? url : '' }));
 }
 
 function approveApp(executable) {
   const entry = appEntry(executable);
+  const apps = readApprovedApps();
+  const existing = apps.find((app) => app.id === entry.id);
+  if (existing) return existing;
+  apps.push(entry);
+  writeApprovedApps(apps);
+  return entry;
+}
+
+function previewBrowserWebApp(executable, label, url) {
+  const entry = browserWebAppEntry(executable, label, url);
+  return { id: entry.id, kind: entry.kind, label: entry.label, executable: entry.executable, url: entry.url };
+}
+
+function approveBrowserWebApp(executable, label, url) {
+  const entry = browserWebAppEntry(executable, label, url);
   const apps = readApprovedApps();
   const existing = apps.find((app) => app.id === entry.id);
   if (existing) return existing;
@@ -84,7 +141,9 @@ function approvedApp(appId) {
   if (typeof appId !== 'string' || !/^[a-f0-9]{24}$/.test(appId)) throw new Error('That app approval is invalid.');
   const entry = readApprovedApps().find((app) => app.id === appId);
   if (!entry) throw new Error('That app is not approved in Zen.');
-  return appEntry(entry.executable);
+  return entry.kind === 'browser-web-app'
+    ? browserWebAppEntry(entry.executable, entry.label, entry.url)
+    : appEntry(entry.executable);
 }
 
 function websitePreview(value) {
@@ -174,11 +233,16 @@ module.exports = {
   toolRegistryStatus,
   websitePreview,
   previewApp,
+  previewBrowserWebApp,
+  browserWebAppEntry,
   listApprovedApps,
   approveApp,
+  approveBrowserWebApp,
   removeApprovedApp,
   approvedApp,
   validateSearchQuery,
   validateFolderPath,
-  searchFolderNames
+  searchFolderNames,
+  isBrowserLauncher,
+  validateBrowserWebAppLabel
 };
