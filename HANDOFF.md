@@ -25,7 +25,7 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 ### Latest checkpoint — August 7, 2026
 
-#### Day 7 — release preparation in progress
+#### Day 7 — release preparation complete
 
 - Release review completed: Zen is a tested local-development app but not yet a distributable Windows installer. Voice runtimes and models are deliberately ignored by Git; Piper is GPL-3.0 and each voice model requires a license/model-card review before any bundle or distribution.
 - Updated `README.md`, `docs/Voice.md`, and new `docs/Release.md` with accurate startup instructions, local-only usage, voice controls, licensing boundary, final regression checklist, source-release plan, installer plan, and rollback rule.
@@ -33,6 +33,17 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 - Final manual regression passed: normal local chat, restart persistence, conversation safeguards, Light/Dark readability, F8 and F9 voice input, read aloud/Stop speaking, and Ollama/model failure recovery all work correctly. The user prefers Ryan as their selected read-aloud voice because Bryce was slower than preferred; Bryce remains available locally.
 - Validation passed: final `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed before the documentation commit. The user explicitly approved and the annotated local source-release tag `v0.1.0` was created on commit `77a549f` (`docs: complete Day 7 release readiness`). No GitHub publish or binary package was created.
 - Exact next recommended step: begin the next planned feature only after defining its scope. Do not create a Windows installer or distribute Piper/voice runtimes until packaging and license reviews are complete.
+
+#### Next planned work — Week 2 safe computer control
+
+- Remaining project work begins with a permission-first design for safe desktop actions. No computer-control capability is enabled yet.
+- Step 1: define a small approved action list and non-negotiable confirmation rules. Recommended initial scope: open a named installed app, open a user-provided website, and search only a user-selected folder. Do not add arbitrary command execution, unrestricted file access, or background automation.
+- Step 2: implement a local tool registry and activity log that records requested action, preview, user approval/cancellation, result, and errors.
+- Step 3: implement open-app/open-website previews and confirmations, then a folder-granted file search with the same safeguards.
+- Step 4: manually test approval, cancellation, unavailable apps, invalid URLs, inaccessible folders, and audit records before enabling each action.
+- Git state: `v0.1.0` is an annotated local source-release tag on `77a549f`; `main` contains the Week 2 plan as `docs: outline Week 2 next steps`. The only untracked item is the pre-existing untouched `deliverables/` directory.
+- Known issue: none confirmed. A Windows installer remains future work pending packaging and license review.
+- Exact next recommended step: agree the Week 2 action scope and confirmation wording, then implement the local tool registry and activity log.
 
 #### Day 6 — reliability validation started
 

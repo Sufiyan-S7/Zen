@@ -80,11 +80,19 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Complete the conversation-lifecycle check and record the final Day 6 results.
 - [x] Add and verify Bryce as an additional permitted local read-aloud voice.
 
-## Day 7 release preparation
+## Day 7 release preparation — complete
 
 - [x] Review the completed Week 1 feature set and known licensing obligations.
 - [x] Update user-facing setup, privacy, and voice documentation for a clean handoff.
 - [x] Run final regression checks and prepare a source-release tag plan.
+
+## Next: Week 2 safe computer control
+
+- [ ] Define the exact first actions Zen may perform and the confirmation rules for each one.
+- [ ] Build a local tool registry and activity log.
+- [ ] Add preview-and-confirm controls for opening approved apps and websites.
+- [ ] Add file search limited to folders the user explicitly selects.
+- [ ] Test approvals, cancellations, errors, and audit records before enabling each action.
 
 ## Technology choices
 
