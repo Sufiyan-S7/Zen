@@ -5,7 +5,7 @@ const fsp = require('node:fs/promises');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
-const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, removeDocument } = require('./documents');
+const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument } = require('./documents');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -323,6 +323,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('zen:documents:list', () => listDocuments());
   ipcMain.handle('zen:documents:search', (_event, query) => searchDocuments(query));
+  ipcMain.handle('zen:documents:preview', (_event, id, query, occurrence) => documentPreview(id, query, occurrence));
   ipcMain.handle('zen:documents:choose', async (event) => {
     const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Choose documents to import into Zen', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Supported documents', extensions: ['txt', 'md', 'csv', 'json', 'pdf'] }] });
     if (result.canceled || !result.filePaths.length) return null;

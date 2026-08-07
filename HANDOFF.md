@@ -377,6 +377,15 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Git state: Day 13 is committed separately as `feat: complete Day 13 local document search`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
 - Exact next recommended step: plan Day 14 document-result refinement. Preserve the local-only boundary: improve result navigation and safe snippets without opening source files, adding document Q&A, or sending document text to Ollama.
 
+## Day 14 — local document previews complete (August 7, 2026)
+
+- Added a **Preview locally** control to each Day 13 search result. It requests a bounded 1,200-character context window from Zen's existing local document store, identifies the document, and states that the source file was not reopened. The bounded preview is intentional: it provides relevant context without becoming an unrestricted full-document viewer.
+- Preview requests validate the stored document ID, plain-text query, and occurrence position in the main process. They expose no path and never call Ollama or read source files.
+- Validation passed: `npm.cmd --prefix apps\\desktop run check`, including document-preview coverage and existing safety checks; `git diff --check` passed. A focused review confirmed the new IPC bridge exposes only ID/query/occurrence, previews derive only from `extractedText`, and all UI content uses `textContent`.
+- Manual validation passed: the user verified local previews, restart behavior, removed-document handling, and source-file preservation.
+- Git state: Day 14 is committed separately as `feat: complete Day 14 local document previews`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
+- Exact next recommended step: plan Day 15 as an explicit per-question local document Q&A design; do not place document text into Ollama prompts until the user sees and approves the exact selected context.
+
 ## Working Rules
 
 - Keep core functionality local and private by default.

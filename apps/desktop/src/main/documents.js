@@ -9,7 +9,7 @@ const TEXT_EXTENSIONS = new Set(['.txt', '.md', '.csv', '.json']);
 const SUPPORTED_EXTENSIONS = new Set([...TEXT_EXTENSIONS, '.pdf']);
 const MAX_SEARCH_QUERY_LENGTH = 200;
 const MAX_SEARCH_RESULTS = 50;
-const MAX_SNIPPET_LENGTH = 240;
+const MAX_PREVIEW_LENGTH = 1200;
 let documentsPath = '';
 
 function configureDocuments(userDataPath) { documentsPath = path.join(userDataPath, 'documents.json'); }
@@ -89,6 +89,20 @@ function searchDocuments(query) {
   }
   return { query: term, results, capped: results.length >= MAX_SEARCH_RESULTS };
 }
+function documentPreview(id, query, occurrence = 0) {
+  if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) throw safeError('That document record is invalid.', 'INVALID_DOCUMENT');
+  if (!Number.isInteger(occurrence) || occurrence < 0 || occurrence > 99) throw safeError('That preview position is invalid.', 'INVALID_PREVIEW_POSITION');
+  if (typeof query !== 'string' || !query.trim() || query.length > MAX_SEARCH_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(query)) throw safeError('Enter a plain-text search term up to 200 characters long.', 'INVALID_SEARCH_QUERY');
+  const item = readStoredDocuments().find((entry) => entry?.id === id && entry.status === 'imported' && typeof entry.extractedText === 'string');
+  if (!item) throw safeError('That imported document is no longer available in Zen.', 'DOCUMENT_NOT_FOUND');
+  const needle = query.trim().toLocaleLowerCase(); const haystack = item.extractedText.toLocaleLowerCase();
+  let index = haystack.indexOf(needle); let count = 0;
+  while (index >= 0 && count < occurrence) { index = haystack.indexOf(needle, index + needle.length); count += 1; }
+  if (index < 0) throw safeError('That search match is no longer available.', 'MATCH_NOT_FOUND');
+  const start = Math.max(0, index - Math.floor((MAX_PREVIEW_LENGTH - needle.length) / 2));
+  const end = Math.min(item.extractedText.length, start + MAX_PREVIEW_LENGTH);
+  return { id: item.id, displayName: item.displayName, type: item.type, occurrence, text: `${start ? '…' : ''}${item.extractedText.slice(start, end)}${end < item.extractedText.length ? '…' : ''}` };
+}
 function removeDocument(id) {
   if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) throw safeError('That document record is invalid.', 'INVALID_DOCUMENT');
   const documents = readStoredDocuments();
@@ -97,4 +111,4 @@ function removeDocument(id) {
   writeStoredDocuments(documents.filter((entry) => entry.id !== id));
   return { id: item.id, displayName: item.displayName };
 }
-module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, removeDocument };
+module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument };

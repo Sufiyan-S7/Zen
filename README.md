@@ -142,6 +142,15 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Manually verify matching, no-match, invalid-query, and restart behavior.
 - [x] Day 13 changes committed as `feat: complete Day 13 local document search`.
 
+## Day 14 local document previews — complete
+
+- [x] Add an explicit local preview for a chosen search result, limited to stored Zen text.
+- [x] Keep source files closed and document text out of Ollama.
+- [x] Add main-process validation and automated preview coverage.
+- [x] Manually verify preview behavior, source-file preservation, and restart behavior.
+- [x] Keep previews intentionally limited to 1,200 characters of local context.
+- [x] Day 14 changes committed as `feat: complete Day 14 local document previews`.
+
 ## Technology choices
 
 | Area | Choice |

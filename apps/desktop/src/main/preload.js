@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('zen', {
   searchFolder: (token, query) => ipcRenderer.invoke('zen:tools:search-folder', token, query),
   listDocuments: () => ipcRenderer.invoke('zen:documents:list'),
   searchDocuments: (query) => ipcRenderer.invoke('zen:documents:search', query),
+  previewDocument: (id, query, occurrence) => ipcRenderer.invoke('zen:documents:preview', id, query, occurrence),
   chooseDocuments: () => ipcRenderer.invoke('zen:documents:choose'),
   importDocuments: (token) => ipcRenderer.invoke('zen:documents:import', token),
   removeDocument: (id) => ipcRenderer.invoke('zen:documents:remove', id),

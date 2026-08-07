@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, removeDocument } = require('../apps/desktop/src/main/documents');
+const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument } = require('../apps/desktop/src/main/documents');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-documents-'));
 try {
@@ -25,6 +25,10 @@ try {
   assert.equal(search.results.length, 2);
   assert.equal(search.results[0].displayName, 'notes.txt');
   assert.ok(search.results[0].snippet.length <= 242);
+  const previewText = documentPreview(imported[0].id, 'local');
+  assert.equal(previewText.displayName, 'notes.txt');
+  assert.match(previewText.text, /Private local note/);
+  assert.throws(() => documentPreview(imported[0].id, '', 0), /plain-text/);
   assert.throws(() => searchDocuments(''), /plain-text/);
   assert.throws(() => importDocuments([binaryPath]), /plain-text/);
   assert.throws(() => importDocuments([pdfPath]), /PDF text extraction/);

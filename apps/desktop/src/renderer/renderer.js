@@ -46,6 +46,7 @@ const documentSearchForm = document.querySelector('#document-search-form');
 const documentSearchInput = document.querySelector('#document-search-input');
 const documentSearchHelp = document.querySelector('#document-search-help');
 const documentSearchResults = document.querySelector('#document-search-results');
+let activeDocumentPreview = null;
 const websiteForm = document.querySelector('#website-form');
 const websiteInput = document.querySelector('#website-input');
 const websiteHelp = document.querySelector('#website-help');
@@ -313,8 +314,20 @@ async function searchImportedDocuments(event) {
     documentSearchResults.innerHTML = ''; documentSearchResults.hidden = false;
     if (!result.results.length) { documentSearchHelp.textContent = `No imported documents contain “${result.query}”.`; return; }
     documentSearchHelp.textContent = result.capped ? 'Showing the first 50 matching documents.' : `${result.results.length} imported document${result.results.length === 1 ? '' : 's'} matched.`;
-    result.results.forEach((match) => { const row = document.createElement('article'); row.className = 'document-search-result'; const title = document.createElement('strong'); title.textContent = `${match.displayName} · ${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`; const snippet = document.createElement('p'); snippet.textContent = match.snippet; row.append(title, snippet); documentSearchResults.append(row); });
+    result.results.forEach((match) => { const row = document.createElement('article'); row.className = 'document-search-result'; const title = document.createElement('strong'); title.textContent = `${match.displayName} · ${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`; const snippet = document.createElement('p'); snippet.textContent = match.snippet; const preview = document.createElement('button'); preview.className = 'secondary-button'; preview.type = 'button'; preview.textContent = 'Preview locally'; preview.addEventListener('click', () => showDocumentPreview(match, result.query)); row.append(title, snippet, preview); documentSearchResults.append(row); });
   } catch (error) { documentSearchHelp.textContent = error.message || 'Zen could not search imported documents.'; }
+}
+async function showDocumentPreview(match, query) {
+  try {
+    activeDocumentPreview = await window.zen.previewDocument(match.id, query, 0);
+    const existing = documentSearchResults.querySelector('.document-preview');
+    existing?.remove();
+    const panel = document.createElement('article'); panel.className = 'document-preview';
+    const title = document.createElement('strong'); title.textContent = `Local preview · ${activeDocumentPreview.displayName}`;
+    const note = document.createElement('span'); note.textContent = 'This text is stored locally in Zen. The original source file was not reopened.';
+    const text = document.createElement('p'); text.textContent = activeDocumentPreview.text;
+    panel.append(title, note, text); documentSearchResults.prepend(panel);
+  } catch (error) { documentSearchHelp.textContent = error.message || 'Zen could not show that local preview.'; }
 }
 async function removeImportedDocument(document) {
   const entry = createActivity('remove-document', document.displayName);
