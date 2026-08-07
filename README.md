@@ -117,6 +117,13 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Replace the unreliable browser edit prompt with Zen's inline Save changes and Cancel editor.
 - [x] Day 10 changes committed as `feat: complete Day 10 local memory`.
 
+## Day 11 document-import safety design — complete
+
+- [x] Define native-picker-only, per-import consent for selected text and PDF files.
+- [x] Define format, size, path, token, local-storage, activity-log, and model-context boundaries.
+- [x] Define cancellation, failure, removal, and Day 12 validation requirements.
+- [x] Do not enable document access, indexing, or document-to-model context in this design day. See [Document import design](docs/DocumentImport.md).
+
 ## Technology choices
 
 | Area | Choice |
@@ -172,6 +179,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Release readiness](docs/Release.md)
 - [Voice rules and licensing](docs/Voice.md)
 - [Local memory scope](docs/Memory.md)
+- [Document import design](docs/DocumentImport.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

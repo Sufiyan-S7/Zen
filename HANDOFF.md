@@ -340,6 +340,22 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Windows package, installation guidance, backup/export.
 - Demo, changelog, and release tag.
 
+## Master 28-day checklist report — August 7, 2026
+
+- A complete Day 1–28 checklist was provided to the user from the recorded roadmap and completed-day commits. Days 1–10 are complete, with Day 10 committed as `b362047 feat: complete Day 10 local memory`; Days 11–28 are planned only.
+- No product behavior changed for this report. Current unrelated working-tree items remain `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/`.
+- Exact next recommended step: begin Day 11 with a written safety design for user-selected, local-only document import before enabling any document access.
+
+## Day 11 — document-import safety design complete (August 7, 2026)
+
+- Added `docs/DocumentImport.md`, defining the next capability before code enables it: a Windows-native-picker-only, one-use, window-bound import grant for explicitly selected `.txt`, `.md`, `.csv`, `.json`, and text-extractable `.pdf` files.
+- The design limits individual files to 20 MiB and a batch to 20 files / 100 MiB, rejects reparse points and unsupported/password-protected/image-only PDFs, previews only base names/types/sizes, keeps **Cancel** as the initial choice, and requires main-process revalidation before reading.
+- It specifies local-only extracted-text storage, no source-file copying or alteration, visible removal that deletes Zen's copy only, redacted activity logging, and a strict rule that document text and paths do not reach Ollama in Days 12–13.
+- No document picker, reader, index, search, or model recall was enabled in Day 11. No personal files were accessed.
+- Validation passed: design reviewed against `docs/PRD.md`, `docs/ComputerControl.md`, `docs/Memory.md`, and the local-first architecture. `git diff --check` passed.
+- Git state: Day 11 documentation is committed separately; pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
+- Exact next recommended step: implement Day 12's native picker, one-use import token, main-process validators, atomic local store, and confirmation UI exactly to this design; do not implement indexing or chat recall yet.
+
 ## Working Rules
 
 - Keep core functionality local and private by default.
