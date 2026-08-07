@@ -31,8 +31,8 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 - Updated `README.md`, `docs/Voice.md`, and new `docs/Release.md` with accurate startup instructions, local-only usage, voice controls, licensing boundary, final regression checklist, source-release plan, installer plan, and rollback rule.
 - No runtime code changed. Day 7 documentation is committed on `main` as `docs: complete Day 7 release readiness`; pre-existing untracked `deliverables/` remains untouched.
 - Final manual regression passed: normal local chat, restart persistence, conversation safeguards, Light/Dark readability, F8 and F9 voice input, read aloud/Stop speaking, and Ollama/model failure recovery all work correctly. The user prefers Ryan as their selected read-aloud voice because Bryce was slower than preferred; Bryce remains available locally.
-- Validation passed: final `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed before the documentation commit. A `v0.1.0` tag must be created only after explicit user approval. There is no packaging configuration yet, so a tag would represent a source release only.
-- Exact next recommended step: ask the user whether to create the annotated `v0.1.0` source-release tag. Do not create a Windows installer or distribute Piper/voice runtimes until packaging and license reviews are complete.
+- Validation passed: final `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed before the documentation commit. The user explicitly approved and the annotated local source-release tag `v0.1.0` was created on commit `77a549f` (`docs: complete Day 7 release readiness`). No GitHub publish or binary package was created.
+- Exact next recommended step: begin the next planned feature only after defining its scope. Do not create a Windows installer or distribute Piper/voice runtimes until packaging and license reviews are complete.
 
 #### Day 6 — reliability validation started
 
