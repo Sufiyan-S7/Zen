@@ -69,6 +69,10 @@ h2 { font-size: clamp(30px, 4vw, 45px); line-height: 1.02; }
 .memory-entry > span { color: var(--muted, #789484); font-size: 12px; }
 .memory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .memory-actions .secondary-button, .memory-actions .danger-button { padding: 7px 10px; }
+.document-list { display: grid; gap: 10px; margin-top: 16px; }
+.document-entry { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--border, #426b51); border-radius: 11px; background: var(--field, #102b1f); }
+.document-entry span { color: var(--muted, #789484); font-size: 12px; }
+.document-entry .danger-button { width: fit-content; padding: 7px 10px; }
 .approved-app { display: grid; gap: 7px; padding: 14px; border: 1px solid var(--border, #426b51); border-radius: 11px; background: var(--field, #102b1f); }
 .approved-app > p { margin: 0; overflow-wrap: anywhere; color: var(--muted, #789484); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 .approved-app-actions { display: flex; flex-wrap: wrap; gap: 8px; }.approved-app-actions > button:first-child { padding: 8px 12px; border: 0; border-radius: 7px; background: var(--accent, #b9f55b); color: var(--accent-ink, #102014); cursor: pointer; font: inherit; font-weight: 700; }

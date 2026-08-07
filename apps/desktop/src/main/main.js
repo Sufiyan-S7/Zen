@@ -5,6 +5,7 @@ const fsp = require('node:fs/promises');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
+const { configureDocuments, previewDocuments, importDocuments, listDocuments, removeDocument } = require('./documents');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -39,6 +40,7 @@ const activeSpeech = new Map();
 const pendingAppSelections = new Map();
 const pendingBrowserWebAppSelections = new Map();
 const pendingFolderSelections = new Map();
+const pendingDocumentSelections = new Map();
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
@@ -249,6 +251,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   configureApprovedApps(app.getPath('userData'));
+  configureDocuments(app.getPath('userData'));
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
   ipcMain.handle('zen:tools:preview-website', (_event, url) => websitePreview(url));
@@ -318,6 +321,22 @@ app.whenReady().then(() => {
     }
     return searchFolderNames(selection.folderPath, query);
   });
+  ipcMain.handle('zen:documents:list', () => listDocuments());
+  ipcMain.handle('zen:documents:choose', async (event) => {
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Choose documents to import into Zen', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Supported documents', extensions: ['txt', 'md', 'csv', 'json', 'pdf'] }] });
+    if (result.canceled || !result.filePaths.length) return null;
+    const preview = previewDocuments(result.filePaths);
+    const token = crypto.randomUUID();
+    pendingDocumentSelections.set(token, { webContentsId: event.sender.id, filePaths: result.filePaths, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, documents: preview };
+  });
+  ipcMain.handle('zen:documents:import', (event, token) => {
+    const selection = pendingDocumentSelections.get(token);
+    pendingDocumentSelections.delete(token);
+    if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) throw new Error('Choose the documents again before importing.');
+    return importDocuments(selection.filePaths);
+  });
+  ipcMain.handle('zen:documents:remove', (_event, id) => removeDocument(id));
   ipcMain.handle('zen:voice-status', () => voiceStatus());
   ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {
     if (!voiceInputReady()) throw new Error('Local speech-to-text is not installed yet.');

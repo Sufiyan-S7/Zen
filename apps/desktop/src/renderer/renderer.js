@@ -29,14 +29,19 @@ const chatPage = document.querySelector('#home');
 const settingsPage = document.querySelector('#settings-page');
 const activityPage = document.querySelector('#activity-page');
 const memoryPage = document.querySelector('#memory-page');
+const documentsPage = document.querySelector('#documents-page');
 const chatButton = document.querySelector('#chat-button');
 const settingsButton = document.querySelector('#settings-button');
 const activityButton = document.querySelector('#activity-button');
 const memoryButton = document.querySelector('#memory-button');
+const documentsButton = document.querySelector('#documents-button');
 const memoryForm = document.querySelector('#memory-form');
 const memoryText = document.querySelector('#memory-text');
 const memoryHelp = document.querySelector('#memory-help');
 const memoryList = document.querySelector('#memory-list');
+const chooseDocumentsButton = document.querySelector('#choose-documents');
+const documentsHelp = document.querySelector('#documents-help');
+const documentList = document.querySelector('#document-list');
 const websiteForm = document.querySelector('#website-form');
 const websiteInput = document.querySelector('#website-input');
 const websiteHelp = document.querySelector('#website-help');
@@ -241,6 +246,73 @@ function renderMemories() {
     }
     memoryList.append(item);
   });
+}
+function formatBytes(bytes) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MiB`; }
+function renderDocuments(items) {
+  documentList.innerHTML = '';
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No documents have been imported into Zen.';
+    documentList.append(empty);
+    return;
+  }
+  items.forEach((itemRecord) => {
+    const item = document.createElement('article');
+    item.className = 'document-entry';
+    const name = document.createElement('strong');
+    name.textContent = itemRecord.displayName;
+    const detail = document.createElement('span');
+    detail.textContent = `${itemRecord.type} · ${formatBytes(itemRecord.sourceSize)} · Imported ${formatConversationDate(itemRecord.importedAt)}`;
+    const remove = document.createElement('button');
+    remove.className = 'danger-button';
+    remove.type = 'button';
+    remove.textContent = 'Remove from Zen';
+    remove.addEventListener('click', () => removeImportedDocument(itemRecord));
+    item.append(name, detail, remove);
+    documentList.append(item);
+  });
+}
+async function loadDocuments() {
+  try { renderDocuments(await window.zen.listDocuments()); } catch { documentsHelp.textContent = 'Zen could not load its local document list.'; }
+}
+async function chooseDocuments() {
+  documentsHelp.textContent = '';
+  try {
+    const selection = await window.zen.chooseDocuments();
+    if (!selection) { documentsHelp.textContent = 'No documents were selected.'; return; }
+    const names = selection.documents.map((document) => `${document.displayName} (${document.type}, ${formatBytes(document.size)})`).join('\n');
+    const entry = createActivity('import-documents', `${selection.documents.length} selected document${selection.documents.length === 1 ? '' : 's'}`);
+    const approved = await requestActionConfirmation({ title: 'Import these documents locally?', description: 'Zen will read these selected files on this computer and save extracted text for future local search. Nothing is uploaded or sent to the chat model.', destination: names, approveLabel: 'Import locally' });
+    if (!approved) { updateActivity(entry, 'cancelled'); documentsHelp.textContent = 'Import cancelled. Zen did not read the selected files.'; return; }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Importing…';
+    try {
+      const imported = await window.zen.importDocuments(selection.token);
+      updateActivity(entry, 'completed', { result: `${imported.length} imported` });
+      documentsHelp.textContent = `${imported.length} document${imported.length === 1 ? '' : 's'} imported locally. Search and chat recall remain off.`;
+      await loadDocuments();
+    } catch (error) {
+      updateActivity(entry, 'failed', { errorCode: error.code || 'IMPORT_DOCUMENTS_FAILED' });
+      documentsHelp.textContent = error.message || 'Zen could not import those documents.';
+    } finally { confirmationApproveButton.disabled = false; confirmationApproveButton.textContent = 'Import locally'; }
+  } catch (error) {
+    const entry = createActivity('import-documents', 'Invalid document selection');
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_DOCUMENT_SELECTION' });
+    documentsHelp.textContent = error.message || 'Zen could not validate that document selection.';
+  }
+}
+async function removeImportedDocument(document) {
+  const entry = createActivity('remove-document', document.displayName);
+  try {
+    const approved = await requestActionConfirmation({ title: `Remove ${document.displayName} from Zen?`, description: 'Zen will delete its local stored text for this document. The original file will not be changed.', destination: `${document.displayName} (${document.type})`, approveLabel: 'Remove from Zen' });
+    if (!approved) { updateActivity(entry, 'cancelled'); documentsHelp.textContent = 'Removal cancelled.'; return; }
+    await window.zen.removeDocument(document.id);
+    updateActivity(entry, 'completed');
+    documentsHelp.textContent = `${document.displayName} was removed from Zen. The original file is unchanged.`;
+    await loadDocuments();
+  } catch (error) { updateActivity(entry, 'failed', { errorCode: 'REMOVE_DOCUMENT_FAILED' }); documentsHelp.textContent = error.message || 'Zen could not remove that document.'; }
+  finally { confirmationApproveButton.textContent = 'Open website'; }
 }
 function editMemory(id) {
   if (!memories.some((entry) => entry.id === id)) return;
@@ -536,10 +608,12 @@ function showPage(page) {
   settingsPage.hidden = !showingSettings;
   activityPage.hidden = page !== 'activity';
   memoryPage.hidden = page !== 'memory';
+  documentsPage.hidden = page !== 'documents';
   chatButton.classList.toggle('active', showingChat);
   settingsButton.classList.toggle('active', showingSettings);
   activityButton.classList.toggle('active', page === 'activity');
   memoryButton.classList.toggle('active', page === 'memory');
+  documentsButton.classList.toggle('active', page === 'documents');
   if (showingChat) input.focus();
 }
 
@@ -1096,6 +1170,7 @@ async function initialise() {
   loadVoiceInputs();
   render();
   renderMemories();
+  loadDocuments();
   if (!window.zen) {
     document.querySelector('#model-status').textContent = 'Open Zen through its desktop app';
     input.disabled = true;
@@ -1208,6 +1283,8 @@ chatButton.addEventListener('click', () => showPage('chat'));
 settingsButton.addEventListener('click', () => { showPage('settings'); loadVoiceInputs(); });
 activityButton.addEventListener('click', () => { showPage('activity'); renderActivityLog(); });
 memoryButton.addEventListener('click', () => { showPage('memory'); renderMemories(); });
+documentsButton.addEventListener('click', () => { showPage('documents'); loadDocuments(); });
+chooseDocumentsButton.addEventListener('click', chooseDocuments);
 memoryForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const text = memoryText.value.trim();

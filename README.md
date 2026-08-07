@@ -124,6 +124,16 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Define cancellation, failure, removal, and Day 12 validation requirements.
 - [x] Do not enable document access, indexing, or document-to-model context in this design day. See [Document import design](docs/DocumentImport.md).
 
+## Day 12 selected text-document import — complete
+
+- [x] Add a **Documents** page with a Windows native multi-file picker and confirmation preview.
+- [x] Import selected TXT, MD, CSV, and JSON files locally using one-use, window-bound selection tokens and main-process revalidation.
+- [x] Store extracted text atomically in Zen app data; allow confirmed removal from Zen without touching source files.
+- [x] Add automatic boundary checks for text decoding, binary rejection, PDF fail-closed behavior, persistence, and removal.
+- [x] Manually verify selection, cancellation, import, restart persistence, removal, and source-file preservation.
+- [ ] PDF extraction, document search, and chat recall remain disabled.
+- [x] Day 12 changes committed as `feat: complete Day 12 local document import`.
+
 ## Technology choices
 
 | Area | Choice |

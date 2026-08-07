@@ -79,3 +79,7 @@ Each requested import writes a local activity entry with action `import-document
 ## Deferred work
 
 Folder-wide import, automatic rescanning, OCR, Office formats, semantic embeddings, external services, document question answering, export/backup, and shared/cloud libraries are outside Day 11 and Day 12.
+
+## Day 12 implementation status
+
+The initial Day 12 implementation supports the plain-text formats above with a native picker, preview, one-use token, main-process revalidation, local atomic JSON storage, and removal. A PDF is accepted by the picker so Zen can identify it, but is then safely declined with `PDF_EXTRACTION_UNAVAILABLE`: no local PDF parser is bundled yet. PDF extraction remains deferred until a parser is selected, reviewed, and tested locally; Zen never uploads the PDF as a fallback. Manual desktop validation passed on August 7, 2026 for cancellation, text import, restart persistence, removal/source preservation, and safe PDF denial.

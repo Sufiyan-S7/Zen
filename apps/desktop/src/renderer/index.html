@@ -15,6 +15,7 @@
           <button class="nav-item" id="new-chat" type="button">New conversation <span>+</span></button>
           <button class="nav-item" id="settings-button" type="button">Settings <span>⚙</span></button>
           <button class="nav-item" id="memory-button" type="button">Memory <span>✦</span></button>
+          <button class="nav-item" id="documents-button" type="button">Documents <span>▤</span></button>
           <button class="nav-item" id="activity-button" type="button">Activity <span>↗</span></button>
         </div>
         <section class="conversation-list" aria-labelledby="conversation-heading">
@@ -142,6 +143,29 @@
           </section>
         </div>
         <p class="footer">Memory is stored locally in this app. Export, document import, and automatic recall are not enabled.</p>
+      </section>
+      <section class="content documents-page" id="documents-page" hidden aria-labelledby="documents-title">
+        <header>
+          <p class="eyebrow">ZEN / LOCAL DOCUMENTS</p>
+          <h1 id="documents-title">Choose what Zen may read.</h1>
+          <p class="intro">Zen reads only documents you select and approve. Nothing is uploaded or sent to the chat model.</p>
+        </header>
+        <div class="settings-stack">
+          <section class="settings-card" aria-labelledby="import-documents-title">
+            <p class="settings-label">CONFIRMATION REQUIRED</p>
+            <h2 id="import-documents-title">Import documents</h2>
+            <p>Select text documents through Windows. Zen previews their names, types, and sizes before it reads and stores local searchable text. PDF text extraction is not available yet, so PDFs are safely declined.</p>
+            <button class="primary-button" id="choose-documents" type="button">Choose documents</button>
+            <p class="settings-help" id="documents-help" aria-live="polite">Supported now: TXT, MD, CSV, and JSON up to 20 MiB each. No folder scanning or automatic import.</p>
+          </section>
+          <section class="settings-card" aria-labelledby="imported-documents-title">
+            <p class="settings-label">LOCAL ONLY</p>
+            <h2 id="imported-documents-title">Imported documents</h2>
+            <p>Remove deletes Zen’s locally stored text, never the original document. Search and chat recall are not enabled yet.</p>
+            <div class="document-list" id="document-list" aria-live="polite"></div>
+          </section>
+        </div>
+        <p class="footer">Document access is local and per import. Zen does not watch folders or change source files.</p>
       </section>
       <section class="content activity-page" id="activity-page" hidden aria-labelledby="activity-title">
         <header>
