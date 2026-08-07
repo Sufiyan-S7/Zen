@@ -88,11 +88,20 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 
 ## Next: Week 2 safe computer control
 
-- [ ] Define the exact first actions Zen may perform and the confirmation rules for each one.
-- [ ] Build a local tool registry and activity log.
-- [ ] Add preview-and-confirm controls for opening approved apps and websites.
-- [ ] Add file search limited to folders the user explicitly selects.
-- [ ] Test approvals, cancellations, errors, and audit records before enabling each action.
+- [x] Make the chat and Settings layout use the available desktop window width.
+- [x] Add saved Deep violet, Lavender light, and True black theme presets with accent-colour choices.
+- [x] Add saved text-size, chat-spacing, and contrast-protected custom accent controls.
+- [x] Add saved interface-font, chat-bubble, reset-appearance, and read-aloud speed controls.
+- [x] Add live theme preview cards, per-voice read-aloud speeds, and a user-selected appearance shortcut.
+- [x] Manually verify appearance customization, per-voice speed, custom shortcut, and saved settings after restart.
+- [x] Define the initial action scope, confirmation contract, validation rules, and local activity-log contract. See [safe computer-control design](docs/ComputerControl.md).
+- [x] Build the local tool registry and browser-local activity log, with a 200-record limit and confirmation-protected clearing.
+- [x] Add preview-and-confirm controls for opening user-provided HTTPS websites from the new **Activity** page.
+- [x] Manually verify the website confirmation flow after fixing the startup-overlay bug.
+- [x] Add a user-managed local approved-app list: choose a Windows `.exe`, confirm its exact path, open it only after a new confirmation, or remove its approval.
+- [x] Manually verify approved-app approval, cancellation, opening, revocation, chat guidance, and local activity records.
+- [x] Add file search limited to folders the user explicitly selects, with a native folder grant, confirmation, 100-result cap, and filename/path-only results.
+- [x] Manually verify approved-app, HTTPS-website, and selected-folder-search confirmations, cancellation, errors, and local activity records.
 
 ## Technology choices
 
@@ -126,8 +135,11 @@ The first command downloads Electron once. Zen opens as a local desktop chat app
 
 - Create and switch conversations in the sidebar. Conversations and preferences stay in the app's local storage.
 - Open **Settings** to select an installed Ollama model, Light or Dark theme, microphone, and read-aloud voice.
+- Open **Activity** to review a user-provided HTTPS website before opening it. Zen shows the normalized destination and requires your confirmation; activity records stay local.
+- In **Activity → Choose what Zen may open**, select a Windows app to approve. Zen saves the approval locally, asks again before every launch, and lets you remove it at any time.
+- In **Settings → Appearance**, use live theme preview cards and choose any safe appearance shortcut to cycle presets while Zen is focused. F8 and F9 remain reserved for voice recording.
 - Hold **F8** to speak; release it to transcribe locally. Press **F9** once to start locked recording and again to stop it.
-- Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce.
+- Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce; Settings can save a slower, normal, faster, or fastest read-aloud speed.
 
 ## Release status
 

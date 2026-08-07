@@ -15,7 +15,7 @@
           <button class="nav-item" id="new-chat" type="button">New conversation <span>+</span></button>
           <button class="nav-item" id="settings-button" type="button">Settings <span>⚙</span></button>
           <button class="nav-item" type="button" disabled>Memory <span>soon</span></button>
-          <button class="nav-item" type="button" disabled>Activity <span>soon</span></button>
+          <button class="nav-item" id="activity-button" type="button">Activity <span>↗</span></button>
         </div>
         <section class="conversation-list" aria-labelledby="conversation-heading">
           <div class="conversation-heading"><p id="conversation-heading">Recent chats</p><span id="conversation-count"></span></div>
@@ -58,9 +58,33 @@
           <section class="settings-card" aria-labelledby="theme-setting-title">
             <p class="settings-label">APPEARANCE</p>
             <h2 id="theme-setting-title">Theme</h2>
-            <p>Choose the look that is most comfortable for you.</p>
+            <p>Choose a high-contrast preset, then personalise its accent colour. These preferences stay on this computer.</p>
             <label for="theme-select">Theme</label>
-            <select id="theme-select"><option value="dark">Dark</option><option value="light">Light</option></select>
+            <select id="theme-select"><option value="deep-violet">Deep violet</option><option value="lavender-light">Lavender light</option><option value="true-black">True black</option></select>
+            <div class="theme-preview-grid" aria-label="Theme previews">
+              <button class="theme-preview-card preview-deep-violet" type="button" data-theme-preview="deep-violet"><span>Deep violet</span><i></i><b></b></button>
+              <button class="theme-preview-card preview-lavender-light" type="button" data-theme-preview="lavender-light"><span>Lavender light</span><i></i><b></b></button>
+              <button class="theme-preview-card preview-true-black" type="button" data-theme-preview="true-black"><span>True black</span><i></i><b></b></button>
+            </div>
+            <div class="appearance-live-preview" aria-live="polite"><span id="appearance-preview-name">Deep violet</span><div><i></i><b></b></div></div>
+            <label for="accent-select">Accent colour</label>
+            <select id="accent-select"><option value="lavender">Lavender</option><option value="periwinkle">Periwinkle</option><option value="plum">Soft plum</option><option value="custom">Custom…</option></select>
+            <label for="custom-accent-input">Custom accent</label>
+            <div class="setting-row"><input id="custom-accent-input" type="color" value="#a78bfa" aria-describedby="custom-accent-help" /><span class="color-value" id="custom-accent-value">#A78BFA</span></div>
+            <p class="settings-help" id="custom-accent-help">Zen automatically chooses readable light or dark text for your custom accent.</p>
+            <label for="text-size-select">Text size</label>
+            <select id="text-size-select"><option value="small">Small</option><option value="default">Default</option><option value="large">Large</option></select>
+            <label for="density-select">Chat spacing</label>
+            <select id="density-select"><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="spacious">Spacious</option></select>
+            <label for="font-select">Interface font</label>
+            <select id="font-select"><option value="modern">Modern sans</option><option value="rounded">Soft rounded</option><option value="serif">Classic serif</option></select>
+            <label for="bubble-style-select">Chat bubbles</label>
+            <select id="bubble-style-select"><option value="rounded">Rounded</option><option value="square">Square</option></select>
+            <p class="settings-help">Theme controls the full palette. Accent changes highlights and buttons; text size and spacing make Zen fit the way you work.</p>
+            <button class="secondary-button" id="reset-appearance" type="button">Reset appearance</button>
+            <button class="secondary-button" id="set-appearance-shortcut" type="button">Set appearance shortcut</button>
+            <button class="secondary-button" id="clear-appearance-shortcut" type="button">Clear appearance shortcut</button>
+            <p class="settings-help" id="appearance-help" aria-live="polite">Appearance choices are saved locally.</p>
           </section>
           <section class="settings-card" aria-labelledby="voice-setting-title">
             <p class="settings-label">VOICE &amp; PRIVACY</p>
@@ -73,6 +97,9 @@
             <label for="voice-select">Read-aloud voice</label>
             <select id="voice-select" disabled><option>Checking local voices…</option></select>
             <p class="settings-help" id="voice-help">Read aloud uses the selected local voice.</p>
+            <label for="voice-speed-select">Read-aloud speed</label>
+            <select id="voice-speed-select"><option value="0.8">Slower (0.8×)</option><option value="1">Normal (1×)</option><option value="1.2">Faster (1.2×)</option><option value="1.4">Fastest (1.4×)</option></select>
+            <p class="settings-help" id="voice-speed-help">Normal speed is selected for local read aloud. Each voice keeps its own speed.</p>
             <p class="settings-label">KEYBOARD CONTROLS</p>
             <p class="settings-help" id="voice-shortcut-help"><strong>F8</strong> — hold to speak; release to stop. <strong>F9</strong> — press once to start locked recording, then once more to stop.</p>
             <ul class="voice-rules">
@@ -90,7 +117,67 @@
         </div>
         <p class="footer">Settings are saved locally in this app.</p>
       </section>
+      <section class="content activity-page" id="activity-page" hidden aria-labelledby="activity-title">
+        <header>
+          <p class="eyebrow">ZEN / SAFE ACTIONS</p>
+          <h1 id="activity-title">You stay in control.</h1>
+          <p class="intro">Zen shows the exact destination before any action runs. Activity stays only on this computer.</p>
+        </header>
+        <div class="settings-stack">
+          <section class="settings-card" aria-labelledby="approved-apps-title">
+            <p class="settings-label">YOUR APPROVED APPS</p>
+            <h2 id="approved-apps-title">Choose what Zen may open</h2>
+            <p>Select a Windows application. Zen shows its exact path before saving your approval, asks again every time before launching it, and lets you remove approval at any time.</p>
+            <button class="primary-button" id="choose-approved-app" type="button">Add an approved app</button>
+            <p class="settings-help" id="approved-apps-help" aria-live="polite">Only applications you choose are listed here.</p>
+            <div class="approved-app-list" id="approved-app-list" aria-live="polite"></div>
+          </section>
+          <section class="settings-card" aria-labelledby="website-tool-title">
+            <p class="settings-label">CONFIRMATION REQUIRED</p>
+            <h2 id="website-tool-title">Open a website</h2>
+            <p>Paste an HTTPS address. Zen will validate it, show you the normalized destination, and wait for your approval before opening your default browser.</p>
+            <form id="website-form" class="website-form">
+              <label for="website-input">Website address</label>
+              <div class="setting-row"><input id="website-input" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com" maxlength="2048" required /><button id="website-preview-button" type="submit">Review website</button></div>
+              <p class="settings-help" id="website-help" aria-live="polite">Only HTTPS websites are accepted. Nothing opens until you confirm.</p>
+            </form>
+          </section>
+          <section class="settings-card" aria-labelledby="folder-search-title">
+            <p class="settings-label">LOCAL FILE SEARCH</p>
+            <h2 id="folder-search-title">Search a folder</h2>
+            <p>Enter a file-name search term, choose a folder, and confirm. Zen reads names and paths in that folder only. It does not read file contents or change anything.</p>
+            <form id="folder-search-form" class="website-form">
+              <label for="folder-search-input">File name contains</label>
+              <div class="setting-row"><input id="folder-search-input" type="search" autocomplete="off" placeholder="report" maxlength="200" required /><button id="choose-search-folder" type="submit">Choose folder</button></div>
+              <p class="settings-help" id="folder-search-help" aria-live="polite">Nothing is searched until you choose a folder and confirm.</p>
+              <div class="folder-search-results" id="folder-search-results" hidden aria-live="polite"></div>
+            </form>
+          </section>
+          <section class="settings-card" aria-labelledby="tool-status-title">
+            <p class="settings-label">APPROVED TOOLS</p>
+            <h2 id="tool-status-title">What Zen can do</h2>
+            <div class="tool-status-list" id="tool-status-list" aria-live="polite"></div>
+          </section>
+          <section class="settings-card" aria-labelledby="activity-log-title">
+            <p class="settings-label">LOCAL ACTIVITY LOG</p>
+            <h2 id="activity-log-title">Recent activity</h2>
+            <p>Zen records safe action requests, cancellations, outcomes, and error codes locally. The newest 200 records are retained.</p>
+            <div class="activity-log" id="activity-log" aria-live="polite"></div>
+            <button class="danger-button" id="clear-activity-log" type="button">Clear activity log</button>
+          </section>
+        </div>
+        <p class="footer">Actions are logged locally. Zen never searches, opens apps, or opens websites without confirmation.</p>
+      </section>
     </main>
+    <div class="modal-backdrop" id="action-confirmation" hidden>
+      <section class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" aria-describedby="confirmation-description">
+        <p class="settings-label">CONFIRM ACTION</p>
+        <h2 id="confirmation-title">Confirm this action?</h2>
+        <p id="confirmation-description">Zen will open this website in your default browser.</p>
+        <p class="confirmation-destination" id="confirmation-destination"></p>
+        <div class="confirmation-actions"><button class="secondary-button" id="confirmation-cancel" type="button">Cancel</button><button id="confirmation-approve" type="button">Open website</button></div>
+      </section>
+    </div>
     <div id="toast" role="status" aria-live="polite"></div>
     <script src="renderer.js"></script>
   </body>

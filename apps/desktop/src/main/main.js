@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
+const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, listApprovedApps, approveApp, removeApprovedApp, approvedApp, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -28,11 +29,15 @@ const PIPER_VOICES = {
 const SYSTEM_PROMPT = [
   'You are Zen, a private local desktop assistant.',
   'Be concise, practical, and honest about what you can do.',
-  'You currently only provide chat. Do not claim to control files, apps, or the browser.',
+  'Never say or imply that you opened, launched, navigated to, or completed any computer action. Chat cannot execute actions.',
+  'If asked to open File Explorer, tell the user to use Activity → Choose what Zen may open. If asked to open a website, direct them to Activity → Open a website. If asked to list or find files or folders, direct them to Activity → Search a folder.',
+  'Do not claim to control files, apps, or the browser beyond those user-confirmed Activity actions.',
   'Never request or reveal sensitive personal information unless the user explicitly needs it.'
 ].join(' ');
 const activeRequests = new Map();
 const activeSpeech = new Map();
+const pendingAppSelections = new Map();
+const pendingFolderSelections = new Map();
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
@@ -102,9 +107,16 @@ function runWhisper(inputPath, outputBase) {
   });
 }
 
-function runPiper(webContents, model, text, outputPath) {
+function validateSpeechSpeed(speed) {
+  const parsed = Number(speed);
+  if (![0.8, 1, 1.2, 1.4].includes(parsed)) throw new Error('The selected speech speed is invalid.');
+  return parsed;
+}
+
+function runPiper(webContents, model, text, outputPath, speed) {
   return new Promise((resolve, reject) => {
-    const process = spawn(PIPER_CLI, ['-m', model, '-f', outputPath, '--', text], { windowsHide: true });
+    const lengthScale = (1 / speed).toFixed(3);
+    const process = spawn(PIPER_CLI, ['-m', model, '-f', outputPath, '--length-scale', lengthScale, '--', text], { windowsHide: true });
     activeSpeech.set(webContents.id, process);
     let stderr = '';
     process.stderr.on('data', (chunk) => { stderr += chunk; });
@@ -230,13 +242,63 @@ function createWindow() {
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
     return { action: 'deny' };
   });
 }
 
 app.whenReady().then(() => {
+  configureApprovedApps(app.getPath('userData'));
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
+  ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
+  ipcMain.handle('zen:tools:preview-website', (_event, url) => websitePreview(url));
+  ipcMain.handle('zen:tools:open-website', async (_event, url) => {
+    const preview = websitePreview(url);
+    await shell.openExternal(preview.url);
+    return preview;
+  });
+  ipcMain.handle('zen:tools:list-approved-apps', () => listApprovedApps());
+  ipcMain.handle('zen:tools:choose-app', async (event) => {
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Choose an app to approve in Zen', properties: ['openFile'], filters: [{ name: 'Windows applications', extensions: ['exe'] }]
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const preview = previewApp(result.filePaths[0]);
+    const token = crypto.randomUUID();
+    pendingAppSelections.set(token, { webContentsId: event.sender.id, executable: preview.executable, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, ...preview };
+  });
+  ipcMain.handle('zen:tools:approve-app', (event, token) => {
+    const selection = pendingAppSelections.get(token);
+    pendingAppSelections.delete(token);
+    if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) throw new Error('Choose the app again before approving it.');
+    return approveApp(selection.executable);
+  });
+  ipcMain.handle('zen:tools:remove-approved-app', (_event, appId) => removeApprovedApp(appId));
+  ipcMain.handle('zen:tools:open-approved-app', (_event, appId) => {
+    const appEntry = approvedApp(appId);
+    const process = spawn(appEntry.executable, [], { detached: true, stdio: 'ignore', windowsHide: true });
+    process.unref();
+    return { id: appEntry.id, label: appEntry.label, destination: appEntry.executable };
+  });
+  ipcMain.handle('zen:tools:preview-search-query', (_event, query) => ({ query: validateSearchQuery(query) }));
+  ipcMain.handle('zen:tools:choose-folder', async (event) => {
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Choose a folder for Zen to search', properties: ['openDirectory']
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const folderPath = validateFolderPath(result.filePaths[0]);
+    const token = crypto.randomUUID();
+    pendingFolderSelections.set(token, { webContentsId: event.sender.id, folderPath, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, folderPath };
+  });
+  ipcMain.handle('zen:tools:search-folder', (event, token, query) => {
+    const selection = pendingFolderSelections.get(token);
+    pendingFolderSelections.delete(token);
+    if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) {
+      throw new Error('Choose the folder again before searching.');
+    }
+    return searchFolderNames(selection.folderPath, query);
+  });
   ipcMain.handle('zen:voice-status', () => voiceStatus());
   ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {
     if (!voiceInputReady()) throw new Error('Local speech-to-text is not installed yet.');
@@ -257,12 +319,12 @@ app.whenReady().then(() => {
       await Promise.allSettled([fsp.unlink(inputPath), fsp.unlink(outputPath)]);
     }
   });
-  ipcMain.handle('zen:voice:speak', async (event, text, voiceId) => {
+  ipcMain.handle('zen:voice:speak', async (event, text, voiceId, speed) => {
     if (!voiceStatus().output.available) throw new Error('Local text-to-speech is not installed yet.');
     activeSpeech.get(event.sender.id)?.kill();
     const outputPath = path.join(app.getPath('temp'), `zen-speech-${crypto.randomUUID()}.wav`);
     try {
-      await runPiper(event.sender, selectPiperVoice(voiceId).model, validateSpeechText(text), outputPath);
+      await runPiper(event.sender, selectPiperVoice(voiceId).model, validateSpeechText(text), outputPath, validateSpeechSpeed(speed));
       return new Uint8Array(await fsp.readFile(outputPath));
     } finally {
       await fsp.unlink(outputPath).catch(() => {});

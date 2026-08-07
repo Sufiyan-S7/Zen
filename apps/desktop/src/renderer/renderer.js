@@ -3,10 +3,12 @@ const mode = window.zen?.mode ?? 'local-first';
 const storageKey = 'zen-local-conversations-v2';
 const legacyStorageKey = 'zen-local-conversation-v1';
 const settingsStorageKey = 'zen-local-settings-v1';
+const activityStorageKey = 'zen-local-activity-v1';
 const welcomeText = 'Hello, I’m Zen. I’m running locally on your computer. What would you like to work on?';
 let conversations = loadConversations();
 let activeConversationId = conversations[0].id;
 let settings = loadSettings();
+let activityLog = loadActivityLog();
 
 document.querySelector('#version').textContent = `v${version}`;
 document.querySelector('#mode').textContent = mode;
@@ -22,17 +24,53 @@ const metaElement = document.querySelector('#conversation-meta');
 const conversationCountElement = document.querySelector('#conversation-count');
 const chatPage = document.querySelector('#home');
 const settingsPage = document.querySelector('#settings-page');
+const activityPage = document.querySelector('#activity-page');
 const chatButton = document.querySelector('#chat-button');
 const settingsButton = document.querySelector('#settings-button');
+const activityButton = document.querySelector('#activity-button');
+const websiteForm = document.querySelector('#website-form');
+const websiteInput = document.querySelector('#website-input');
+const websiteHelp = document.querySelector('#website-help');
+const folderSearchForm = document.querySelector('#folder-search-form');
+const folderSearchInput = document.querySelector('#folder-search-input');
+const folderSearchHelp = document.querySelector('#folder-search-help');
+const folderSearchResults = document.querySelector('#folder-search-results');
+const chooseApprovedAppButton = document.querySelector('#choose-approved-app');
+const approvedAppsHelp = document.querySelector('#approved-apps-help');
+const approvedAppList = document.querySelector('#approved-app-list');
+const toolStatusList = document.querySelector('#tool-status-list');
+const activityLogElement = document.querySelector('#activity-log');
+const clearActivityLogButton = document.querySelector('#clear-activity-log');
+const confirmationModal = document.querySelector('#action-confirmation');
+const confirmationTitle = document.querySelector('#confirmation-title');
+const confirmationDescription = document.querySelector('#confirmation-description');
+const confirmationDestination = document.querySelector('#confirmation-destination');
+const confirmationCancelButton = document.querySelector('#confirmation-cancel');
+const confirmationApproveButton = document.querySelector('#confirmation-approve');
 const modelSelect = document.querySelector('#model-select');
 const modelHelp = document.querySelector('#model-help');
 const themeSelect = document.querySelector('#theme-select');
+const accentSelect = document.querySelector('#accent-select');
+const customAccentInput = document.querySelector('#custom-accent-input');
+const customAccentValue = document.querySelector('#custom-accent-value');
+const textSizeSelect = document.querySelector('#text-size-select');
+const densitySelect = document.querySelector('#density-select');
+const fontSelect = document.querySelector('#font-select');
+const bubbleStyleSelect = document.querySelector('#bubble-style-select');
+const resetAppearanceButton = document.querySelector('#reset-appearance');
+const setAppearanceShortcutButton = document.querySelector('#set-appearance-shortcut');
+const clearAppearanceShortcutButton = document.querySelector('#clear-appearance-shortcut');
+const appearanceHelp = document.querySelector('#appearance-help');
+const appearancePreviewName = document.querySelector('#appearance-preview-name');
+const themePreviewButtons = document.querySelectorAll('[data-theme-preview]');
 const clearConversationsButton = document.querySelector('#clear-conversations');
 const voiceInputButton = document.querySelector('#voice-input-button');
 const voiceStatusElement = document.querySelector('#voice-status');
 const stopSpeakingButton = document.querySelector('#stop-speaking-button');
 const voiceSelect = document.querySelector('#voice-select');
 const voiceHelp = document.querySelector('#voice-help');
+const voiceSpeedSelect = document.querySelector('#voice-speed-select');
+const voiceSpeedHelp = document.querySelector('#voice-speed-help');
 const voiceInputSelect = document.querySelector('#voice-input-select');
 const refreshVoiceInputsButton = document.querySelector('#refresh-voice-inputs');
 const voiceDeviceHelp = document.querySelector('#voice-device-help');
@@ -44,6 +82,9 @@ let voiceStartPending = false;
 let voiceLocked = false;
 let voiceOutputReady = false;
 let activeSpeechAudio = null;
+let capturingAppearanceShortcut = false;
+let pendingWebsiteConfirmation = null;
+let confirmationReturnFocus = null;
 
 function createConversation() {
   const now = new Date().toISOString();
@@ -74,21 +115,188 @@ function loadConversations() {
   return [createConversation()];
 }
 
+function loadActivityLog() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(activityStorageKey));
+    return Array.isArray(stored) ? stored.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.action === 'string' && typeof entry.status === 'string').slice(0, 200) : [];
+  } catch { return []; }
+}
+
 function loadSettings() {
   try {
     const stored = JSON.parse(localStorage.getItem(settingsStorageKey));
+    const theme = stored?.theme === 'light' ? 'lavender-light' : stored?.theme === 'dark' ? 'deep-violet' : stored?.theme;
+    const voiceSpeeds = Object.fromEntries(Object.entries(stored?.voiceSpeeds && typeof stored.voiceSpeeds === 'object' ? stored.voiceSpeeds : {}).filter(([, speed]) => ['0.8', '1', '1.2', '1.4'].includes(String(speed))).map(([voiceId, speed]) => [voiceId, Number(speed)]));
+    if (typeof stored?.voiceOutputVoice === 'string' && ['0.8', '1', '1.2', '1.4'].includes(String(stored?.voiceSpeed)) && !voiceSpeeds[stored.voiceOutputVoice]) voiceSpeeds[stored.voiceOutputVoice] = Number(stored.voiceSpeed);
     return {
       model: typeof stored?.model === 'string' ? stored.model : '',
-      theme: stored?.theme === 'light' ? 'light' : 'dark',
+      theme: ['deep-violet', 'lavender-light', 'true-black'].includes(theme) ? theme : 'deep-violet',
+      accent: ['lavender', 'periwinkle', 'plum', 'custom'].includes(stored?.accent) ? stored.accent : 'lavender',
+      customAccent: typeof stored?.customAccent === 'string' && /^#[0-9a-f]{6}$/i.test(stored.customAccent) ? stored.customAccent : '#a78bfa',
+      textSize: ['small', 'default', 'large'].includes(stored?.textSize) ? stored.textSize : 'default',
+      density: ['compact', 'comfortable', 'spacious'].includes(stored?.density) ? stored.density : 'comfortable',
+      font: ['modern', 'rounded', 'serif'].includes(stored?.font) ? stored.font : 'modern',
+      bubbleStyle: ['rounded', 'square'].includes(stored?.bubbleStyle) ? stored.bubbleStyle : 'rounded',
+      appearanceShortcut: typeof stored?.appearanceShortcut === 'string' ? stored.appearanceShortcut : '',
       voiceInputId: typeof stored?.voiceInputId === 'string' ? stored.voiceInputId : '',
-      voiceOutputVoice: typeof stored?.voiceOutputVoice === 'string' ? stored.voiceOutputVoice : ''
+      voiceOutputVoice: typeof stored?.voiceOutputVoice === 'string' ? stored.voiceOutputVoice : '',
+      voiceSpeeds
     };
-  } catch { return { model: '', theme: 'dark', voiceInputId: '', voiceOutputVoice: '' }; }
+  } catch { return { model: '', theme: 'deep-violet', accent: 'lavender', customAccent: '#a78bfa', textSize: 'default', density: 'comfortable', font: 'modern', bubbleStyle: 'rounded', appearanceShortcut: '', voiceInputId: '', voiceOutputVoice: '', voiceSpeeds: {} }; }
 }
 
 function saveConversations() { localStorage.setItem(storageKey, JSON.stringify(conversations)); }
 function saveSettings() { localStorage.setItem(settingsStorageKey, JSON.stringify(settings)); }
-function applyTheme() { document.body.dataset.theme = settings.theme; themeSelect.value = settings.theme; }
+function saveActivityLog() { localStorage.setItem(activityStorageKey, JSON.stringify(activityLog.slice(0, 200))); }
+function createActivity(action, preview) {
+  const entry = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), action, preview, status: 'requested', decidedAt: '', completedAt: '', result: '', errorCode: '' };
+  activityLog.unshift(entry);
+  activityLog = activityLog.slice(0, 200);
+  saveActivityLog();
+  renderActivityLog();
+  return entry;
+}
+function updateActivity(entry, status, updates = {}) {
+  entry.status = status;
+  const now = new Date().toISOString();
+  if (['cancelled', 'rejected'].includes(status)) entry.decidedAt = now;
+  if (['completed', 'failed'].includes(status)) entry.completedAt = now;
+  Object.assign(entry, updates);
+  saveActivityLog();
+  renderActivityLog();
+}
+function renderActivityLog() {
+  if (!activityLogElement) return;
+  activityLogElement.innerHTML = '';
+  if (!activityLog.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No safe actions have been requested yet.';
+    activityLogElement.append(empty);
+    return;
+  }
+  activityLog.forEach((entry) => {
+    const row = document.createElement('article');
+    row.className = `activity-entry ${entry.status}`;
+    const summary = document.createElement('strong');
+    summary.textContent = ({
+      'open-website': 'Open website',
+      'open-approved-app': 'Open app',
+      'approve-app': 'Approve app',
+      'remove-app-approval': 'Remove app approval',
+      'search-folder': 'Search folder'
+    })[entry.action] || entry.action;
+    const status = document.createElement('span');
+    status.textContent = entry.status;
+    const destination = document.createElement('p');
+    destination.textContent = entry.preview;
+    const time = document.createElement('time');
+    time.dateTime = entry.createdAt;
+    time.textContent = formatConversationDate(entry.completedAt || entry.decidedAt || entry.createdAt);
+    row.append(summary, status, destination, time);
+    activityLogElement.append(row);
+  });
+}
+function renderToolStatus(tools = []) {
+  toolStatusList.innerHTML = '';
+  tools.forEach((tool) => {
+    const row = document.createElement('div');
+    row.className = `tool-status ${tool.enabled ? 'ready' : 'waiting'}`;
+    const title = document.createElement('strong');
+    title.textContent = tool.label;
+    const detail = document.createElement('span');
+    detail.textContent = tool.enabled ? 'Confirmation required every time' : tool.reason;
+    row.append(title, detail);
+    toolStatusList.append(row);
+  });
+}
+function renderApprovedApps(apps = []) {
+  approvedAppList.innerHTML = '';
+  if (!apps.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No apps are approved yet.';
+    approvedAppList.append(empty);
+    return;
+  }
+  apps.forEach((app) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app';
+    const label = document.createElement('strong');
+    label.textContent = app.label;
+    const path = document.createElement('p');
+    path.textContent = app.executable;
+    const actions = document.createElement('div');
+    actions.className = 'approved-app-actions';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.textContent = 'Open';
+    open.addEventListener('click', () => openApprovedApp(app));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove approval';
+    remove.addEventListener('click', () => removeApprovedApp(app));
+    actions.append(open, remove);
+    row.append(label, path, actions);
+    approvedAppList.append(row);
+  });
+}
+function hexToRgb(hex) { return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)); }
+function relativeLuminance(hex) {
+  return hexToRgb(hex).map((value) => value / 255).map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4).reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+}
+function contrastRatio(first, second) {
+  const [light, dark] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a);
+  return (light + .05) / (dark + .05);
+}
+function accentTextColor(hex) { return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, '#09080d') ? '#ffffff' : '#09080d'; }
+function accentHoverColor(hex) {
+  const target = accentTextColor(hex) === '#ffffff' ? '#ffffff' : '#09080d';
+  const [red, green, blue] = hexToRgb(hex);
+  const [targetRed, targetGreen, targetBlue] = hexToRgb(target);
+  const mix = (value, targetValue) => Math.round(value + (targetValue - value) * .16).toString(16).padStart(2, '0');
+  return `#${mix(red, targetRed)}${mix(green, targetGreen)}${mix(blue, targetBlue)}`;
+}
+function selectedVoiceSpeed() { return settings.voiceSpeeds[settings.voiceOutputVoice] ?? 1; }
+function updateVoiceSpeedControl() {
+  const speed = selectedVoiceSpeed();
+  const voiceName = voiceSelect.selectedOptions[0]?.text || 'Selected voice';
+  voiceSpeedSelect.value = String(speed);
+  voiceSpeedHelp.textContent = `${voiceName}: ${speed === 1 ? 'Normal' : speed < 1 ? 'Slower' : 'Faster'} speed is selected for local read aloud.`;
+}
+function displayThemeName(theme) { return ({ 'deep-violet': 'Deep violet', 'lavender-light': 'Lavender light', 'true-black': 'True black' })[theme]; }
+function applyTheme() {
+  document.body.dataset.theme = settings.theme;
+  document.body.dataset.accent = settings.accent;
+  document.body.dataset.textSize = settings.textSize;
+  document.body.dataset.density = settings.density;
+  document.body.dataset.font = settings.font;
+  document.body.dataset.bubbles = settings.bubbleStyle;
+  if (settings.accent === 'custom') {
+    document.body.style.setProperty('--accent', settings.customAccent);
+    document.body.style.setProperty('--accent-ink', accentTextColor(settings.customAccent));
+    document.body.style.setProperty('--accent-hover', accentHoverColor(settings.customAccent));
+  } else {
+    document.body.style.removeProperty('--accent');
+    document.body.style.removeProperty('--accent-ink');
+    document.body.style.removeProperty('--accent-hover');
+  }
+  themeSelect.value = settings.theme;
+  accentSelect.value = settings.accent;
+  customAccentInput.value = settings.customAccent;
+  customAccentValue.textContent = settings.customAccent.toUpperCase();
+  customAccentInput.disabled = settings.accent !== 'custom';
+  textSizeSelect.value = settings.textSize;
+  densitySelect.value = settings.density;
+  fontSelect.value = settings.font;
+  bubbleStyleSelect.value = settings.bubbleStyle;
+  appearancePreviewName.textContent = displayThemeName(settings.theme);
+  themePreviewButtons.forEach((button) => button.classList.toggle('active', button.dataset.themePreview === settings.theme));
+  setAppearanceShortcutButton.textContent = settings.appearanceShortcut ? `Appearance shortcut: ${settings.appearanceShortcut}` : 'Set appearance shortcut';
+  clearAppearanceShortcutButton.disabled = !settings.appearanceShortcut;
+  updateVoiceSpeedControl();
+}
 function activeConversation() { return conversations.find((conversation) => conversation.id === activeConversationId); }
 function formatTimestamp(value) { return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value)); }
 function formatConversationDate(value) {
@@ -211,12 +419,273 @@ function renderHeader() {
 function render() { renderHeader(); renderMessages(); renderConversationHistory(); setBusy(); }
 
 function showPage(page) {
+  const showingChat = page === 'chat';
   const showingSettings = page === 'settings';
-  chatPage.hidden = showingSettings;
+  chatPage.hidden = !showingChat;
   settingsPage.hidden = !showingSettings;
-  chatButton.classList.toggle('active', !showingSettings);
+  activityPage.hidden = page !== 'activity';
+  chatButton.classList.toggle('active', showingChat);
   settingsButton.classList.toggle('active', showingSettings);
-  if (!showingSettings) input.focus();
+  activityButton.classList.toggle('active', page === 'activity');
+  if (showingChat) input.focus();
+}
+
+function requestActionConfirmation({ title, description, destination, approveLabel }) {
+  if (![title, description, destination, approveLabel].every((value) => typeof value === 'string' && value)) {
+    throw new Error('Zen could not verify that action. Nothing was opened.');
+  }
+  if (pendingWebsiteConfirmation) throw new Error('Finish or cancel the current confirmation first.');
+  confirmationTitle.textContent = title;
+  confirmationDescription.textContent = description;
+  confirmationDestination.textContent = destination;
+  confirmationApproveButton.textContent = approveLabel;
+  confirmationReturnFocus = document.activeElement;
+  return new Promise((resolve) => {
+    pendingWebsiteConfirmation = resolve;
+    confirmationModal.hidden = false;
+    confirmationCancelButton.focus();
+  });
+}
+
+function requestWebsiteConfirmation(preview) {
+  if (!preview || typeof preview.url !== 'string' || !preview.url || typeof preview.hostname !== 'string' || !preview.hostname) {
+    throw new Error('Zen could not verify that website. Nothing was opened.');
+  }
+  return requestActionConfirmation({
+    title: 'Open this website?',
+    description: `Zen will open this website in your default browser. Host: ${preview.hostname}`,
+    destination: preview.url,
+    approveLabel: 'Open website'
+  });
+}
+
+function closeWebsiteConfirmation(approved) {
+  if (!pendingWebsiteConfirmation) return;
+  const resolve = pendingWebsiteConfirmation;
+  pendingWebsiteConfirmation = null;
+  confirmationModal.hidden = true;
+  confirmationReturnFocus?.focus?.();
+  confirmationReturnFocus = null;
+  resolve(approved);
+}
+
+async function reviewWebsite(event) {
+  event.preventDefault();
+  websiteHelp.textContent = '';
+  try {
+    const preview = await window.zen.previewWebsite(websiteInput.value);
+    const entry = createActivity('open-website', preview.url);
+    const approved = await requestWebsiteConfirmation(preview);
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      websiteHelp.textContent = 'Cancelled. The website was not opened.';
+      return;
+    }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Opening…';
+    try {
+      const result = await window.zen.openWebsite(preview.url);
+      updateActivity(entry, 'completed', { result: result.url });
+      websiteHelp.textContent = `Opened ${result.hostname} in your default browser.`;
+      websiteInput.value = '';
+    } catch (error) {
+      updateActivity(entry, 'failed', { errorCode: 'OPEN_WEBSITE_FAILED' });
+      websiteHelp.textContent = error.message || 'Zen could not open that website.';
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    const entry = createActivity('open-website', 'Invalid website request');
+    updateActivity(entry, 'rejected', { errorCode: 'INVALID_WEBSITE' });
+    websiteHelp.textContent = error.message || 'Zen could not validate that website.';
+  }
+}
+
+async function openApprovedApp(app) {
+  const entry = createActivity('open-approved-app', app.executable);
+  try {
+    const approved = await requestActionConfirmation({
+      title: `Open ${app.label}?`,
+      description: 'Zen will start this approved application on your computer.',
+      destination: app.executable,
+      approveLabel: 'Open app'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      approvedAppsHelp.textContent = `Cancelled. ${app.label} was not opened.`;
+      return;
+    }
+    const result = await window.zen.openApprovedApp(app.id);
+    updateActivity(entry, 'completed', { result: result.destination });
+    approvedAppsHelp.textContent = `${result.label} was opened.`;
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'OPEN_APPROVED_APP_FAILED' });
+    approvedAppsHelp.textContent = error.message || `Zen could not open ${app.label}.`;
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function addApprovedApp() {
+  approvedAppsHelp.textContent = '';
+  try {
+    const selected = await window.zen.chooseApprovedApp();
+    if (!selected) {
+      approvedAppsHelp.textContent = 'No app was selected.';
+      return;
+    }
+    const entry = createActivity('approve-app', selected.executable);
+    const approved = await requestActionConfirmation({
+      title: `Approve ${selected.label}?`,
+      description: 'Zen will save this local approval. It will still ask before opening the app every time.',
+      destination: selected.executable,
+      approveLabel: 'Approve app'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      approvedAppsHelp.textContent = 'App approval cancelled.';
+      return;
+    }
+    const app = await window.zen.approveApp(selected.token);
+    updateActivity(entry, 'completed', { result: app.executable });
+    approvedAppsHelp.textContent = `${app.label} is approved locally.`;
+    await loadApprovedApps();
+  } catch (error) {
+    approvedAppsHelp.textContent = error.message || 'Zen could not approve that app.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function removeApprovedApp(app) {
+  const entry = createActivity('remove-app-approval', app.executable);
+  try {
+    const approved = await requestActionConfirmation({
+      title: `Remove ${app.label}?`,
+      description: 'Zen will remove this local app approval. Zen will no longer be able to open it.',
+      destination: app.executable,
+      approveLabel: 'Remove approval'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      approvedAppsHelp.textContent = 'Approval removal cancelled.';
+      return;
+    }
+    await window.zen.removeApprovedApp(app.id);
+    updateActivity(entry, 'completed');
+    approvedAppsHelp.textContent = `${app.label} is no longer approved.`;
+    await loadApprovedApps();
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'REMOVE_APPROVED_APP_FAILED' });
+    approvedAppsHelp.textContent = error.message || 'Zen could not remove that approval.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function loadApprovedApps() {
+  try { renderApprovedApps(await window.zen.listApprovedApps()); } catch { approvedAppsHelp.textContent = 'Zen could not load your approved apps.'; }
+}
+
+function renderFolderSearchResults(result) {
+  folderSearchResults.innerHTML = '';
+  if (!result.matches.length) {
+    folderSearchResults.hidden = false;
+    const empty = document.createElement('p');
+    empty.textContent = `No file or folder names in ${result.folderPath} contain “${result.query}”.`;
+    folderSearchResults.append(empty);
+    return;
+  }
+  folderSearchResults.hidden = false;
+  const summary = document.createElement('p');
+  summary.textContent = result.capped
+    ? `Showing the first ${result.count} matches. More results exist in this folder.`
+    : `${result.count} match${result.count === 1 ? '' : 'es'} in ${result.folderPath}.`;
+  folderSearchResults.append(summary);
+  result.matches.forEach((match) => {
+    const row = document.createElement('article');
+    row.className = 'folder-search-result';
+    const name = document.createElement('strong');
+    name.textContent = match.name;
+    const type = document.createElement('span');
+    type.textContent = match.type;
+    const path = document.createElement('p');
+    path.textContent = match.path;
+    row.append(name, type, path);
+    folderSearchResults.append(row);
+  });
+}
+
+async function reviewFolderSearch(event) {
+  event.preventDefault();
+  folderSearchHelp.textContent = '';
+  folderSearchResults.hidden = true;
+  try {
+    const previewQuery = await window.zen.previewSearchQuery(folderSearchInput.value);
+    const selected = await window.zen.chooseSearchFolder();
+    if (!selected) {
+      folderSearchHelp.textContent = 'No folder was selected.';
+      return;
+    }
+    // The query is intentionally shown only in the confirmation prompt. Search
+    // terms can be sensitive, so the persistent local activity record keeps
+    // only the granted folder and outcome.
+    const entry = createActivity('search-folder', `${selected.folderPath} · filename search`);
+    const approved = await requestActionConfirmation({
+      title: 'Search this folder?',
+      description: 'Zen will read file and folder names in this location only. It will not open, change, or upload files.',
+      destination: `Search ${selected.folderPath} for names containing “${previewQuery.query}”`,
+      approveLabel: 'Search folder'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      folderSearchHelp.textContent = 'Search cancelled.';
+      return;
+    }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Searching…';
+    try {
+      const result = await window.zen.searchFolder(selected.token, previewQuery.query);
+      const resultText = result.capped
+        ? `${result.count} matches (list capped at 100).`
+        : `${result.count} match${result.count === 1 ? '' : 'es'}.`;
+      updateActivity(entry, 'completed', { result: resultText });
+      renderFolderSearchResults(result);
+      folderSearchHelp.textContent = resultText;
+    } catch (error) {
+      updateActivity(entry, 'failed', { errorCode: 'SEARCH_FOLDER_FAILED' });
+      folderSearchHelp.textContent = error.message || 'Zen could not search that folder.';
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    if (folderSearchInput.value.trim()) {
+      const entry = createActivity('search-folder', 'Invalid search request');
+      updateActivity(entry, 'rejected', { errorCode: 'INVALID_SEARCH' });
+    }
+    folderSearchHelp.textContent = error.message || 'Zen could not start that search.';
+  }
+}
+
+function isAppOpenRequest(content) {
+  return /\b(open|launch|start)\b/i.test(content) && /\b(app|application|explorer|xampp|minecraft|chrome|browser)\b/i.test(content);
+}
+
+function isFileListRequest(content) {
+  if (/\b(list|show|display|enumerate|find|search)\b/i.test(content) && /\b(files?|folders?|directories|contents?)\b/i.test(content)) return true;
+  if (/\bwhat('s| is| are)?\s+(in|inside)\b/i.test(content) && /[A-Za-z]:\\/.test(content)) return true;
+  if (/[A-Za-z]:\\[^\s]*/.test(content) && /\b(list|show|files?|folders?|contents?)\b/i.test(content)) return true;
+  return false;
+}
+
+async function loadToolStatus() {
+  try {
+    renderToolStatus(await window.zen.getToolStatus());
+  } catch {
+    toolStatusList.textContent = 'Zen could not load the local tool registry.';
+  }
 }
 
 function updateModelStatus() {
@@ -269,6 +738,7 @@ async function loadVoiceStatus() {
       voiceSelect.append(new Option('No local voices available', ''));
       voiceSelect.disabled = true;
     }
+    updateVoiceSpeedControl();
     voiceStatusElement.textContent = `${input} ${output}`;
     voiceStatusElement.classList.toggle('ready', voice.available);
     voiceInputButton.disabled = !voice.input.available;
@@ -299,7 +769,7 @@ async function speakText(text) {
   stopSpeakingButton.textContent = 'Preparing voice…';
   stopSpeakingButton.disabled = true;
   try {
-    const audioBytes = await window.zen.speakVoice(text, settings.voiceOutputVoice);
+    const audioBytes = await window.zen.speakVoice(text, settings.voiceOutputVoice, selectedVoiceSpeed());
     const audio = new Audio(URL.createObjectURL(new Blob([audioBytes], { type: 'audio/wav' })));
     activeSpeechAudio = audio;
     audio.addEventListener('ended', () => stopSpeaking());
@@ -481,6 +951,9 @@ async function initialise() {
     return;
   }
   loadVoiceStatus();
+  loadToolStatus();
+  loadApprovedApps();
+  renderActivityLog();
   try {
     const status = await window.zen.getStatus();
     if (!settings.model) settings.model = status.model;
@@ -532,6 +1005,20 @@ form.addEventListener('submit', async (event) => {
   input.style.height = 'auto';
   saveConversations();
   render();
+  if (isAppOpenRequest(content)) {
+    conversation.messages.push({ role: 'assistant', content: 'To open an approved app, use Activity → Choose what Zen may open. Zen will ask for confirmation before every launch.', createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+    return;
+  }
+  if (isFileListRequest(content)) {
+    conversation.messages.push({ role: 'assistant', content: 'To search file names in a folder you choose, use Activity → Search a folder. Zen will ask you to pick the folder, confirm the search, and show matching names and paths locally. It will not read file contents or change anything.', createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+    return;
+  }
   const generation = { requestId: crypto.randomUUID(), conversationId: conversation.id, content: '', createdAt: new Date().toISOString() };
   generations.set(generation.requestId, generation);
   setBusy();
@@ -567,6 +1054,27 @@ document.querySelector('#new-chat').addEventListener('click', () => {
 
 chatButton.addEventListener('click', () => showPage('chat'));
 settingsButton.addEventListener('click', () => { showPage('settings'); loadVoiceInputs(); });
+activityButton.addEventListener('click', () => { showPage('activity'); renderActivityLog(); });
+websiteForm.addEventListener('submit', reviewWebsite);
+folderSearchForm.addEventListener('submit', reviewFolderSearch);
+chooseApprovedAppButton.addEventListener('click', addApprovedApp);
+confirmationApproveButton.addEventListener('click', () => closeWebsiteConfirmation(true));
+confirmationCancelButton.addEventListener('click', () => closeWebsiteConfirmation(false));
+confirmationModal.addEventListener('click', (event) => {
+  if (event.target === confirmationModal) closeWebsiteConfirmation(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && pendingWebsiteConfirmation) {
+    event.preventDefault();
+    closeWebsiteConfirmation(false);
+  }
+});
+clearActivityLogButton.addEventListener('click', () => {
+  if (!window.confirm('Clear every local activity record? This cannot be undone.')) return;
+  activityLog = [];
+  saveActivityLog();
+  renderActivityLog();
+});
 voiceInputSelect.addEventListener('change', () => {
   settings.voiceInputId = voiceInputSelect.value;
   saveSettings();
@@ -577,6 +1085,7 @@ voiceSelect.addEventListener('change', () => {
   settings.voiceOutputVoice = voiceSelect.value;
   saveSettings();
   voiceHelp.textContent = `${voiceSelect.options[voiceSelect.selectedIndex].text} is selected for local read aloud.`;
+  updateVoiceSpeedControl();
 });
 modelSelect.addEventListener('change', () => {
   settings.model = modelSelect.value;
@@ -588,6 +1097,109 @@ themeSelect.addEventListener('change', () => {
   settings.theme = themeSelect.value;
   saveSettings();
   applyTheme();
+});
+accentSelect.addEventListener('change', () => {
+  settings.accent = accentSelect.value;
+  saveSettings();
+  applyTheme();
+});
+customAccentInput.addEventListener('input', () => {
+  settings.customAccent = customAccentInput.value;
+  settings.accent = 'custom';
+  saveSettings();
+  applyTheme();
+});
+textSizeSelect.addEventListener('change', () => {
+  settings.textSize = textSizeSelect.value;
+  saveSettings();
+  applyTheme();
+});
+densitySelect.addEventListener('change', () => {
+  settings.density = densitySelect.value;
+  saveSettings();
+  applyTheme();
+});
+fontSelect.addEventListener('change', () => {
+  settings.font = fontSelect.value;
+  saveSettings();
+  applyTheme();
+});
+bubbleStyleSelect.addEventListener('change', () => {
+  settings.bubbleStyle = bubbleStyleSelect.value;
+  saveSettings();
+  applyTheme();
+});
+resetAppearanceButton.addEventListener('click', () => {
+  Object.assign(settings, { theme: 'deep-violet', accent: 'lavender', customAccent: '#a78bfa', textSize: 'default', density: 'comfortable', font: 'modern', bubbleStyle: 'rounded' });
+  saveSettings();
+  applyTheme();
+  appearanceHelp.textContent = 'Appearance reset to Zen’s Deep violet default.';
+});
+themePreviewButtons.forEach((button) => button.addEventListener('click', () => {
+  settings.theme = button.dataset.themePreview;
+  saveSettings();
+  applyTheme();
+  appearanceHelp.textContent = `${displayThemeName(settings.theme)} is selected.`;
+}));
+function shortcutFromEvent(event) {
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return '';
+  const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  return [event.ctrlKey && 'Ctrl', event.altKey && 'Alt', event.shiftKey && 'Shift', event.metaKey && 'Meta', key].filter(Boolean).join('+');
+}
+function isSafeAppearanceShortcut(event, shortcut) {
+  if (!shortcut || ['F8', 'F9', 'F5', 'F11', 'F12', 'Alt+F4', 'Ctrl+W', 'Ctrl+R', 'Ctrl+Shift+I'].includes(shortcut)) return false;
+  return event.ctrlKey || event.altKey || event.shiftKey || event.metaKey || /^F(?:[1-7]|10)$/i.test(event.key);
+}
+function cycleAppearanceTheme() {
+  const themes = ['deep-violet', 'lavender-light', 'true-black'];
+  settings.theme = themes[(themes.indexOf(settings.theme) + 1) % themes.length];
+  saveSettings();
+  applyTheme();
+  appearanceHelp.textContent = `${displayThemeName(settings.theme)} is selected by shortcut.`;
+}
+setAppearanceShortcutButton.addEventListener('click', () => {
+  capturingAppearanceShortcut = true;
+  setAppearanceShortcutButton.textContent = 'Press a safe shortcut…';
+  appearanceHelp.textContent = 'Use a combination such as Ctrl+Shift+L. Press Escape to cancel. F8 and F9 stay reserved for voice.';
+});
+clearAppearanceShortcutButton.addEventListener('click', () => {
+  settings.appearanceShortcut = '';
+  saveSettings();
+  applyTheme();
+  appearanceHelp.textContent = 'Appearance shortcut cleared.';
+});
+document.addEventListener('keydown', (event) => {
+  const shortcut = shortcutFromEvent(event);
+  if (capturingAppearanceShortcut) {
+    event.preventDefault();
+    if (event.key === 'Escape') {
+      capturingAppearanceShortcut = false;
+      applyTheme();
+      appearanceHelp.textContent = 'Shortcut setup cancelled.';
+      return;
+    }
+    if (!isSafeAppearanceShortcut(event, shortcut)) {
+      appearanceHelp.textContent = 'Choose a combination with Ctrl, Alt, Shift, or a function key. F8 and F9 are reserved for voice.';
+      return;
+    }
+    settings.appearanceShortcut = shortcut;
+    capturingAppearanceShortcut = false;
+    saveSettings();
+    applyTheme();
+    appearanceHelp.textContent = `${shortcut} will cycle themes while Zen is focused.`;
+    return;
+  }
+  if (!settings.appearanceShortcut || document.activeElement?.matches('input, textarea, select, button')) return;
+  if (shortcut === settings.appearanceShortcut) {
+    event.preventDefault();
+    cycleAppearanceTheme();
+  }
+});
+voiceSpeedSelect.addEventListener('change', () => {
+  if (!settings.voiceOutputVoice) return;
+  settings.voiceSpeeds[settings.voiceOutputVoice] = Number(voiceSpeedSelect.value);
+  saveSettings();
+  updateVoiceSpeedControl();
 });
 clearConversationsButton.addEventListener('click', () => {
   if (!window.confirm('Clear every saved conversation from this computer? This cannot be undone.')) return;

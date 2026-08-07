@@ -1,5 +1,9 @@
 # Zen Project Instructions
 
+## Completed-Day Commits — Required
+
+When a planned day of work is complete, manually validated where applicable, and its continuity documentation is current, create a Git commit for that day's scoped changes before starting work for the next day. Do not include unrelated existing changes or the next day's work. The only exception is when the user explicitly asks not to commit yet.
+
 ## Continuity Documentation — Required
 
 For every task that changes, diagnoses, validates, or reports material work in this repository:

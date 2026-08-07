@@ -36,6 +36,60 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 
 #### Next planned work — Week 2 safe computer control
 
+- August 7, 2026 Day 8 folder search implementation: Activity now includes **Search a folder**. The user enters a file-name term, selects a folder through Windows' native picker, reviews the exact folder and term, and confirms before Zen recursively returns matching file or folder names and paths. The one-use folder-selection token expires after five minutes and is bound to the originating window; results are capped at 100, skip symbolic links, revalidate the folder at execution, and cannot escape the selected folder. Zen does not read file contents or make changes.
+- Day 8 manual sign-off: the user confirmed the selected-folder filename-search flow works perfectly in the desktop app. Day 8 is complete: approved apps, HTTPS websites, and selected-folder filename search all use previews, confirmations, local activity records, and the documented constraints.
+- Automated validation passed: `npm.cmd --prefix apps\\desktop run check`, `node --check apps\\desktop\\src\\main\\computer-control.js`, an isolated nested-folder test (two case-insensitive matches, root-bound results), invalid-query rejection checks, and `git diff --check`.
+- Manual desktop verification passed: the user verified a harmless-folder search, confirmation, and displayed results in the desktop app. Day 8 is fully signed off.
+- Exact next recommended step: begin Day 9 reliability and privacy hardening; no additional capabilities should be enabled for Day 8.
+
+- August 7, 2026 approved-app manager: replaced the one-off File Explorer registry with a user-managed local app list. In Activity, the user selects a Windows `.exe` through the native picker, reviews and confirms its exact path, then may open it only after a separate per-launch confirmation or remove the approval with confirmation. Approvals persist in `approved-apps.json` under Electron's user-data directory, not chat/localStorage. File Explorer is seeded only because the user explicitly approved it earlier; it is removable like any other entry.
+- August 7, 2026 diagnosis from user screenshots: requests to list `C:\Games` were sent to the chat model, which has no filesystem-search tool. Its “list” and bracketed placeholders were fabricated text; Zen did not read or enumerate that folder. Folder-granted filename search remains unimplemented.
+- Product-scope clarification: an approved-app record currently authorizes only a future/user-confirmed launch of that exact executable. It does not grant Zen control of an app's interface, access to its contents, or permission to make changes within it. The user reasonably expected broader useful control; do not present app approval as general app control until concrete app-specific capabilities exist and pass manual validation.
+- User manual validation passed: approved-app selection, approval persistence, cancellation, launch confirmation, revocation, non-misleading chat behaviour, and local activity records are all working correctly.
+- Day 8 remaining work is now scope confirmation for the next capability: selected-folder filename search. The intended flow is native folder picker → one-time folder grant → preview of folder and query → confirmation → capped local filename/path results → local activity record. It must not read file contents, leave the selected folder, or change files.
+- Correction: the selected-folder search flow above is planned, not implemented. The current Activity page has approved-app and website controls only; do not tell the user that a folder-picker option is already visible.
+- Known issue: despite the prompt's general file-control limits, the model can still invent file-listing answers. The next folder-search work must intercept file-list requests in the renderer and direct the user to a native folder-picker workflow until the constrained search tool exists.
+- Security boundary: renderer-originated paths and app arguments are never launched. The main process holds a five-minute, one-use selection token, validates that the selected item is a real `.exe`, stores its real path, accepts only its stored ID to launch, and launches with no user-controlled arguments. Chat open requests receive local Activity guidance instead of reaching the model.
+- Automated validation passed: `npm.cmd --prefix apps\\desktop run check`, syntax check for `computer-control.js`, an isolated persistent-registry test covering initial File Explorer migration, approved-ID resolution, removal, and invalid-ID rejection, plus `git diff --check`.
+- Known issue: full in-app manual testing of choosing, approving, launching, cancelling, removing, and restart persistence remains required. Zen can open approved apps only; it cannot make arbitrary changes inside apps.
+- Exact next recommended step: restart Zen, use **Activity → Add an approved app** to approve one non-critical app, test cancellation then launch, restart Zen to confirm persistence, then remove its approval to verify revocation.
+
+- August 7, 2026 Day 8 bug fix: the new website confirmation dialog could appear with a blank destination and leave the user unable to act on it. The issue was isolated to renderer-side modal lifecycle handling: temporary listeners and lack of a complete-preview guard made the dialog state fragile.
+- Follow-up root cause confirmed from the live screenshot: `.modal-backdrop { display: grid; }` overrode the native `hidden` attribute because it has equal CSS specificity and appears later in the stylesheet. This made the empty confirmation dialog display immediately at startup, where no pending request exists for its buttons to resolve.
+- Added `.modal-backdrop[hidden] { display: none !important; }`. The dialog is now absent until a verified website preview deliberately removes `hidden`.
+- User manual validation passed: after restarting Zen, the website confirmation flow works correctly and the empty startup overlay is gone.
+- August 7, 2026 diagnosis from user screenshot: Zen's chat model replied that it could open File Explorer and displayed `C:\`, but no File Explorer tool, allowlist entry, confirmation, or execution path exists. This was a misleading model-generated chat response; it did not open File Explorer inside Zen or in Windows. The displayed path is plain message text.
+- August 7, 2026 File Explorer implementation: the user's explicit approval added one code-owned app registry entry for `C:\Windows\explorer.exe`, with the fixed destination `C:\`. The Activity page now offers **Open File Explorer**, previews that destination, requires confirmation, launches only that verified executable, and writes a local activity record. It accepts no user-supplied app path or arguments.
+- Chat no longer forwards a File Explorer open request to the model. It displays local guidance to use Activity → Open File Explorer, preventing the earlier false claim. The system prompt also explicitly forbids claims that chat executed a computer action.
+- Validation pending: manually confirm Open File Explorer starts Windows File Explorer at `C:\`, then cancel it in a second test and verify the activity log records both results. Automated syntax, registry, and diff checks remain to be run.
+- Exact next recommended step: restart Zen and run those two File Explorer confirmation tests; only then consider adding a second explicitly named app.
+- The confirmation dialog now fails closed when no verified URL and hostname are present. Approve, Cancel, Escape, and a backdrop click are permanently wired to a single pending-confirmation state; closing restores focus to the originating control. No missing destination can reach `shell.openExternal`.
+- Validation passed: static renderer/main/preload/tool-module checks and `git diff --check`. Manual desktop verification is still required: submit a normal HTTPS site, cancel, press Escape, click the backdrop, and enter an invalid value; confirm no dialog appears for invalid input and no action occurs after cancellation.
+- Exact next recommended step: restart Zen and run that five-case manual confirmation check before relying on the website-opening flow.
+
+- August 7, 2026 Day 8 implementation: added a code-owned local tool registry, browser-local activity log (newest 200 records), Activity page, confirmation modal with Cancel as the initial focus, and a live user-provided HTTPS website-opening flow. The renderer requests a main-process preview first; the main process validates the destination again after approval and only then calls Windows' default-browser opener. The old unrestricted new-window handler now always denies new window requests.
+- Website validation accepts only complete HTTPS URLs without embedded credentials, control characters, or fragments. All requests, cancellations, validation rejections, failures, and successful opens receive a local safe activity record. Clearing the log requires confirmation.
+- App opening remains unavailable because the code-owned app registry is intentionally empty. Folder search is not implemented. No action can be triggered by chat text.
+- Validation passed: `npm.cmd --prefix apps\desktop run check`, `node --check apps\desktop\src\main\computer-control.js`, focused validator checks for valid HTTPS and rejected HTTP/file/credential/fragment/malformed inputs, and `git diff --check`.
+- Git state: existing uncommitted changes remain in the desktop app, `README.md`, `HANDOFF.md`, and `docs/Voice.md`; new untracked `docs/ComputerControl.md` and `apps/desktop/src/main/computer-control.js` are part of Day 8 work. The pre-existing `deliverables/` directory remains untouched.
+- Known issue: live desktop confirmation, default-browser opening, cancellation, and activity-log persistence still need manual user testing. Initial app names are required before Zen can safely add an app allowlist.
+- Exact next recommended step: manually verify the Activity website flow with one normal HTTPS site, one cancellation, and one rejected address; then name the first installed apps you want Zen to be allowed to open.
+
+- August 7, 2026 Day 8 design is complete. Added `docs/ComputerControl.md`, which fixes the initial scope to confirmed opens of registry-approved apps and user-provided HTTPS websites, plus one-time folder-granted file-name search. It documents strict exclusions, modal wording, validation rules, a local activity-log schema and 200-record retention limit, execution sequence, and the pre-enable test matrix.
+- No computer-control code or ability was enabled. The initial app allowlist remains intentionally empty until the user names apps they want Zen to approve.
+- Validation: reviewed the design against `docs/PRD.md`, `docs/Architecture.md`, `docs/Roadmap.md`, and Zen's local-first safety requirements.
+- Exact next recommended step: implement the code-owned tool registry and browser-local activity-log service from `docs/ComputerControl.md`; retain an empty app allowlist until the user supplies approved app names.
+
+- August 7, 2026 interface improvement: removed the fixed 920px maximum width from the main content column. On wider desktop windows, Chat and Settings now use the previously unused right-side space; message bubbles retain their own readable maximum width. This area was not reserved for a future feature.
+- Validation passed: CSS change is limited to the main content width; `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed. The user should visually confirm the wider layout after restarting Zen.
+- August 7, 2026 appearance update: used the user's supplied Lavender Dream and True Black palette ideas to add three saved full-interface presets: Deep violet (default dark), Lavender light, and True black. Added a saved Lavender, Periwinkle, or Soft plum accent choice. Existing saved `Dark` and `Light` settings migrate safely to Deep violet and Lavender light.
+- Appearance personalization: Settings now also offers Small, Default, and Large text sizes; Compact, Comfortable, and Spacious chat spacing; and a Custom accent colour picker. The custom accent is applied only to accent surfaces, and Zen automatically selects the stronger of near-black or white button text for that colour.
+- Additional settings: interface font (Modern sans, Soft rounded, Classic serif), Rounded/Square chat bubbles, and Reset appearance are now saved locally. These settings only affect the Settings and chat interface; the homepage workflow remains unchanged.
+- Read-aloud speed: added slower (0.8×), normal (1×), faster (1.2×), and fastest (1.4×) choices. The selected speed crosses the secure Electron bridge as a validated value and Piper receives the equivalent local `--length-scale`. A direct Ryan 1.2× Piper verification WAV was generated successfully (89,644 bytes) and deleted.
+- Appearance previews and shortcut: Settings now shows three clickable live preview cards and a live current-style preview. The user may set or clear their own safe appearance shortcut; it cycles themes only while Zen is focused. The capture process blocks unsafe/reserved shortcuts, and F8/F9 remain reserved for voice controls.
+- Per-voice speed: each read-aloud voice now remembers its own selected speed. The old single saved speed is safely migrated to the previously selected voice.
+- User validation passed: all appearance controls, preview cards, custom shortcut, per-voice speech speed, and persistence after restart work correctly in the desktop app.
+- Validation passed: `npm.cmd --prefix apps\\desktop run check` and `git diff --check` passed after the theme, appearance, speed, preview, and shortcut work. The feature changes and updated continuity documentation are currently uncommitted; pre-existing `deliverables/` remains untouched.
 - Remaining project work begins with a permission-first design for safe desktop actions. No computer-control capability is enabled yet.
 - Step 1: define a small approved action list and non-negotiable confirmation rules. Recommended initial scope: open a named installed app, open a user-provided website, and search only a user-selected folder. Do not add arbitrary command execution, unrestricted file access, or background automation.
 - Step 2: implement a local tool registry and activity log that records requested action, preview, user approval/cancellation, result, and errors.
@@ -43,7 +97,7 @@ The continuity rule above was added on August 6, 2026. `AGENTS.md` contains the 
 - Step 4: manually test approval, cancellation, unavailable apps, invalid URLs, inaccessible folders, and audit records before enabling each action.
 - Git state: `v0.1.0` is an annotated local source-release tag on `77a549f`; `main` contains the Week 2 plan as `docs: outline Week 2 next steps`. The only untracked item is the pre-existing untouched `deliverables/` directory.
 - Known issue: none confirmed. A Windows installer remains future work pending packaging and license review.
-- Exact next recommended step: agree the Week 2 action scope and confirmation wording, then implement the local tool registry and activity log.
+- Exact next recommended step: visually confirm the wider desktop layout and new appearance presets, then agree the Week 2 action scope and confirmation wording before implementing the local tool registry and activity log.
 
 #### Day 6 — reliability validation started
 
@@ -189,6 +243,24 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - `apps/desktop/src/renderer/renderer.js` — chat state and UI behaviour.
 
 ## Recommended Immediate Steps
+
+### Week 2 plan reconfirmed — August 7, 2026
+
+- The Week 2 plan was restated to the user; no product code or behaviour changed.
+- Scope remains permission-first safe computer control: agree the initial approved actions and confirmation wording; build a local tool registry and activity log; add preview-and-confirm opening of approved apps and user-provided websites; add file search limited to folders explicitly selected by the user; then test approval, cancellation, unavailable apps, invalid URLs, inaccessible folders, and audit records.
+- Validation: reviewed `README.md` and `docs/Roadmap.md` against this handoff.
+- Git state: existing uncommitted modifications remain in `HANDOFF.md`, `README.md`, the desktop app sources, and `docs/Voice.md`; the pre-existing untracked `deliverables/` directory remains untouched.
+- Known issues: none confirmed.
+- Exact next recommended step: agree the three initial allowed action types and the precise confirmation text before implementation.
+
+### Day 8 plan — August 7, 2026
+
+- Day 8 is the design-and-safety foundation for Week 2; no computer-control action should be enabled until its approved scope and confirmation rules are agreed.
+- Steps: inventory the proposed first actions; define their allowed inputs and explicit exclusions; assign action levels; write the preview and confirmation wording; define cancellation and error behaviour; define the local activity-log fields and retention; review the design against Zen's local-first/privacy rules; then obtain user approval before implementation begins.
+- Validation: plan derived from the Week 2 roadmap and safe-computer-control checkpoint.
+- Git state: existing uncommitted modifications remain in `HANDOFF.md`, `README.md`, the desktop app sources, and `docs/Voice.md`; the pre-existing untracked `deliverables/` directory remains untouched.
+- Known issues: none confirmed.
+- Exact next recommended step: approve the Day 8 action scope and confirmation wording.
 
 1. Start Zen with the command in **Start Here** or the desktop shortcut.
 2. Implement the friendly missing-bridge guard described above.
