@@ -386,6 +386,16 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Git state: Day 14 is committed separately as `feat: complete Day 14 local document previews`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched.
 - Exact next recommended step: plan Day 15 as an explicit per-question local document Q&A design; do not place document text into Ollama prompts until the user sees and approves the exact selected context.
 
+## Day 15 — document Q&A design complete (August 8, 2026)
+
+- Added `docs/DocumentQA.md`, defining the next capability before code enables it: the first point where document text is allowed to reach the local Ollama model, gated by an explicit per-question confirmation preview.
+- The design caps a question's context at 3 documents / 4,000 combined characters, excludes PDF (still unavailable per Day 12), requires a Cancel-first confirmation showing the exact excerpts and question before any model call, and fixes a system instruction so the model answers only from provided excerpts and says plainly when they don't contain the answer.
+- Activity logging for `document-qa` is scoped to document display names, character count, and status only — never question text, excerpt text, or the model's answer, consistent with the existing no-text-in-logs rule from Day 11.
+- No document picker, retrieval, prompt change, or model call was enabled in Day 15. No document text has reached Ollama as a result of this work.
+- Validation: design reviewed against `docs/DocumentImport.md`, `docs/Memory.md`, `docs/PRD.md`, and `docs/Architecture.md` for consistency with existing local-first/privacy boundaries.
+- Git state: Day 15 documentation is committed separately as `docs: complete Day 15 document Q&A design`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, and `deliverables/` remain unrelated and untouched. A working `git` (2.53.0) was located at `C:\Users\khans\AppData\Local\github-copilot-git-2.53.0-3\cmd\git.exe`, not on PATH by default; the repo also required a one-time `git config --global --add safe.directory` exception due to a Windows-account ownership mismatch on `.git`.
+- Exact next recommended step: implement Day 16 exactly to this design — native search-result question entry point, confirmation preview, capped context assembly, and the fixed system instruction — then run the Day 16 validation checklist in `docs/DocumentQA.md` before enabling it for regular use.
+
 ## Working Rules
 
 - Keep core functionality local and private by default.

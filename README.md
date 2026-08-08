@@ -151,6 +151,14 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Keep previews intentionally limited to 1,200 characters of local context.
 - [x] Day 14 changes committed as `feat: complete Day 14 local document previews`.
 
+## Day 15 document Q&A design — complete
+
+- [x] Define the confirmation-gated flow that will let a question reach the local model together with locally stored document excerpts.
+- [x] Cap a question's context at 3 documents / 4,000 combined characters, with visible truncation when exceeded.
+- [x] Exclude PDF sources (extraction remains unavailable) and require a Cancel-first preview of the exact excerpts and question before any model call.
+- [x] Scope `document-qa` activity logging to document names, character count, and status only — never question, excerpt, or answer text. See [docs/DocumentQA.md](docs/DocumentQA.md).
+- [ ] Implementation (Day 16): native entry point, confirmation preview, capped context assembly, and the fixed answer-from-excerpts system instruction remain to be built and manually verified.
+
 ## Technology choices
 
 | Area | Choice |
@@ -207,6 +215,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Voice rules and licensing](docs/Voice.md)
 - [Local memory scope](docs/Memory.md)
 - [Document import design](docs/DocumentImport.md)
+- [Document Q&A design](docs/DocumentQA.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
