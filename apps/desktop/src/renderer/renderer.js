@@ -46,7 +46,12 @@ const documentSearchForm = document.querySelector('#document-search-form');
 const documentSearchInput = document.querySelector('#document-search-input');
 const documentSearchHelp = document.querySelector('#document-search-help');
 const documentSearchResults = document.querySelector('#document-search-results');
+const documentQaCard = document.querySelector('#document-qa-card');
+const documentQaForm = document.querySelector('#document-qa-form');
+const documentQuestionInput = document.querySelector('#document-question-input');
+const documentQaHelp = document.querySelector('#document-qa-help');
 let activeDocumentPreview = null;
+let activeDocumentSearchQuery = '';
 const websiteForm = document.querySelector('#website-form');
 const websiteInput = document.querySelector('#website-input');
 const websiteHelp = document.querySelector('#website-help');
@@ -114,7 +119,7 @@ function createConversation() {
 }
 
 function normaliseMessage(message, fallbackTime) {
-  return { role: message.role, content: message.content, createdAt: typeof message.createdAt === 'string' ? message.createdAt : fallbackTime };
+  return { role: message.role, content: message.content, createdAt: typeof message.createdAt === 'string' ? message.createdAt : fallbackTime, documentSources: Array.isArray(message.documentSources) ? message.documentSources.filter((name) => typeof name === 'string' && name).slice(0, 3) : undefined };
 }
 
 function titleFromMessages(conversationMessages) {
@@ -308,14 +313,57 @@ async function chooseDocuments() {
   }
 }
 async function searchImportedDocuments(event) {
-  event.preventDefault(); documentSearchResults.hidden = true; documentSearchHelp.textContent = '';
+  event.preventDefault(); documentSearchResults.hidden = true; documentSearchHelp.textContent = ''; documentQaCard.hidden = true; activeDocumentSearchQuery = '';
   try {
     const result = await window.zen.searchDocuments(documentSearchInput.value);
     documentSearchResults.innerHTML = ''; documentSearchResults.hidden = false;
     if (!result.results.length) { documentSearchHelp.textContent = `No imported documents contain “${result.query}”.`; return; }
+    activeDocumentSearchQuery = result.query;
+    documentQaCard.hidden = false;
     documentSearchHelp.textContent = result.capped ? 'Showing the first 50 matching documents.' : `${result.results.length} imported document${result.results.length === 1 ? '' : 's'} matched.`;
     result.results.forEach((match) => { const row = document.createElement('article'); row.className = 'document-search-result'; const title = document.createElement('strong'); title.textContent = `${match.displayName} · ${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`; const snippet = document.createElement('p'); snippet.textContent = match.snippet; const preview = document.createElement('button'); preview.className = 'secondary-button'; preview.type = 'button'; preview.textContent = 'Preview locally'; preview.addEventListener('click', () => showDocumentPreview(match, result.query)); row.append(title, snippet, preview); documentSearchResults.append(row); });
   } catch (error) { documentSearchHelp.textContent = error.message || 'Zen could not search imported documents.'; }
+}
+async function askAboutDocumentResults(event) {
+  event.preventDefault();
+  if (!activeDocumentSearchQuery || generationForConversation()) return;
+  documentQaHelp.textContent = '';
+  let preview;
+  try {
+    preview = await window.zen.prepareDocumentQuestion(activeDocumentSearchQuery, documentQuestionInput.value);
+  } catch (error) {
+    const entry = createActivity('document-qa', 'Invalid document question');
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_DOCUMENT_QUESTION' });
+    documentQaHelp.textContent = error.message || 'Zen could not prepare that document question.';
+    return;
+  }
+  const names = preview.excerpts.map((excerpt) => excerpt.displayName);
+  const entry = createActivity('document-qa', `${names.join(', ')} · ${preview.characterCount} characters`);
+  try {
+    const excerptText = preview.excerpts.map((excerpt) => `Document: ${excerpt.displayName}\n\n${excerpt.text}`).join('\n\n---\n\n');
+    const approved = await requestActionConfirmation({
+      title: 'Ask Zen about these excerpts?',
+      description: `Zen will send your question and these excerpts to your local model. Nothing leaves this computer.${preview.truncated ? ' The matching text was truncated to Zen’s 3-document / 4,000-character limit.' : ''}`,
+      destination: `Question:\n${preview.question}\n\nApproved excerpts (${preview.characterCount} characters):\n${excerptText}`,
+      approveLabel: 'Ask Zen'
+    });
+    if (!approved) { updateActivity(entry, 'cancelled'); documentQaHelp.textContent = 'Question cancelled. No document text was sent to the local model.'; return; }
+    const conversation = activeConversation();
+    conversation.messages.push({ role: 'user', content: preview.question, documentSources: names, createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    showPage('chat');
+    render();
+    const generation = { requestId: crypto.randomUUID(), conversationId: conversation.id, content: '', createdAt: new Date().toISOString(), documentQaActivity: entry };
+    generations.set(generation.requestId, generation);
+    setBusy();
+    renderMessages();
+    window.zen.startDocumentQuestion(preview.token, generation.requestId, messagePayload(), settings.model);
+    documentQuestionInput.value = '';
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: error.code || 'DOCUMENT_QA_FAILED' });
+    documentQaHelp.textContent = error.message || 'Zen could not prepare that document question.';
+  } finally { confirmationApproveButton.textContent = 'Open website'; }
 }
 async function showDocumentPreview(match, query) {
   try {
@@ -541,6 +589,12 @@ function renderMessages() {
     timestamp.dateTime = message.createdAt;
     timestamp.textContent = formatTimestamp(message.createdAt);
     article.append(label, body, timestamp);
+    if (message.role === 'user' && message.documentSources?.length) {
+      const sources = document.createElement('p');
+      sources.className = 'message-source-note';
+      sources.textContent = `Asked with confirmed local excerpts: ${message.documentSources.join(', ')}`;
+      article.append(sources);
+    }
     if (message.role === 'assistant') {
       const readAloudButton = document.createElement('button');
       readAloudButton.className = 'read-aloud-button';
@@ -1228,6 +1282,12 @@ function finishGeneration(requestId, fallbackMessage = '') {
     updateConversationMetadata(conversation);
     saveConversations();
   }
+  if (completedGeneration.documentQaActivity) {
+    const succeeded = Boolean(completedGeneration.content.trim()) && !fallbackMessage;
+    updateActivity(completedGeneration.documentQaActivity, succeeded ? 'completed' : 'failed', succeeded
+      ? { result: `Answer received · ${completedGeneration.content.trim().length} characters` }
+      : { errorCode: 'DOCUMENT_QA_MODEL_FAILED' });
+  }
   render();
   setBusy();
   input.focus();
@@ -1313,6 +1373,7 @@ memoryButton.addEventListener('click', () => { showPage('memory'); renderMemorie
 documentsButton.addEventListener('click', () => { showPage('documents'); loadDocuments(); });
 chooseDocumentsButton.addEventListener('click', chooseDocuments);
 documentSearchForm.addEventListener('submit', searchImportedDocuments);
+documentQaForm.addEventListener('submit', askAboutDocumentResults);
 memoryForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const text = memoryText.value.trim();

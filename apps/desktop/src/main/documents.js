@@ -10,6 +10,8 @@ const SUPPORTED_EXTENSIONS = new Set([...TEXT_EXTENSIONS, '.pdf']);
 const MAX_SEARCH_QUERY_LENGTH = 200;
 const MAX_SEARCH_RESULTS = 50;
 const MAX_PREVIEW_LENGTH = 1200;
+const MAX_QA_DOCUMENTS = 3;
+const MAX_QA_CONTEXT_LENGTH = 4000;
 let documentsPath = '';
 
 function configureDocuments(userDataPath) { documentsPath = path.join(userDataPath, 'documents.json'); }
@@ -103,6 +105,52 @@ function documentPreview(id, query, occurrence = 0) {
   const end = Math.min(item.extractedText.length, start + MAX_PREVIEW_LENGTH);
   return { id: item.id, displayName: item.displayName, type: item.type, occurrence, text: `${start ? '…' : ''}${item.extractedText.slice(start, end)}${end < item.extractedText.length ? '…' : ''}` };
 }
+function validateDocumentQuestion(question) {
+  if (typeof question !== 'string' || !question.trim() || question.length > 4000 || /[\u0000-\u001f\u007f]/.test(question)) {
+    throw safeError('Enter a plain-text question up to 4,000 characters long.', 'INVALID_DOCUMENT_QUESTION');
+  }
+  return question.trim();
+}
+function excerptForMatch(text, needle, limit) {
+  const index = text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
+  if (index < 0) return null;
+  const excerptLength = Math.min(limit, text.length);
+  const start = Math.max(0, Math.min(index - Math.floor((excerptLength - needle.length) / 2), text.length - excerptLength));
+  const end = start + excerptLength;
+  return `${start ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`;
+}
+function prepareDocumentQuestion(query, question) {
+  const search = searchDocuments(query);
+  const validatedQuestion = validateDocumentQuestion(question);
+  if (!search.results.length) throw safeError('No imported documents match that search. Nothing was sent to the local model.', 'NO_DOCUMENT_MATCH');
+  const records = readStoredDocuments();
+  const excerpts = [];
+  let characterCount = 0;
+  for (const result of search.results) {
+    if (excerpts.length >= MAX_QA_DOCUMENTS || characterCount >= MAX_QA_CONTEXT_LENGTH) break;
+    const item = records.find((entry) => entry?.id === result.id && entry.status === 'imported' && typeof entry.extractedText === 'string');
+    if (!item) continue;
+    const remaining = MAX_QA_CONTEXT_LENGTH - characterCount;
+    const excerpt = excerptForMatch(item.extractedText, search.query, remaining);
+    if (!excerpt) continue;
+    excerpts.push({ id: item.id, displayName: item.displayName, text: excerpt, contentHash: item.contentHash });
+    characterCount += excerpt.length;
+  }
+  if (!excerpts.length) throw safeError('No imported documents are still available for that question.', 'NO_DOCUMENT_MATCH');
+  return { query: search.query, question: validatedQuestion, excerpts, characterCount, truncated: search.results.length > excerpts.length || characterCount >= MAX_QA_CONTEXT_LENGTH };
+}
+function verifyDocumentQuestion(context) {
+  if (!context || !Array.isArray(context.excerpts) || !context.excerpts.length || context.excerpts.length > MAX_QA_DOCUMENTS) throw safeError('This document question is invalid.', 'INVALID_DOCUMENT_QUESTION');
+  const records = readStoredDocuments();
+  let characterCount = 0;
+  for (const excerpt of context.excerpts) {
+    const item = records.find((entry) => entry?.id === excerpt.id && entry.status === 'imported' && typeof entry.extractedText === 'string');
+    if (!item || item.contentHash !== excerpt.contentHash) throw safeError('A document was removed or changed before confirmation. Nothing was sent to the local model.', 'DOCUMENT_CONTEXT_CHANGED');
+    characterCount += excerpt.text.length;
+  }
+  if (characterCount !== context.characterCount || characterCount > MAX_QA_CONTEXT_LENGTH) throw safeError('The document context exceeds Zen’s safety limit.', 'DOCUMENT_CONTEXT_LIMIT');
+  return context;
+}
 function removeDocument(id) {
   if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) throw safeError('That document record is invalid.', 'INVALID_DOCUMENT');
   const documents = readStoredDocuments();
@@ -111,4 +159,4 @@ function removeDocument(id) {
   writeStoredDocuments(documents.filter((entry) => entry.id !== id));
   return { id: item.id, displayName: item.displayName };
 }
-module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument };
+module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument };

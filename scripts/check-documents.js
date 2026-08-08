@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument } = require('../apps/desktop/src/main/documents');
+const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument } = require('../apps/desktop/src/main/documents');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-documents-'));
 try {
@@ -32,6 +32,37 @@ try {
   assert.throws(() => searchDocuments(''), /plain-text/);
   assert.throws(() => importDocuments([binaryPath]), /plain-text/);
   assert.throws(() => importDocuments([pdfPath]), /PDF text extraction/);
+
+  // Document Q&A (Day 16): context preparation, caps, and tamper detection.
+  const qaContext = prepareDocumentQuestion('local', 'What does the note say?');
+  assert.equal(qaContext.question, 'What does the note say?');
+  assert.ok(qaContext.excerpts.length >= 1 && qaContext.excerpts.length <= 3, 'excerpts must respect the 3-document cap');
+  assert.ok(qaContext.characterCount <= 4000, 'combined excerpt length must respect the 4,000-character cap');
+  assert.ok(qaContext.excerpts.every((excerpt) => typeof excerpt.contentHash === 'string' && excerpt.contentHash.length === 64));
+  assert.deepEqual(verifyDocumentQuestion(qaContext).query, qaContext.query, 'verification must accept an unmodified context');
+
+  assert.throws(() => prepareDocumentQuestion('local', ''), /plain-text question/);
+  assert.throws(() => prepareDocumentQuestion('local', 'x'.repeat(4001)), /plain-text question/);
+  assert.throws(() => prepareDocumentQuestion('no-such-term-anywhere', 'A question'), /No imported documents match/);
+
+  const tamperedContext = { ...qaContext, excerpts: qaContext.excerpts.map((excerpt) => ({ ...excerpt, contentHash: 'tampered' })) };
+  assert.throws(() => verifyDocumentQuestion(tamperedContext), /removed or changed/, 'a content-hash mismatch must fail closed');
+
+  const overCapContext = { ...qaContext, characterCount: 999999 };
+  assert.throws(() => verifyDocumentQuestion(overCapContext), /safety limit/, 'a characterCount above the cap must fail closed');
+
+  const emptyContext = { ...qaContext, excerpts: [] };
+  assert.throws(() => verifyDocumentQuestion(emptyContext), /invalid/, 'an empty excerpt set must be rejected');
+
+  const throwawayPath = path.join(root, 'throwaway-local.txt');
+  fs.writeFileSync(throwawayPath, 'Local throwaway content for removal testing.');
+  const [throwawayRecord] = importDocuments([throwawayPath]);
+  const throwawayContext = prepareDocumentQuestion('local', 'Any question');
+  const throwawayExcerpt = throwawayContext.excerpts.find((excerpt) => excerpt.id === throwawayRecord.id);
+  assert.ok(throwawayExcerpt, 'the throwaway document should appear in a fresh "local" search');
+  removeDocument(throwawayRecord.id);
+  assert.throws(() => verifyDocumentQuestion(throwawayContext), /removed or changed/, 'a document removed after preview must fail closed at confirmation');
+
   removeDocument(imported[0].id);
   assert.equal(listDocuments().length, 1);
   assert.throws(() => removeDocument('../../notes.txt'), /invalid/);

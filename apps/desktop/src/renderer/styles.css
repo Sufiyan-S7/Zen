@@ -95,7 +95,8 @@ h2 { font-size: clamp(30px, 4vw, 45px); line-height: 1.02; }
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(4, 3, 10, .66); backdrop-filter: blur(5px); }
 .confirmation-modal { width: min(470px, 100%); padding: 26px; border: 1px solid var(--border, #426b51); border-radius: 18px; background: var(--panel, #1b1728); box-shadow: 0 26px 80px rgba(0, 0, 0, .38); }
 .confirmation-modal h2 { margin: 0; font-size: 26px; }.confirmation-modal > p:not(.settings-label) { color: var(--secondary, #c7ddc6); line-height: 1.5; }
-.confirmation-destination { padding: 11px; overflow-wrap: anywhere; border: 1px solid var(--border, #426b51); border-radius: 8px; background: var(--field, #102b1f); color: var(--text, #f2f7ee) !important; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.confirmation-destination { padding: 11px; overflow-wrap: anywhere; border: 1px solid var(--border, #426b51); border-radius: 8px; background: var(--field, #102b1f); color: var(--text, #f2f7ee) !important; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; max-height: 340px; overflow: auto; }
+.message-source-note { margin: 8px 0 0; color: var(--muted, #789484); font-size: 12px; }
 .confirmation-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
 .setting-row { display: flex; align-items: center; gap: 8px; width: min(540px, 100%); }
 .setting-row select { width: auto; flex: 1; }

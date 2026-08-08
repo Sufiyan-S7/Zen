@@ -5,7 +5,7 @@ const fsp = require('node:fs/promises');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
-const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, removeDocument } = require('./documents');
+const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument } = require('./documents');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -35,12 +35,14 @@ const SYSTEM_PROMPT = [
   'Do not claim to control files, apps, or the browser beyond those user-confirmed Activity actions.',
   'Never request or reveal sensitive personal information unless the user explicitly needs it.'
 ].join(' ');
+const DOCUMENT_QA_SYSTEM_PROMPT = 'You are Zen, answering a question from user-approved local document excerpts. Answer only from the provided excerpts. If the excerpts do not contain the answer, say plainly that the answer is not contained in the excerpts. Do not infer unstated document content.';
 const activeRequests = new Map();
 const activeSpeech = new Map();
 const pendingAppSelections = new Map();
 const pendingBrowserWebAppSelections = new Map();
 const pendingFolderSelections = new Map();
 const pendingDocumentSelections = new Map();
+const pendingDocumentQuestions = new Map();
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
@@ -142,7 +144,7 @@ function selectPiperVoice(voiceId) {
   return voice;
 }
 
-ipcMain.on('zen:chat:start', async (event, { requestId, messages, model } = {}) => {
+async function startChatRequest(event, { requestId, messages, model, systemPrompt = SYSTEM_PROMPT } = {}) {
   let key;
   let controller;
   try {
@@ -158,7 +160,7 @@ ipcMain.on('zen:chat:start', async (event, { requestId, messages, model } = {}) 
       body: JSON.stringify({
         model: selectedModel,
         stream: true,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...validateMessages(messages)]
+        messages: [{ role: 'system', content: systemPrompt }, ...validateMessages(messages)]
       })
     });
     if (!response.ok) throw new Error(`Ollama could not respond (${response.status}). Check that ${selectedModel} is installed.`);
@@ -198,7 +200,9 @@ ipcMain.on('zen:chat:start', async (event, { requestId, messages, model } = {}) 
   } finally {
     if (key && activeRequests.get(key) === controller) activeRequests.delete(key);
   }
-});
+}
+
+ipcMain.on('zen:chat:start', (event, request) => startChatRequest(event, request));
 
 ipcMain.on('zen:chat:stop', (event, requestId) => {
   try {
@@ -324,6 +328,26 @@ app.whenReady().then(() => {
   ipcMain.handle('zen:documents:list', () => listDocuments());
   ipcMain.handle('zen:documents:search', (_event, query) => searchDocuments(query));
   ipcMain.handle('zen:documents:preview', (_event, id, query, occurrence) => documentPreview(id, query, occurrence));
+  ipcMain.handle('zen:documents:prepare-question', (event, query, question) => {
+    const context = prepareDocumentQuestion(query, question);
+    const token = crypto.randomUUID();
+    pendingDocumentQuestions.set(token, { webContentsId: event.sender.id, context, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, question: context.question, excerpts: context.excerpts.map(({ id, displayName, text }) => ({ id, displayName, text })), characterCount: context.characterCount, truncated: context.truncated };
+  });
+  ipcMain.on('zen:documents:start-question', (event, { token, requestId, messages, model } = {}) => {
+    const pending = pendingDocumentQuestions.get(token);
+    pendingDocumentQuestions.delete(token);
+    try {
+      if (!pending || pending.webContentsId !== event.sender.id || pending.expiresAt < Date.now()) throw new Error('Review the document excerpts again before asking Zen.');
+      const validatedMessages = validateMessages(messages);
+      if (validatedMessages.at(-1)?.role !== 'user' || validatedMessages.at(-1).content !== pending.context.question) throw new Error('The document question changed. Review the excerpts again before asking Zen.');
+      const context = verifyDocumentQuestion(pending.context);
+      const sourceText = context.excerpts.map((excerpt) => `Document: ${excerpt.displayName}\nExcerpt:\n${excerpt.text}`).join('\n\n---\n\n');
+      startChatRequest(event, { requestId, messages: validatedMessages, model, systemPrompt: `${DOCUMENT_QA_SYSTEM_PROMPT}\n\nApproved excerpts:\n${sourceText}` });
+    } catch (error) {
+      sendStreamEvent(event.sender, 'zen:chat:error', { requestId, message: error.message || 'Zen could not start that document question.' });
+    }
+  });
   ipcMain.handle('zen:documents:choose', async (event) => {
     const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Choose documents to import into Zen', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Supported documents', extensions: ['txt', 'md', 'csv', 'json', 'pdf'] }] });
     if (result.canceled || !result.filePaths.length) return null;

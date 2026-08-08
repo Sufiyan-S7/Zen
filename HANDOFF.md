@@ -403,3 +403,27 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Do not add cloud APIs unless the user explicitly requests them.
 - Preserve existing untracked `deliverables/` content; it was present before Day 2 work.
 - Do not commit or discard existing changes without the user's approval.
+
+## Project progress review (August 8, 2026)
+
+- Reviewed the committed implementation, `README.md`, the four-week roadmap, the product requirements, release guidance, and the latest Day 15 design. No product behavior changed in this review.
+- Progress: the planned work is complete through Day 15 of 28 (about 54% of the calendar plan). Weeks 1 and 2 are implemented and manually validated; Week 3 has local memory plus text-document import, search, and bounded previews. Day 15 is a completed safety design, not a delivered document-Q&A feature.
+- The immediate remaining implementation is Day 16: build confirmation-gated Q&A over selected local document search results, enforcing the 3-document / 4,000-character limits, logging only permitted metadata, and completing every validation item in `docs/DocumentQA.md`.
+- Remaining roadmap themes after Day 16: semantic/PDF document capabilities and safe custom commands; confirmed multi-step workflows; accessibility and error-handling polish; broader automated safety coverage; Windows packaging with voice-license review; backup/export, demo, changelog, and final release readiness.
+- Git state at review: the latest scoped commit is `ef7d9fd docs: complete Day 15 document Q&A design`. Existing unrelated working-tree items remain `docs/Voice.md` (modified), `.cursorrules.txt` (untracked), and `deliverables/` (untracked); they were not changed or included by this review.
+- Known issue: no confirmed product blocker. PDF extraction and document Q&A are intentionally not yet enabled.
+- Exact next recommended step: begin Day 16 exactly as specified in `docs/DocumentQA.md`, then manually validate its cancellation, cap, removal, privacy-log, and answer-grounding behavior before committing the completed day.
+
+## Day 16 — document Q&A implementation complete (August 8, 2026)
+
+- Implemented the Day 15 design end-to-end. In Documents, running a local search that returns at least one match reveals an **Ask about these results** card. Submitting a question calls `prepareDocumentQuestion`, which re-runs the search and assembles up to 3 documents / 4,000 combined characters of excerpts.
+- A Cancel-first confirmation dialog shows the exact question and full excerpt text, with the fixed notice "Zen will send your question and these excerpts to your local model. Nothing leaves this computer." Only a confirmed **Ask Zen** sends the request to Ollama, with a system instruction to answer only from the provided excerpts.
+- The resulting chat message shows a `documentSources` tag ("Asked with confirmed local excerpts: <name>") without duplicating raw excerpt text into conversation storage.
+- Activity logging for `document-qa` now reflects the real chat outcome: entries move `requested` → `completed`/`failed` based on `finishGeneration`, not on dispatch, and invalid/failed preparation also produces a logged entry (`rejected`/`failed`) where it previously did not. Logged fields remain limited to document name(s) and character count — never question, excerpt, or answer text.
+- Fixed stale Documents-page copy that still said chat recall was unavailable, now that confirmed Q&A is live.
+- Added automated coverage in `scripts/check-documents.js`: 3-document cap, 4,000-character cap, content-hash tamper detection, over-cap rejection, empty-excerpt rejection, and the "document removed after preview" fail-closed case. `npm run check` (including this new coverage) passes.
+- Manual validation passed in the running desktop app, using a throwaway local test document: a grounded question correctly answered using a fact that only existed in that document (confirming real grounding, not model prior knowledge); an out-of-scope question did not produce a fabricated answer; Cancel and Escape both resulted in zero model calls and no chat message; the Activity log showed only document name, character count, and status for every `document-qa` entry.
+- Not separately re-verified live this session: the mid-flow "document removed between preview and confirm" case, and the visible-truncation-when-over-cap case. Both are exercised by the Day 16 automated suite above; a live manual pass on these two is a reasonable but non-blocking follow-up.
+- `docs/Voice.md`'s pre-existing duplicate "8." numbering issue remains untouched and unrelated, consistent with every prior day's handling of that file.
+- Git state: committed separately as `feat: complete Day 16 document Q&A implementation` on `main` (run `git log --oneline -1` for the current hash). Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this commit, untouched. Not pushed to `origin/main` pending explicit approval.
+- Exact next recommended step: optionally close the two non-blocking manual checks noted above; then move to the next Week 3/4 roadmap theme (semantic/PDF document capabilities, safe custom commands, or Week 4 workflow/automation planning).

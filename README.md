@@ -157,7 +157,17 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Cap a question's context at 3 documents / 4,000 combined characters, with visible truncation when exceeded.
 - [x] Exclude PDF sources (extraction remains unavailable) and require a Cancel-first preview of the exact excerpts and question before any model call.
 - [x] Scope `document-qa` activity logging to document names, character count, and status only — never question, excerpt, or answer text. See [docs/DocumentQA.md](docs/DocumentQA.md).
-- [ ] Implementation (Day 16): native entry point, confirmation preview, capped context assembly, and the fixed answer-from-excerpts system instruction remain to be built and manually verified.
+- [x] Implementation (Day 16): native entry point, confirmation preview, capped context assembly, and the fixed answer-from-excerpts system instruction are built and manually verified.
+
+## Day 16 document Q&A implementation — complete
+
+- [x] Add an **Ask about these results** entry point that appears once a local document search returns a match.
+- [x] Assemble up to 3 documents / 4,000 combined characters of excerpts and show them in a Cancel-first confirmation before any model call.
+- [x] Send the question and excerpts to the local model only after explicit confirmation, with a fixed answer-from-excerpts-only system instruction.
+- [x] Log `document-qa` activity from the real chat outcome (not on dispatch), scoped to document name(s) and character count only.
+- [x] Add automated coverage for the context caps, tamper detection, and removed-document fail-closed case.
+- [x] Manually verify a grounded answer, an out-of-scope question, Cancel, Escape, and the privacy-safe Activity log in the running app.
+- [ ] Optional follow-up: live manual check of the mid-flow document-removal case and the visible-truncation-over-cap case (both covered by automated tests already).
 
 ## Technology choices
 

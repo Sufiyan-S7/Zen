@@ -148,7 +148,7 @@
         <header>
           <p class="eyebrow">ZEN / LOCAL DOCUMENTS</p>
           <h1 id="documents-title">Choose what Zen may read.</h1>
-          <p class="intro">Zen reads only documents you select and approve. Nothing is uploaded or sent to the chat model.</p>
+          <p class="intro">Zen reads only documents you select and approve. Nothing is uploaded; document excerpts reach the local chat model only after you review and confirm each question.</p>
         </header>
         <div class="settings-stack">
           <section class="settings-card" aria-labelledby="import-documents-title">
@@ -161,7 +161,7 @@
           <section class="settings-card" aria-labelledby="imported-documents-title">
             <p class="settings-label">LOCAL ONLY</p>
             <h2 id="imported-documents-title">Imported documents</h2>
-            <p>Remove deletes Zen’s locally stored text, never the original document. Search and chat recall are not enabled yet.</p>
+            <p>Remove deletes Zen’s locally stored text, never the original document. Search below finds imported text locally; asking a question about search results sends confirmed excerpts to your local model only after you review and approve them.</p>
             <div class="document-list" id="document-list" aria-live="polite"></div>
           </section>
           <section class="settings-card" aria-labelledby="document-search-title">
@@ -169,6 +169,12 @@
             <p>Searches only text Zen already stored from your imports. Zen does not reopen source files or send results to the chat model.</p>
             <form id="document-search-form" class="website-form"><label for="document-search-input">Search imported documents</label><div class="setting-row"><input id="document-search-input" type="search" maxlength="200" autocomplete="off" placeholder="Search text" required /><button type="submit">Search</button></div></form>
             <p class="settings-help" id="document-search-help" aria-live="polite">Up to 50 matching documents are shown.</p><div class="document-search-results" id="document-search-results" hidden aria-live="polite"></div>
+          </section>
+          <section class="settings-card" id="document-qa-card" hidden aria-labelledby="document-qa-title">
+            <p class="settings-label">CONFIRMATION REQUIRED</p><h2 id="document-qa-title">Ask about these results</h2>
+            <p>Zen will find excerpts from up to 3 matching documents. You will see the exact question and excerpts before anything is sent to your local model.</p>
+            <form id="document-qa-form" class="website-form"><label for="document-question-input">Your question</label><div class="setting-row"><input id="document-question-input" type="text" maxlength="4000" autocomplete="off" placeholder="What do these documents say?" required /><button type="submit">Review excerpts</button></div></form>
+            <p class="settings-help" id="document-qa-help" aria-live="polite">Search imported text first, then ask a question from the matching results.</p>
           </section>
         </div>
         <p class="footer">Document access is local and per import. Zen does not watch folders or change source files.</p>
