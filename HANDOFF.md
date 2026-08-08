@@ -1,5 +1,8 @@
 # Zen Project Handoff
 
+> **`SESSION-LOG.md`, in this same folder, has the dated session-by-session history behind these
+> decisions.** Skim its last 2–3 entries alongside this file at the start of any new session.
+
 ## Start Here
 
 Zen is a local-first Windows desktop assistant. It uses Electron for the desktop interface and Ollama for private, on-device AI chat.
@@ -425,5 +428,16 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Manual validation passed in the running desktop app, using a throwaway local test document: a grounded question correctly answered using a fact that only existed in that document (confirming real grounding, not model prior knowledge); an out-of-scope question did not produce a fabricated answer; Cancel and Escape both resulted in zero model calls and no chat message; the Activity log showed only document name, character count, and status for every `document-qa` entry.
 - Not separately re-verified live this session: the mid-flow "document removed between preview and confirm" case, and the visible-truncation-when-over-cap case. Both are exercised by the Day 16 automated suite above; a live manual pass on these two is a reasonable but non-blocking follow-up.
 - `docs/Voice.md`'s pre-existing duplicate "8." numbering issue remains untouched and unrelated, consistent with every prior day's handling of that file.
-- Git state: committed separately as `feat: complete Day 16 document Q&A implementation` on `main` (run `git log --oneline -1` for the current hash). Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this commit, untouched. Not pushed to `origin/main` pending explicit approval.
+- Git state: committed separately as `feat: complete Day 16 document Q&A implementation` on `main` (run `git log --oneline -1` for the current hash). Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this commit, untouched. Pushed to `origin/main` and confirmed matching (both at `5af3eac` as of this update).
 - Exact next recommended step: optionally close the two non-blocking manual checks noted above; then move to the next Week 3/4 roadmap theme (semantic/PDF document capabilities, safe custom commands, or Week 4 workflow/automation planning).
+
+## Day 17 — PDF text extraction design complete (August 9, 2026)
+
+- Added `docs/PDFExtraction.md`, defining the next capability before code enables it: local text-layer PDF extraction to replace Day 12's `PDF_EXTRACTION_UNAVAILABLE` fail-closed behavior.
+- Selected `pdfjs-dist` (Mozilla PDF.js, legacy Node build, Apache-2.0) for text-layer-only extraction — no rendering, no embedded-script execution, no embedded-URI/network resolution. `pdf-parse` was considered and rejected as the primary choice due to inconsistent maintenance of its pinned dependency.
+- Defined fail-closed rejection codes (`PDF_PASSWORD_PROTECTED`, `PDF_MALFORMED`, `PDF_NO_TEXT_LAYER`, `PDF_EXTRACTION_FAILED`) matching Day 12's existing error pattern, and confirmed a successful extraction reuses the existing `documents.json` record shape with no new store or fields.
+- PDF text will reach Ollama only through the existing Day 15/16 confirmation-gated Q&A flow, under the same 3-document/4,000-character cap — no new model-access path.
+- No PDF reading was enabled. `readTextDocument` in `apps/desktop/src/main/documents.js` still rejects every `.pdf` with `PDF_EXTRACTION_UNAVAILABLE` until Day 18 ships.
+- Validation: design reviewed against `docs/DocumentImport.md`, `docs/DocumentQA.md`, `docs/PRD.md`, and `docs/Architecture.md` for consistency with existing local-first/privacy boundaries; `git diff --check` passed.
+- Git state: Day 17 documentation to be committed separately as `docs: complete Day 17 PDF extraction design`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain unrelated and untouched.
+- Exact next recommended step: implement Day 18 exactly to `docs/PDFExtraction.md` — add `pdfjs-dist` as a dependency, extend `readTextDocument` (or a sibling `readPdfDocument`) to extract text-layer content, wire the defined rejection codes, and run the Day 18 validation checklist before enabling PDF import for regular use.

@@ -169,6 +169,14 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Manually verify a grounded answer, an out-of-scope question, Cancel, Escape, and the privacy-safe Activity log in the running app.
 - [ ] Optional follow-up: live manual check of the mid-flow document-removal case and the visible-truncation-over-cap case (both covered by automated tests already).
 
+## Day 17 PDF extraction design — complete
+
+- [x] Select a local PDF text-extraction library: `pdfjs-dist` (Mozilla PDF.js, Apache-2.0), text-layer only, no rendering or embedded-script execution.
+- [x] Define fail-closed rejection codes for password-protected, malformed, image-only, and otherwise-failed PDFs.
+- [x] Confirm extraction reuses the existing local document-record shape with no new store or fields.
+- [x] Keep PDF text out of Ollama except through the existing confirmed Day 15/16 Q&A flow.
+- [ ] Implementation (Day 18): add the dependency, extend `readTextDocument`, wire rejection codes, and manually verify against `docs/PDFExtraction.md`.
+
 ## Technology choices
 
 | Area | Choice |
@@ -226,6 +234,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Local memory scope](docs/Memory.md)
 - [Document import design](docs/DocumentImport.md)
 - [Document Q&A design](docs/DocumentQA.md)
+- [PDF extraction design](docs/PDFExtraction.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
