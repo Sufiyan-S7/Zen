@@ -65,6 +65,17 @@ const browserWebAppName = document.querySelector('#browser-web-app-name');
 const browserWebAppUrl = document.querySelector('#browser-web-app-url');
 const approvedAppsHelp = document.querySelector('#approved-apps-help');
 const approvedAppList = document.querySelector('#approved-app-list');
+const commandBuilderForm = document.querySelector('#command-builder-form');
+const commandNameInput = document.querySelector('#command-name-input');
+const commandStepType = document.querySelector('#command-step-type');
+const commandStepApp = document.querySelector('#command-step-app');
+const commandStepUrl = document.querySelector('#command-step-url');
+const addCommandStepButton = document.querySelector('#add-command-step');
+const stagedCommandStepsElement = document.querySelector('#staged-command-steps');
+const commandBuilderHelp = document.querySelector('#command-builder-help');
+const commandListElement = document.querySelector('#command-list');
+let stagedCommandSteps = [];
+let approvedAppsCache = [];
 const toolStatusList = document.querySelector('#tool-status-list');
 const activityLogElement = document.querySelector('#activity-log');
 const clearActivityLogButton = document.querySelector('#clear-activity-log');
@@ -440,7 +451,10 @@ function renderActivityLog() {
       'approve-app': 'Approve app',
       'approve-browser-web-app': 'Approve browser web app',
       'remove-app-approval': 'Remove app approval',
-      'search-folder': 'Search folder'
+      'search-folder': 'Search folder',
+      'create-custom-command': 'Save custom command',
+      'run-custom-command': 'Run custom command',
+      'remove-custom-command': 'Remove custom command'
     })[entry.action] || entry.action;
     const status = document.createElement('span');
     status.textContent = entry.status;
@@ -891,7 +905,221 @@ async function removeApprovedApp(app) {
 }
 
 async function loadApprovedApps() {
-  try { renderApprovedApps(await window.zen.listApprovedApps()); } catch { approvedAppsHelp.textContent = 'Zen could not load your approved apps.'; }
+  try {
+    approvedAppsCache = await window.zen.listApprovedApps();
+    renderApprovedApps(approvedAppsCache);
+    populateCommandStepAppOptions();
+  } catch {
+    approvedAppsHelp.textContent = 'Zen could not load your approved apps.';
+  }
+}
+
+function populateCommandStepAppOptions() {
+  if (!commandStepApp) return;
+  commandStepApp.innerHTML = '';
+  if (!approvedAppsCache.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No approved apps yet';
+    commandStepApp.append(option);
+    return;
+  }
+  approvedAppsCache.forEach((app) => {
+    const option = document.createElement('option');
+    option.value = app.id;
+    option.textContent = app.label;
+    commandStepApp.append(option);
+  });
+}
+
+function updateCommandStepInputVisibility() {
+  const isApp = commandStepType.value === 'open-approved-app';
+  commandStepApp.hidden = !isApp;
+  commandStepUrl.hidden = isApp;
+}
+
+function renderStagedCommandSteps() {
+  stagedCommandStepsElement.innerHTML = '';
+  if (!stagedCommandSteps.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No steps added yet. A command needs 1–5 steps.';
+    stagedCommandStepsElement.append(empty);
+    return;
+  }
+  stagedCommandSteps.forEach((step, index) => {
+    const row = document.createElement('div');
+    row.className = 'command-step';
+    const label = document.createElement('span');
+    label.textContent = `${index + 1}. ${step.type === 'open-approved-app' ? 'Open app' : 'Open website'} — ${step.label}`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => { stagedCommandSteps.splice(index, 1); renderStagedCommandSteps(); });
+    row.append(label, remove);
+    stagedCommandStepsElement.append(row);
+  });
+}
+
+function addCommandStep() {
+  commandBuilderHelp.textContent = '';
+  if (stagedCommandSteps.length >= 5) { commandBuilderHelp.textContent = 'A custom command supports up to 5 steps.'; return; }
+  if (commandStepType.value === 'open-approved-app') {
+    const app = approvedAppsCache.find((entry) => entry.id === commandStepApp.value);
+    if (!app) { commandBuilderHelp.textContent = 'Approve an app in Zen first, then add it as a step.'; return; }
+    stagedCommandSteps.push({ type: 'open-approved-app', appId: app.id, label: app.label });
+  } else {
+    const url = commandStepUrl.value.trim();
+    if (!url) { commandBuilderHelp.textContent = 'Enter a website address to add this step.'; return; }
+    stagedCommandSteps.push({ type: 'open-website', url, label: url });
+    commandStepUrl.value = '';
+  }
+  renderStagedCommandSteps();
+}
+
+async function saveCustomCommand(event) {
+  event.preventDefault();
+  commandBuilderHelp.textContent = '';
+  const name = commandNameInput.value.trim();
+  if (!name) { commandBuilderHelp.textContent = 'Enter a name for this command.'; return; }
+  if (!stagedCommandSteps.length) { commandBuilderHelp.textContent = 'Add at least one step before saving.'; return; }
+  const rawSteps = stagedCommandSteps.map((step) => (step.type === 'open-approved-app' ? { type: step.type, appId: step.appId } : { type: step.type, url: step.url }));
+  try {
+    const preview = await window.zen.previewCommand(name, rawSteps);
+    const entry = createActivity('create-custom-command', `${preview.name} · ${preview.steps.length} step${preview.steps.length === 1 ? '' : 's'}`);
+    const approved = await requestActionConfirmation({
+      title: `Save "${preview.name}"?`,
+      description: 'Zen will save this named sequence. It replays only apps and websites you have already approved, and still asks before every run.',
+      destination: preview.steps.map((step, index) => `${index + 1}. ${step.label} → ${step.destination}`).join('\n'),
+      approveLabel: 'Save command'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      commandBuilderHelp.textContent = 'Command not saved.';
+      return;
+    }
+    await window.zen.createCommand(name, rawSteps);
+    updateActivity(entry, 'completed');
+    commandBuilderHelp.textContent = `"${preview.name}" saved locally.`;
+    commandNameInput.value = '';
+    stagedCommandSteps = [];
+    renderStagedCommandSteps();
+    await loadCommands();
+  } catch (error) {
+    const entry = createActivity('create-custom-command', 'Invalid custom command');
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_CUSTOM_COMMAND' });
+    commandBuilderHelp.textContent = error.message || 'Zen could not save that command.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function runCustomCommand(command) {
+  commandBuilderHelp.textContent = '';
+  try {
+    const prepared = await window.zen.prepareCommandRun(command.id);
+    const entry = createActivity('run-custom-command', `${prepared.name} · ${prepared.steps.length} step${prepared.steps.length === 1 ? '' : 's'}`);
+    const approved = await requestActionConfirmation({
+      title: `Run "${prepared.name}"?`,
+      description: 'Zen will run each step below in order. It stops and tells you if a step fails.',
+      destination: prepared.steps.map((step, index) => `${index + 1}. ${step.label} → ${step.destination}`).join('\n'),
+      approveLabel: 'Run command'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      commandBuilderHelp.textContent = 'Run cancelled.';
+      return;
+    }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Running…';
+    try {
+      const outcome = await window.zen.runCommand(command.id);
+      const completedCount = outcome.results.filter((result) => result.status === 'completed').length;
+      updateActivity(entry, outcome.completed ? 'completed' : 'failed', { result: `${completedCount}/${outcome.results.length} steps completed`, errorCode: outcome.completed ? '' : 'CUSTOM_COMMAND_STEP_FAILED' });
+      commandBuilderHelp.textContent = outcome.completed
+        ? `"${outcome.name}" ran all ${outcome.results.length} step${outcome.results.length === 1 ? '' : 's'}.`
+        : `"${outcome.name}" stopped after ${completedCount} of ${outcome.results.length} steps. Nothing further ran.`;
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    commandBuilderHelp.textContent = error.message || 'Zen could not run that command.';
+  }
+}
+
+async function removeCustomCommand(command) {
+  const entry = createActivity('remove-custom-command', command.name);
+  try {
+    const approved = await requestActionConfirmation({
+      title: `Remove "${command.name}"?`,
+      description: 'Zen will delete this saved sequence. The apps and websites it referenced stay approved on their own.',
+      destination: command.name,
+      approveLabel: 'Remove command'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      commandBuilderHelp.textContent = 'Removal cancelled.';
+      return;
+    }
+    await window.zen.removeCommand(command.id);
+    updateActivity(entry, 'completed');
+    commandBuilderHelp.textContent = `"${command.name}" removed locally.`;
+    await loadCommands();
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'REMOVE_CUSTOM_COMMAND_FAILED' });
+    commandBuilderHelp.textContent = error.message || 'Zen could not remove that command.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+function renderCommandList(commands = []) {
+  commandListElement.innerHTML = '';
+  if (!commands.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No custom commands saved yet.';
+    commandListElement.append(empty);
+    return;
+  }
+  commands.forEach((command) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app command-entry';
+    const label = document.createElement('strong');
+    label.textContent = command.name;
+    const steps = document.createElement('ol');
+    command.steps.forEach((step) => {
+      const item = document.createElement('li');
+      if (step.unavailable) {
+        item.className = 'unavailable';
+        item.textContent = `${step.type === 'open-approved-app' ? 'Open app' : 'Open website'} — unavailable (${step.reason})`;
+      } else {
+        item.textContent = `${step.type === 'open-approved-app' ? 'Open app' : 'Open website'} — ${step.label}`;
+      }
+      steps.append(item);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'approved-app-actions';
+    const run = document.createElement('button');
+    run.type = 'button';
+    run.textContent = 'Run';
+    run.disabled = command.steps.some((step) => step.unavailable);
+    run.addEventListener('click', () => runCustomCommand(command));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => removeCustomCommand(command));
+    actions.append(run, remove);
+    row.append(label, steps, actions);
+    commandListElement.append(row);
+  });
+}
+
+async function loadCommands() {
+  try { renderCommandList(await window.zen.listCommands()); } catch { commandBuilderHelp.textContent = 'Zen could not load your custom commands.'; }
 }
 
 function renderFolderSearchResults(result) {
@@ -1261,6 +1489,9 @@ async function initialise() {
   loadVoiceStatus();
   loadToolStatus();
   loadApprovedApps();
+  loadCommands();
+  renderStagedCommandSteps();
+  updateCommandStepInputVisibility();
   renderActivityLog();
   try {
     const status = await window.zen.getStatus();
@@ -1389,6 +1620,12 @@ websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
 browserWebAppForm.addEventListener('submit', addBrowserWebApp);
+commandStepType.addEventListener('change', updateCommandStepInputVisibility);
+addCommandStepButton.addEventListener('click', addCommandStep);
+commandStepUrl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') { event.preventDefault(); addCommandStep(); }
+});
+commandBuilderForm.addEventListener('submit', saveCustomCommand);
 confirmationApproveButton.addEventListener('click', () => closeWebsiteConfirmation(true));
 confirmationCancelButton.addEventListener('click', () => closeWebsiteConfirmation(false));
 confirmationModal.addEventListener('click', (event) => {

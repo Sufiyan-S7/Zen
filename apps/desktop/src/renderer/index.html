@@ -222,6 +222,25 @@
               <div class="folder-search-results" id="folder-search-results" hidden aria-live="polite"></div>
             </form>
           </section>
+          <section class="settings-card" aria-labelledby="custom-commands-title">
+            <p class="settings-label">SAVED SEQUENCES</p>
+            <h2 id="custom-commands-title">Custom commands</h2>
+            <p>Bundle apps and websites you've already approved into one named, reviewable sequence. A command grants no new capability — it only replays actions you separately approved, and still shows every step before it saves or runs.</p>
+            <form id="command-builder-form" class="website-form">
+              <label for="command-name-input">Command name</label>
+              <input id="command-name-input" type="text" autocomplete="off" placeholder="Morning setup" maxlength="60" required />
+              <label for="command-step-type">Add a step</label>
+              <div class="setting-row">
+                <select id="command-step-type"><option value="open-approved-app">Open an approved app</option><option value="open-website">Open a website</option></select>
+                <select id="command-step-app"></select>
+                <input id="command-step-url" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com" maxlength="2048" hidden />
+                <button id="add-command-step" type="button">Add step</button>
+              </div>
+              <div class="command-steps" id="staged-command-steps" aria-live="polite"></div>
+              <div class="setting-row"><button type="submit">Save command</button><span class="settings-help" id="command-builder-help" aria-live="polite"></span></div>
+            </form>
+            <div class="approved-app-list" id="command-list" aria-live="polite"></div>
+          </section>
           <section class="settings-card" aria-labelledby="tool-status-title">
             <p class="settings-label">APPROVED TOOLS</p>
             <h2 id="tool-status-title">What Zen can do</h2>

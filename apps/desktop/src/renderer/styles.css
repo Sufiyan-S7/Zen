@@ -91,6 +91,11 @@ h2 { font-size: clamp(30px, 4vw, 45px); line-height: 1.02; }
 .folder-search-result strong { font-size: 14px; }
 .folder-search-result span { color: var(--muted, #789484); font-size: 12px; text-transform: capitalize; }
 .folder-search-result p { margin: 0; overflow-wrap: anywhere; color: var(--secondary, #c7ddc6); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.command-steps { display: grid; gap: 8px; margin-top: 12px; }
+.command-step { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border: 1px solid var(--border, #426b51); border-radius: 8px; background: var(--field, #102b1f); font-size: 13px; }
+.command-step button { padding: 6px 9px; }
+.command-entry ol { margin: 8px 0 0; padding-left: 18px; color: var(--secondary, #c7ddc6); font-size: 13px; line-height: 1.5; }
+.command-entry .unavailable { color: #ed928b; }
 .modal-backdrop[hidden] { display: none !important; }
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(4, 3, 10, .66); backdrop-filter: blur(5px); }
 .confirmation-modal { width: min(470px, 100%); padding: 26px; border: 1px solid var(--border, #426b51); border-radius: 18px; background: var(--panel, #1b1728); box-shadow: 0 26px 80px rgba(0, 0, 0, .38); }

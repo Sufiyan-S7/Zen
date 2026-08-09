@@ -186,6 +186,15 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] `npm run check` passes in full, permanently, not just for this session.
 - [ ] Live click-through in the running app (native picker → import → restart → confirm persistence → ask via the real confirmation dialog UI). Not automated this session due to desktop conditions (active call, overlapping windows) making further remote clicking unsafe to continue. Non-blocking — the same code path is already exercised programmatically above.
 
+## Day 19 safe custom commands — complete
+
+- [x] Define and build named, saved 1–5-step sequences that replay only already-approved apps/websites — no new execution primitive. See [Custom commands design](docs/CustomCommands.md).
+- [x] Every step re-resolves live against the existing approved-app/website validators at save time and again at run time; a removed approval fails that step closed instead of running blind.
+- [x] One Cancel-first confirmation for the whole sequence (build/save and run), not one per internal step, per explicit user direction.
+- [x] Add `create-custom-command` / `run-custom-command` / `remove-custom-command` activity logging, scoped to name and step count/outcome only.
+- [x] Add automated coverage (`scripts/check-custom-commands.js`) and manual in-app verification before committing.
+- [x] Day 19 changes committed as `feat: complete Day 19 custom commands`.
+
 ## Technology choices
 
 | Area | Choice |
@@ -220,6 +229,7 @@ The first command downloads Electron once. Zen opens as a local desktop chat app
 - Open **Settings** to select an installed Ollama model, Light or Dark theme, microphone, and read-aloud voice.
 - Open **Activity** to review a user-provided HTTPS website before opening it. Zen shows the normalized destination and requires your confirmation; activity records stay local. Zen validates the address, not whether the remote site will return a 404 or sign-in page.
 - In **Activity → Choose what Zen may open**, select a Windows app to approve. Zen saves the approval locally, asks again before every launch, and lets you remove it at any time. For a Chrome/Edge/Brave/Opera/Vivaldi web app, use the browser-web-app form to save a fixed name, browser launcher, and HTTPS address; Zen will not accept arbitrary browser arguments.
+- In **Activity → Custom commands**, bundle apps/websites you've already approved into a named, saved sequence of up to 5 steps. Saving and running each show one confirmation listing every step; Zen replays only what you separately approved.
 - In **Settings → Appearance**, use live theme preview cards and choose any safe appearance shortcut to cycle presets while Zen is focused. F8 and F9 remain reserved for voice recording.
 - Hold **F8** to speak; release it to transcribe locally. Press **F9** once to start locked recording and again to stop it.
 - Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce; Settings can save a slower, normal, faster, or fastest read-aloud speed.
@@ -244,6 +254,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Document import design](docs/DocumentImport.md)
 - [Document Q&A design](docs/DocumentQA.md)
 - [PDF extraction design](docs/PDFExtraction.md)
+- [Custom commands design](docs/CustomCommands.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

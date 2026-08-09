@@ -6,6 +6,7 @@ const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
 const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument } = require('./documents');
+const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -256,6 +257,7 @@ function createWindow() {
 app.whenReady().then(() => {
   configureApprovedApps(app.getPath('userData'));
   configureDocuments(app.getPath('userData'));
+  configureCustomCommands(app.getPath('userData'));
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
   ipcMain.handle('zen:tools:preview-website', (_event, url) => websitePreview(url));
@@ -363,6 +365,33 @@ app.whenReady().then(() => {
     return importDocuments(selection.filePaths);
   });
   ipcMain.handle('zen:documents:remove', (_event, id) => removeDocument(id));
+  ipcMain.handle('zen:commands:list', () => listCommands());
+  ipcMain.handle('zen:commands:preview', (_event, name, steps) => previewCommand(name, steps));
+  ipcMain.handle('zen:commands:create', (_event, name, steps) => createCommand(name, steps));
+  ipcMain.handle('zen:commands:remove', (_event, id) => removeCommand(id));
+  ipcMain.handle('zen:commands:prepare-run', (_event, id) => prepareCommandRun(id));
+  ipcMain.handle('zen:commands:run', async (_event, id) => {
+    // Re-validate fresh right before executing rather than trusting an earlier prepare-run
+    // call; a step could have been invalidated in between (e.g. approval removed).
+    const prepared = prepareCommandRun(id);
+    const results = [];
+    for (const step of prepared.steps) {
+      try {
+        if (step.type === 'open-approved-app') {
+          const entry = approvedApp(step.appId);
+          const child = spawn(entry.executable, entry.arguments || [], { detached: true, stdio: 'ignore', windowsHide: true });
+          child.unref();
+        } else if (step.type === 'open-website') {
+          await shell.openExternal(step.url);
+        }
+        results.push({ type: step.type, label: step.label, destination: step.destination, status: 'completed' });
+      } catch {
+        results.push({ type: step.type, label: step.label, destination: step.destination, status: 'failed', errorCode: 'STEP_EXECUTION_FAILED' });
+        break;
+      }
+    }
+    return { id: prepared.id, name: prepared.name, results, completed: results.length === prepared.steps.length && results.every((result) => result.status === 'completed') };
+  });
   ipcMain.handle('zen:voice-status', () => voiceStatus());
   ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {
     if (!voiceInputReady()) throw new Error('Local speech-to-text is not installed yet.');
