@@ -144,10 +144,15 @@ try {
     await assert.rejects(() => importDocuments([realEncryptedPdf]), (error) => error.code === 'PDF_PASSWORD_PROTECTED', 'a real password-protected PDF must fail closed with PDF_PASSWORD_PROTECTED');
     assert.equal(listDocuments().length, 1, 'a rejected real encrypted PDF must leave no stored record');
   }
+  // Day 18 follow-up: a genuine image-only PDF must fail closed specifically with
+  // PDF_NO_TEXT_LAYER, not merely "some PDF_* code." An earlier version of this fixture
+  // was corrupted in transit and only ever exercised PDF_MALFORMED; this was caught by
+  // decoding it independently and checking it ends in %%EOF, not by the loose assertion
+  // that used to sit here.
   if (fs.existsSync(scannedFixture)) {
     const realScannedPdf = path.join(root, 'real-scanned.pdf');
     fs.writeFileSync(realScannedPdf, Buffer.from(fs.readFileSync(scannedFixture, 'utf8').trim(), 'base64'));
-    await assert.rejects(() => importDocuments([realScannedPdf]), (error) => typeof error.code === 'string' && error.code.startsWith('PDF_'), 'a real scanned/image-only PDF must fail closed with a stable PDF_* code, whichever applies to its actual structure');
+    await assert.rejects(() => importDocuments([realScannedPdf]), (error) => error.code === 'PDF_NO_TEXT_LAYER', 'a real scanned/image-only PDF must fail closed specifically with PDF_NO_TEXT_LAYER');
     assert.equal(listDocuments().length, 1, 'a rejected real scanned PDF must leave no stored record');
   }
 

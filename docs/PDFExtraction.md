@@ -145,12 +145,17 @@ forward:
 - A real password-protected PDF (`apps/desktop/encrypted.b64`, decoded at test time) correctly
   fails closed with `PDF_PASSWORD_PROTECTED`, exercising pdfjs's actual `PasswordException`
   path — previously only code-reviewed, not run.
-- A real "scanned" PDF (`apps/desktop/scanned.b64`) correctly fails closed. Its actual code is
-  `PDF_MALFORMED`, not `PDF_NO_TEXT_LAYER` as originally assumed — this fixture is structurally
-  invalid rather than a valid-but-textless PDF. Either way, the safety property held: no record
-  was stored. Worth noting for whoever prepared this fixture, since it doesn't test the exact
-  case its name implies; the synthetic vector-only-page fixture already in the suite is what
-  actually exercises `PDF_NO_TEXT_LAYER`.
+- A real "scanned" PDF (`apps/desktop/scanned.b64`) correctly fails closed. **August 9, 2026
+  follow-up:** the fixture referenced by this bullet when it was first written was actually
+  corrupted in transit (decoded bytes did not end in `%%EOF`), so it was exercising
+  `PDF_MALFORMED` rather than the `PDF_NO_TEXT_LAYER` path its name implied — a real gap, not
+  just an assumption worth noting. It has been rebuilt as a genuine, hand-verified image-only
+  PDF (a raster `/XObject` on a page with no `/Font` resource and no text-showing operator at
+  all), independently confirmed against pdfjs directly (parses successfully, zero text items)
+  before being run through `importDocuments`, which now correctly returns `PDF_NO_TEXT_LAYER`.
+  `scripts/check-documents.js`'s assertion was tightened to require that exact code rather than
+  accepting any `PDF_*` code, so a future regression back to the corrupted state would be
+  caught by `npm run check` instead of silently passing again.
 - Both rejections confirmed to leave zero stored records, same as the synthetic cases.
 - A PDF's extracted text confirmed to reach `prepareDocumentQuestion`/`verifyDocumentQuestion`
   exactly like a text import — same caps, same tamper check — not just confirmed searchable.

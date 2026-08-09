@@ -459,3 +459,43 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - **Genuinely still open:** a literal live click-through in the running Electron app (native picker, import, restart, confirm persistence, ask a question through the real confirmation dialog UI). Attempted via remote automation this session; stopped deliberately after the desktop turned out to have an active Zoom call and heavily overlapping windows, making further blind coordinate-based clicking an unacceptable risk. Not expected to surface a new defect given how much of the same code path the programmatic checks above already share with it, but it hasn't been physically clicked through.
 - Git state: committed as `feat: complete Day 18 PDF text extraction` on `main`, pushed to `origin/main`. Files: `apps/desktop/package.json`, `apps/desktop/package-lock.json`, `apps/desktop/src/main/documents.js`, `apps/desktop/src/renderer/index.html`, `scripts/check-documents.js`, `docs/PDFExtraction.md`, `docs/DocumentImport.md`, `docs/DocumentQA.md`, `apps/desktop/encrypted.b64`, `apps/desktop/scanned.b64`. `docs/Voice.md` remains a separate, unrelated pre-existing local edit and stays out of this commit, same as every prior day.
 - Exact next recommended step: optionally close the live-click-through gap above (a few minutes, non-blocking); then move to the remaining Week 3 theme (safe custom commands) or Week 4.
+
+## Day 18 follow-up — closing the two open gaps (started August 9, 2026)
+
+- Starting this pass: independently re-verified the prior session's claims against the real repo rather than trusting the write-up. `npm run check` passes as reported. However, decoding `apps/desktop/scanned.b64` directly and inspecting it byte-for-byte shows it does **not** end in `%%EOF` — it ends in raw binary garbage, meaning the file itself is corrupted (most likely a leftover base64 transfer-truncation artifact, the same class of bug the prior session found and thought it had fully redone). It is not "a real scanned PDF whose structure happens to trigger PDF_MALFORMED" as the previous entry characterized it; it is a broken file. The `PDF_NO_TEXT_LAYER` code path is therefore still only covered by the synthetic fixture, not a real-world one.
+- Plan for this pass: (1) rebuild `scanned.b64` as a genuine, valid, hand-verified image-only PDF (a real XObject-embedded raster with no font/text operator at all — confirmed with pdfjs directly before it goes anywhere near the test suite) so `PDF_NO_TEXT_LAYER` gets real coverage; (2) tighten the corresponding `check-documents.js` assertion from "any `PDF_*` code" to the specific expected code, now that it can be trusted; (3) check current desktop state safely before attempting the still-open live Electron click-through, and only proceed if it's actually safe to do so (the prior session correctly declined once due to an active call/overlapping windows — that judgment call stands and will be re-checked fresh, not overridden).
+- Will update this section again once that work is done, with the actual outcome — including if the live click-through remains undone for the same reason as before.
+
+**Outcome of this pass:**
+
+- **`scanned.b64` rebuilt correctly.** The old fixture is gone. The new one is a genuine,
+  hand-verified image-only PDF (a real `/XObject` raster image on a page with no `/Font`
+  resource and no text-showing operator at all — a faithful stand-in for what a scanner
+  actually produces). Verified independently against pdfjs directly before it went near the
+  test suite: parses successfully, zero text items, ends in `%%EOF`. Run through the actual
+  `importDocuments` function directly: returns `PDF_NO_TEXT_LAYER` as intended, no stored
+  record. `scripts/check-documents.js`'s assertion for this fixture was tightened from
+  "accept any `PDF_*` code" to require that exact code, so a future regression back to a
+  corrupted fixture would fail loudly instead of silently passing again. `docs/PDFExtraction.md`
+  corrected to describe what actually happened rather than the earlier, more charitable
+  characterization.
+- **Live GUI click-through: still genuinely open, and staying open for now.** Checked the
+  actual current desktop state before attempting anything (`Screenshot`, `Process list`) rather
+  than assuming either "it's fine now" or repeating the prior session's finding unchecked. No
+  active call this time, but the desktop has a large number of overlapping application windows
+  open across several apps, and — notably — it is being actively watched live by the user
+  through one of those very windows during this session. Blind coordinate-based automation on a
+  cluttered, actively-observed desktop is the same risk the prior session correctly declined;
+  that judgment holds this time too. Not attempted. This remains the one item in the original
+  Day 18 validation checklist that needs a human at the keyboard for a few minutes — open the
+  app, import a real PDF through the native picker, restart, confirm persistence, ask a question
+  through the real confirmation dialog. Every other part of that checklist is now closed by
+  either the synthetic-fixture suite or a real-fixture pass, both permanently exercised by
+  `npm run check`.
+- Validation: full `npm run check` passes with the corrected fixture and tightened assertion.
+- Git state: this follow-up pass to be committed separately from the prior `d17b933` commit,
+  scoped to `apps/desktop/scanned.b64`, `scripts/check-documents.js`, `docs/PDFExtraction.md`,
+  and this file. `docs/Voice.md` remains outside it, same as every prior day.
+- Exact next recommended step: the live click-through above, whenever done at a keyboard that
+  isn't mid-session or overlapping with other active work; after that, Day 18 is fully closed
+  end-to-end and the project can move to the next Week 3 theme (safe custom commands) or Week 4.
