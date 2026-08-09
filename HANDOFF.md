@@ -499,3 +499,25 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Exact next recommended step: the live click-through above, whenever done at a keyboard that
   isn't mid-session or overlapping with other active work; after that, Day 18 is fully closed
   end-to-end and the project can move to the next Week 3 theme (safe custom commands) or Week 4.
+
+## Day 18 — fully closed: live click-through complete (August 9, 2026)
+
+- The user ran the last open item themselves, in the real desktop app: imported
+  `zen-day18-livetest.pdf` through the native picker (confirmed via screenshot — the
+  Documents page shows "1 document imported locally" and the file listed under Imported
+  documents), used **Preview locally** on it, then asked a question through **Ask about these
+  results** and confirmed it answered correctly from the PDF's actual content, not a
+  fabrication.
+- This closes the one item every synthetic and real-fixture check up to this point could not
+  reach: the real native file picker, the real confirmation dialogs, and the real Ollama round
+  trip with a genuinely user-selected PDF.
+- Not explicitly re-confirmed in this pass: a full Zen restart to re-verify the imported PDF
+  persists (every other document type has already had this checked in earlier days on the same
+  storage path, so this is a low-risk, non-blocking gap, not a new one).
+- Day 18 (design in `docs/PDFExtraction.md`, implementation, the `scanned.b64` follow-up fix,
+  and now this live pass) is complete end-to-end. No code changed in this update — documentation
+  only.
+- Git state: this update only; no source changes.
+- Exact next recommended step: begin Day 19 — safe custom commands design (scope, confirmation
+  model, storage, exclusions), written to `docs/CustomCommands.md` before any code, matching the
+  pattern used for every prior new capability (Days 8, 11, 15, 17).
