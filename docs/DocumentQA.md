@@ -19,7 +19,12 @@ covers one question only; asking again requires a new preview and a new confirma
 - Builds only on text already stored locally by Day 12 import (`extractedText`) and already
   surfaced by Day 13 search / Day 14 preview. No new file access is introduced.
 - PDF content is excluded, consistent with Day 12: PDF extraction remains unavailable
-  (`PDF_EXTRACTION_UNAVAILABLE`), so PDFs cannot be a Q&A source yet.
+  (`PDF_EXTRACTION_UNAVAILABLE`), so PDFs cannot be a Q&A source yet. **Superseded August 9,
+  2026 (Day 18):** PDF extraction now works (see [docs/PDFExtraction.md](PDFExtraction.md)).
+  `prepareDocumentQuestion`/`verifyDocumentQuestion` select excerpts from any stored
+  `extractedText` regardless of source type, so a successfully imported PDF is eligible as a
+  Q&A source under the same 3-document / 4,000-character caps and the same confirmation gate
+  as any other document — no separate PDF-specific model-access path was added.
 - Entry point is a question asked from an existing Day 13 search result set, or a dedicated "Ask
   about my documents" action that runs the same local search first. There is no free-text path that
   skips local search and goes straight to the model.

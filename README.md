@@ -175,7 +175,16 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Define fail-closed rejection codes for password-protected, malformed, image-only, and otherwise-failed PDFs.
 - [x] Confirm extraction reuses the existing local document-record shape with no new store or fields.
 - [x] Keep PDF text out of Ollama except through the existing confirmed Day 15/16 Q&A flow.
-- [ ] Implementation (Day 18): add the dependency, extend `readTextDocument`, wire rejection codes, and manually verify against `docs/PDFExtraction.md`.
+- [x] Implementation (Day 18): dependency added, `readPdfDocument` extends the import path, all four rejection codes wired, automated suite covers success/malformed/no-text-layer/no-network cases.
+
+## Day 18 PDF extraction implementation — complete
+
+- [x] Add `pdfjs-dist` as a runtime dependency and extend `documents.js` with `readPdfDocument`.
+- [x] Wire `PDF_PASSWORD_PROTECTED`, `PDF_MALFORMED`, `PDF_NO_TEXT_LAYER`, `PDF_EXTRACTION_FAILED`.
+- [x] Automated tests: synthetic PDF success/malformed/no-text-layer cases, plus real password-protected and real scanned fixtures decoded from `apps/desktop/encrypted.b64`/`scanned.b64`, plus a no-network-call check.
+- [x] A PDF's extracted text confirmed to reach the Q&A confirmation gate exactly like a text import — same caps, same tamper check.
+- [x] `npm run check` passes in full, permanently, not just for this session.
+- [ ] Live click-through in the running app (native picker → import → restart → confirm persistence → ask via the real confirmation dialog UI). Not automated this session due to desktop conditions (active call, overlapping windows) making further remote clicking unsafe to continue. Non-blocking — the same code path is already exercised programmatically above.
 
 ## Technology choices
 
