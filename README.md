@@ -195,6 +195,15 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Add automated coverage (`scripts/check-custom-commands.js`) and manual in-app verification before committing.
 - [x] Day 19 changes committed as `feat: complete Day 19 custom commands`.
 
+## Day 20 safe workflows design — complete
+
+- [x] Define named, saved sequences of up to 10 steps where a step can route to a different later step depending on whether the step before it succeeded or failed. See [Workflows design](docs/Workflows.md).
+- [x] Steps stay limited to opening an approved app, opening a website, or running an existing saved custom command — no new execution primitive.
+- [x] Loops made structurally impossible: every routing target must be a strictly later step index, or "stop" — never backward, never self-referencing.
+- [x] Define the branch-aware confirmation contract and the failure-path reporting requirement (report the actual path taken and why, not just which steps ran).
+- [x] No code enabled in Day 20 — design only, matching the Day 8/11/15/17 pattern.
+- [x] Day 20 changes committed as `docs: complete Day 20 workflow design`.
+
 ## Technology choices
 
 | Area | Choice |
@@ -255,6 +264,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Document Q&A design](docs/DocumentQA.md)
 - [PDF extraction design](docs/PDFExtraction.md)
 - [Custom commands design](docs/CustomCommands.md)
+- [Workflows design](docs/Workflows.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
