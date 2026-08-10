@@ -214,6 +214,13 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Add automated coverage (`scripts/check-workflows.js`), including branch resolution, loop rejection, and fail-closed cases for removed approvals and removed custom commands.
 - [ ] Live click-through in the running desktop app. Not completed this session — see [Project handoff](HANDOFF.md) for details.
 
+## Day 22 accessibility and error-handling audit — complete
+
+- [x] Audit the confirmation modal, decorative icon labeling, keyboard focus visibility, and error-message consistency against the real source files. See [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md).
+- [x] Four concrete findings: no modal focus trap / inert background; decorative icons missing `aria-hidden`; the composer message field missing a `:focus-visible` style; one vague error message in Day 21's `executeStep` helper.
+- [x] Spot-checked and found clean: settings reset paths, Day 6/9 theme contrast work, and `aria-live` coverage on every dynamic panel.
+- [x] No code changed in Day 22 — audit only, matching the Day 8/11/15/17/20 pattern. Day 23 will implement exactly the four findings above.
+
 ## Technology choices
 
 | Area | Choice |
@@ -276,6 +283,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [PDF extraction design](docs/PDFExtraction.md)
 - [Custom commands design](docs/CustomCommands.md)
 - [Workflows design](docs/Workflows.md)
+- [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
