@@ -212,7 +212,7 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Add a Workflows card on the Activity page with per-step success/failure routing, one Cancel-first confirmation for save and for run, and a path-taken run result.
 - [x] Add `create-workflow` / `run-workflow` / `remove-workflow` activity logging, scoped to name and a short path summary only.
 - [x] Add automated coverage (`scripts/check-workflows.js`), including branch resolution, loop rejection, and fail-closed cases for removed approvals and removed custom commands.
-- [ ] Live click-through in the running desktop app. Not completed this session — see [Project handoff](HANDOFF.md) for details.
+- [x] Live click-through in the running desktop app — complete. User confirmed save, run (app opened successfully), and persistence after a full restart.
 
 ## Day 22 accessibility and error-handling audit — complete
 

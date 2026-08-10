@@ -558,6 +558,33 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Git state: to be committed as `feat: complete Day 21 safe workflows`, scoped to `apps/desktop/package.json`, `apps/desktop/src/main/main.js`, `apps/desktop/src/main/preload.js`, `apps/desktop/src/main/workflows.js` (new), `apps/desktop/src/renderer/index.html`, `apps/desktop/src/renderer/renderer.js`, `apps/desktop/src/renderer/styles.css`, and `scripts/check-workflows.js` (new). Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this commit, untouched.
 - Exact next recommended step: get the live click-through done at the keyboard (open Zen, build a small two-step workflow with a deliberate failure branch, save it, run it, confirm the reported path matches what actually happened, restart and confirm persistence). After that, Day 21 is fully closed and Week 4's remaining themes are: accessibility/error-handling polish, Windows packaging (with the still-pending GPL/voice-model license review before bundling Piper or whisper.cpp), backup/export, and final release documentation/changelog/tag.
 
+## Day 21 -- fully closed: live click-through complete (August 10, 2026)
+
+- The user ran the last open item themselves, in the real desktop app: built a workflow ("Test
+  workflow") with an `open-approved-app` step targeting ProtonDrive, using the default
+  `onSuccess: next step` / `onFailure: stop` routing. Screenshots confirmed the staged step's
+  routing selects rendered correctly, the save confirmation and saved-list summary matched the
+  underlying data exactly (`1. Open app - ProtonDrive | on success: next step | on failure:
+  stop`), and the builder cleared back to empty after saving.
+- The user then clicked **Run** and confirmed the app opened successfully, and separately
+  confirmed the saved workflow is still listed under Workflows after fully restarting Zen.
+- This closes the one item Day 21's automated suite could not reach on its own: the real
+  Workflows UI, the real save/run confirmation dialogs, and real local persistence across a
+  restart. Combined with `scripts/check-workflows.js`'s coverage of the branching/loop-safety
+  logic itself, Day 21 (design in `docs/Workflows.md`, implementation, and now this live pass) is
+  complete end-to-end.
+- Not exercised in this particular manual pass: an actual mid-run failure (the tested step
+  succeeded, so its `onFailure` routing was not observed live). This is non-blocking -- the
+  failure/routing/skip logic itself is exercised directly by `scripts/check-workflows.js`
+  (including a simulated failure that skips a step), which is permanent, automated coverage of
+  exactly that path, not a one-off manual claim.
+- Git state: this update only; no source changes.
+- Exact next recommended step: implement Day 23 exactly to `docs/AccessibilityErrorHandling.md`'s
+  "Day 23 implementation scope" -- modal focus trap + inert background, `aria-hidden` on
+  decorative icons, a `:focus-visible` style for the composer textarea, and the one reworded
+  error message in `executeStep` -- then verify with `npm run check` plus a short manual
+  Tab-through, and commit as its own scoped change.
+
 ## Day 22 -- accessibility and error-handling audit complete (August 10, 2026)
 
 - Added `docs/AccessibilityErrorHandling.md`. Unlike Days 8/11/15/17/20, this is not one new capability with a single safety boundary -- it is a targeted audit of everything already built (Days 1-21), verified against the real files rather than assumed generically.
