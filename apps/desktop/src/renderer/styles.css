@@ -96,6 +96,12 @@ h2 { font-size: clamp(30px, 4vw, 45px); line-height: 1.02; }
 .command-step button { padding: 6px 9px; }
 .command-entry ol { margin: 8px 0 0; padding-left: 18px; color: var(--secondary, #c7ddc6); font-size: 13px; line-height: 1.5; }
 .command-entry .unavailable { color: #ed928b; }
+.workflow-step { display: grid; gap: 6px; margin-bottom: 8px; padding: 9px 12px; border: 1px solid var(--border, #426b51); border-radius: 8px; background: var(--field, #102b1f); font-size: 13px; }
+.workflow-step .workflow-step-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.workflow-step .workflow-step-routing { display: flex; flex-wrap: wrap; gap: 10px; }
+.workflow-step .workflow-step-routing label { display: flex; align-items: center; gap: 6px; color: var(--muted, #789484); font-size: 12px; }
+.workflow-step select { font-size: 12px; }
+.workflow-entry ol { margin: 8px 0 0; padding-left: 18px; color: var(--secondary, #c7ddc6); font-size: 13px; line-height: 1.5; }
 .modal-backdrop[hidden] { display: none !important; }
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(4, 3, 10, .66); backdrop-filter: blur(5px); }
 .confirmation-modal { width: min(470px, 100%); padding: 26px; border: 1px solid var(--border, #426b51); border-radius: 18px; background: var(--panel, #1b1728); box-shadow: 0 26px 80px rgba(0, 0, 0, .38); }

@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, previewBrowserWebApp, listApprovedApps, approveApp, approveBrowserWebApp, removeApprovedApp, approvedApp, validateBrowserWebAppLabel, validateSearchQuery, validateFolderPath, searchFolderNames } = require('./computer-control');
 const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument } = require('./documents');
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
+const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -211,6 +212,47 @@ ipcMain.on('zen:chat:stop', (event, requestId) => {
   } catch { }
 });
 
+// Runs one already-resolved step. Shared by custom-command execution and workflow
+// execution, so a "run custom command" workflow step takes the exact same code path as
+// running that command directly from the Custom commands card -- no second execution
+// primitive is introduced for workflows.
+async function executeStep(step) {
+  if (step.type === 'open-approved-app') {
+    const entry = approvedApp(step.appId);
+    const child = spawn(entry.executable, entry.arguments || [], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+    return;
+  }
+  if (step.type === 'open-website') {
+    await shell.openExternal(step.url);
+    return;
+  }
+  if (step.type === 'run-custom-command') {
+    const prepared = prepareCommandRun(step.commandId);
+    const outcome = await runCommandSteps(prepared);
+    if (!outcome.completed) throw new Error('The referenced custom command did not complete.');
+    return;
+  }
+  throw new Error('Unsupported step type.');
+}
+
+// Executes a prepared custom command's steps in order, stopping immediately on the first
+// failure (Day 19 behavior, unchanged). Shared by the zen:commands:run handler and by any
+// workflow step that runs a saved custom command.
+async function runCommandSteps(prepared) {
+  const results = [];
+  for (const step of prepared.steps) {
+    try {
+      await executeStep(step);
+      results.push({ type: step.type, label: step.label, destination: step.destination, status: 'completed' });
+    } catch {
+      results.push({ type: step.type, label: step.label, destination: step.destination, status: 'failed', errorCode: 'STEP_EXECUTION_FAILED' });
+      break;
+    }
+  }
+  return { id: prepared.id, name: prepared.name, results, completed: results.length === prepared.steps.length && results.every((result) => result.status === 'completed') };
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1180,
@@ -258,6 +300,7 @@ app.whenReady().then(() => {
   configureApprovedApps(app.getPath('userData'));
   configureDocuments(app.getPath('userData'));
   configureCustomCommands(app.getPath('userData'));
+  configureWorkflows(app.getPath('userData'));
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
   ipcMain.handle('zen:tools:preview-website', (_event, url) => websitePreview(url));
@@ -374,23 +417,52 @@ app.whenReady().then(() => {
     // Re-validate fresh right before executing rather than trusting an earlier prepare-run
     // call; a step could have been invalidated in between (e.g. approval removed).
     const prepared = prepareCommandRun(id);
-    const results = [];
-    for (const step of prepared.steps) {
+    return runCommandSteps(prepared);
+  });
+  ipcMain.handle('zen:workflows:list', () => listWorkflows());
+  ipcMain.handle('zen:workflows:preview', (_event, name, steps) => previewWorkflow(name, steps));
+  ipcMain.handle('zen:workflows:create', (_event, name, steps) => createWorkflow(name, steps));
+  ipcMain.handle('zen:workflows:remove', (_event, id) => removeWorkflow(id));
+  ipcMain.handle('zen:workflows:prepare-run', (_event, id) => prepareWorkflowRun(id));
+  ipcMain.handle('zen:workflows:run', async (_event, id) => {
+    // Re-validate fresh right before executing, exactly like custom commands above -- a step
+    // (an app approval, a website, or a referenced custom command) could have been
+    // invalidated since the workflow was last previewed.
+    const prepared = prepareWorkflowRun(id);
+    const visitedPath = [];
+    let cursor = 0;
+    while (cursor !== 'stop') {
+      if (cursor >= prepared.steps.length) break; // running off the end behaves identically to "stop"
+      const step = prepared.steps[cursor];
+      const currentIndex = cursor;
+      let outcome;
+      let target;
       try {
-        if (step.type === 'open-approved-app') {
-          const entry = approvedApp(step.appId);
-          const child = spawn(entry.executable, entry.arguments || [], { detached: true, stdio: 'ignore', windowsHide: true });
-          child.unref();
-        } else if (step.type === 'open-website') {
-          await shell.openExternal(step.url);
-        }
-        results.push({ type: step.type, label: step.label, destination: step.destination, status: 'completed' });
+        await executeStep(step);
+        outcome = 'completed';
+        target = resolveRoute(step.onSuccess, currentIndex, prepared.steps.length);
       } catch {
-        results.push({ type: step.type, label: step.label, destination: step.destination, status: 'failed', errorCode: 'STEP_EXECUTION_FAILED' });
-        break;
+        outcome = 'failed';
+        target = resolveRoute(step.onFailure, currentIndex, prepared.steps.length);
       }
+      visitedPath.push({
+        index: currentIndex,
+        type: step.type,
+        label: step.label,
+        destination: step.destination,
+        outcome,
+        note: outcome === 'completed'
+          ? (target === 'stop' ? `Step ${currentIndex + 1} completed. Workflow stopped.` : `Step ${currentIndex + 1} completed. Continuing to step ${target + 1}.`)
+          : (target === 'stop' ? `Step ${currentIndex + 1} failed. onFailure stopped the workflow.` : `Step ${currentIndex + 1} failed. onFailure routed to step ${target + 1}.`)
+      });
+      cursor = target;
     }
-    return { id: prepared.id, name: prepared.name, results, completed: results.length === prepared.steps.length && results.every((result) => result.status === 'completed') };
+    return {
+      id: prepared.id,
+      name: prepared.name,
+      path: visitedPath,
+      completed: visitedPath.length > 0 && visitedPath.every((entry) => entry.outcome === 'completed')
+    };
   });
   ipcMain.handle('zen:voice-status', () => voiceStatus());
   ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {

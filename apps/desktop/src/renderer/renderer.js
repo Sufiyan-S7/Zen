@@ -76,6 +76,18 @@ const commandBuilderHelp = document.querySelector('#command-builder-help');
 const commandListElement = document.querySelector('#command-list');
 let stagedCommandSteps = [];
 let approvedAppsCache = [];
+const workflowBuilderForm = document.querySelector('#workflow-builder-form');
+const workflowNameInput = document.querySelector('#workflow-name-input');
+const workflowStepType = document.querySelector('#workflow-step-type');
+const workflowStepApp = document.querySelector('#workflow-step-app');
+const workflowStepUrl = document.querySelector('#workflow-step-url');
+const workflowStepCommand = document.querySelector('#workflow-step-command');
+const addWorkflowStepButton = document.querySelector('#add-workflow-step');
+const stagedWorkflowStepsElement = document.querySelector('#staged-workflow-steps');
+const workflowBuilderHelp = document.querySelector('#workflow-builder-help');
+const workflowListElement = document.querySelector('#workflow-list');
+let stagedWorkflowSteps = [];
+let commandsCache = [];
 const toolStatusList = document.querySelector('#tool-status-list');
 const activityLogElement = document.querySelector('#activity-log');
 const clearActivityLogButton = document.querySelector('#clear-activity-log');
@@ -454,7 +466,10 @@ function renderActivityLog() {
       'search-folder': 'Search folder',
       'create-custom-command': 'Save custom command',
       'run-custom-command': 'Run custom command',
-      'remove-custom-command': 'Remove custom command'
+      'remove-custom-command': 'Remove custom command',
+      'create-workflow': 'Save workflow',
+      'run-workflow': 'Run workflow',
+      'remove-workflow': 'Remove workflow'
     })[entry.action] || entry.action;
     const status = document.createElement('span');
     status.textContent = entry.status;
@@ -909,6 +924,7 @@ async function loadApprovedApps() {
     approvedAppsCache = await window.zen.listApprovedApps();
     renderApprovedApps(approvedAppsCache);
     populateCommandStepAppOptions();
+    populateWorkflowStepAppOptions();
   } catch {
     approvedAppsHelp.textContent = 'Zen could not load your approved apps.';
   }
@@ -1119,7 +1135,300 @@ function renderCommandList(commands = []) {
 }
 
 async function loadCommands() {
-  try { renderCommandList(await window.zen.listCommands()); } catch { commandBuilderHelp.textContent = 'Zen could not load your custom commands.'; }
+  try {
+    commandsCache = await window.zen.listCommands();
+    renderCommandList(commandsCache);
+    populateWorkflowStepCommandOptions();
+  } catch { commandBuilderHelp.textContent = 'Zen could not load your custom commands.'; }
+}
+
+function populateWorkflowStepAppOptions() {
+  if (!workflowStepApp) return;
+  workflowStepApp.innerHTML = '';
+  if (!approvedAppsCache.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No approved apps yet';
+    workflowStepApp.append(option);
+    return;
+  }
+  approvedAppsCache.forEach((app) => {
+    const option = document.createElement('option');
+    option.value = app.id;
+    option.textContent = app.label;
+    workflowStepApp.append(option);
+  });
+}
+
+function populateWorkflowStepCommandOptions() {
+  if (!workflowStepCommand) return;
+  workflowStepCommand.innerHTML = '';
+  if (!commandsCache.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No saved custom commands yet';
+    workflowStepCommand.append(option);
+    return;
+  }
+  commandsCache.forEach((command) => {
+    const option = document.createElement('option');
+    option.value = command.id;
+    option.textContent = command.name;
+    workflowStepCommand.append(option);
+  });
+}
+
+function updateWorkflowStepInputVisibility() {
+  const type = workflowStepType.value;
+  workflowStepApp.hidden = type !== 'open-approved-app';
+  workflowStepUrl.hidden = type !== 'open-website';
+  workflowStepCommand.hidden = type !== 'run-custom-command';
+}
+
+// Routing options for a staged step depend on the *final* staged list -- a target must be a
+// strictly later step -- so every row's select options are rebuilt whenever the list changes,
+// rather than being fixed at the moment a step was added.
+function routeOptionsHtml(currentIndex, selected) {
+  const options = [
+    `<option value="next"${selected === 'next' ? ' selected' : ''}>Continue to next step</option>`,
+    `<option value="stop"${selected === 'stop' ? ' selected' : ''}>Stop the workflow</option>`
+  ];
+  for (let target = currentIndex + 1; target < stagedWorkflowSteps.length; target += 1) {
+    const step = stagedWorkflowSteps[target];
+    options.push(`<option value="${target}"${selected === target ? ' selected' : ''}>Skip to step ${target + 1}: ${step.label}</option>`);
+  }
+  return options.join('');
+}
+
+function renderStagedWorkflowSteps() {
+  stagedWorkflowStepsElement.innerHTML = '';
+  if (!stagedWorkflowSteps.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No steps added yet. A workflow needs 1-10 steps.';
+    stagedWorkflowStepsElement.append(empty);
+    return;
+  }
+  stagedWorkflowSteps.forEach((step, index) => {
+    // A routing target that pointed at a step which has since been removed is no longer
+    // valid; reset it to the safe default instead of silently keeping a stale index.
+    if (typeof step.onSuccess === 'number' && step.onSuccess >= stagedWorkflowSteps.length) step.onSuccess = 'next';
+    if (typeof step.onFailure === 'number' && step.onFailure >= stagedWorkflowSteps.length) step.onFailure = 'stop';
+    const row = document.createElement('div');
+    row.className = 'workflow-step';
+    const labelRow = document.createElement('div');
+    labelRow.className = 'workflow-step-label';
+    const label = document.createElement('span');
+    const typeLabel = step.type === 'open-approved-app' ? 'Open app' : step.type === 'open-website' ? 'Open website' : 'Run custom command';
+    label.textContent = `${index + 1}. ${typeLabel} - ${step.label}`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => { stagedWorkflowSteps.splice(index, 1); renderStagedWorkflowSteps(); });
+    labelRow.append(label, remove);
+    const routing = document.createElement('div');
+    routing.className = 'workflow-step-routing';
+    const successLabel = document.createElement('label');
+    successLabel.textContent = 'If it succeeds:';
+    const successSelect = document.createElement('select');
+    successSelect.innerHTML = routeOptionsHtml(index, step.onSuccess);
+    successSelect.addEventListener('change', () => {
+      const value = successSelect.value;
+      step.onSuccess = value === 'next' || value === 'stop' ? value : Number(value);
+    });
+    successLabel.append(successSelect);
+    const failureLabel = document.createElement('label');
+    failureLabel.textContent = 'If it fails:';
+    const failureSelect = document.createElement('select');
+    failureSelect.innerHTML = routeOptionsHtml(index, step.onFailure);
+    failureSelect.addEventListener('change', () => {
+      const value = failureSelect.value;
+      step.onFailure = value === 'next' || value === 'stop' ? value : Number(value);
+    });
+    failureLabel.append(failureSelect);
+    routing.append(successLabel, failureLabel);
+    row.append(labelRow, routing);
+    stagedWorkflowStepsElement.append(row);
+  });
+}
+
+function addWorkflowStep() {
+  workflowBuilderHelp.textContent = '';
+  if (stagedWorkflowSteps.length >= 10) { workflowBuilderHelp.textContent = 'A workflow supports up to 10 steps.'; return; }
+  if (workflowStepType.value === 'open-approved-app') {
+    const app = approvedAppsCache.find((entry) => entry.id === workflowStepApp.value);
+    if (!app) { workflowBuilderHelp.textContent = 'Approve an app in Zen first, then add it as a step.'; return; }
+    stagedWorkflowSteps.push({ type: 'open-approved-app', appId: app.id, label: app.label, onSuccess: 'next', onFailure: 'stop' });
+  } else if (workflowStepType.value === 'open-website') {
+    const url = workflowStepUrl.value.trim();
+    if (!url) { workflowBuilderHelp.textContent = 'Enter a website address to add this step.'; return; }
+    stagedWorkflowSteps.push({ type: 'open-website', url, label: url, onSuccess: 'next', onFailure: 'stop' });
+    workflowStepUrl.value = '';
+  } else {
+    const command = commandsCache.find((entry) => entry.id === workflowStepCommand.value);
+    if (!command) { workflowBuilderHelp.textContent = 'Save a custom command in Zen first, then add it as a step.'; return; }
+    stagedWorkflowSteps.push({ type: 'run-custom-command', commandId: command.id, label: command.name, onSuccess: 'next', onFailure: 'stop' });
+  }
+  renderStagedWorkflowSteps();
+}
+
+function workflowStepRawPayload(step) {
+  const base = { type: step.type, onSuccess: step.onSuccess, onFailure: step.onFailure };
+  if (step.type === 'open-approved-app') return { ...base, appId: step.appId };
+  if (step.type === 'open-website') return { ...base, url: step.url };
+  return { ...base, commandId: step.commandId };
+}
+
+function routeLabel(route) {
+  if (route === 'stop') return 'stop';
+  if (route === 'next') return 'next step';
+  return `step ${route + 1}`;
+}
+
+async function saveWorkflow(event) {
+  event.preventDefault();
+  workflowBuilderHelp.textContent = '';
+  const name = workflowNameInput.value.trim();
+  if (!name) { workflowBuilderHelp.textContent = 'Enter a name for this workflow.'; return; }
+  if (!stagedWorkflowSteps.length) { workflowBuilderHelp.textContent = 'Add at least one step before saving.'; return; }
+  const rawSteps = stagedWorkflowSteps.map(workflowStepRawPayload);
+  try {
+    const preview = await window.zen.previewWorkflow(name, rawSteps);
+    const entry = createActivity('create-workflow', `${preview.name} - ${preview.steps.length} step${preview.steps.length === 1 ? '' : 's'}`);
+    const approved = await requestActionConfirmation({
+      title: `Save "${preview.name}"?`,
+      description: 'Zen will save this named sequence with branching. It replays only apps, websites, and custom commands you have already approved, and still asks before every run.',
+      destination: preview.steps.map((step, index) => `${index + 1}. ${step.label} -> ${step.destination} | on success: ${routeLabel(step.onSuccess)} | on failure: ${routeLabel(step.onFailure)}`).join('\n'),
+      approveLabel: 'Save workflow'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      workflowBuilderHelp.textContent = 'Workflow not saved.';
+      return;
+    }
+    await window.zen.createWorkflow(name, rawSteps);
+    updateActivity(entry, 'completed');
+    workflowBuilderHelp.textContent = `"${preview.name}" saved locally.`;
+    workflowNameInput.value = '';
+    stagedWorkflowSteps = [];
+    renderStagedWorkflowSteps();
+    await loadWorkflows();
+  } catch (error) {
+    const entry = createActivity('create-workflow', 'Invalid workflow');
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_WORKFLOW' });
+    workflowBuilderHelp.textContent = error.message || 'Zen could not save that workflow.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function runWorkflowSequence(workflow) {
+  workflowBuilderHelp.textContent = '';
+  try {
+    const prepared = await window.zen.prepareWorkflowRun(workflow.id);
+    const entry = createActivity('run-workflow', `${prepared.name} - ${prepared.steps.length} step${prepared.steps.length === 1 ? '' : 's'}`);
+    const approved = await requestActionConfirmation({
+      title: `Run "${prepared.name}"?`,
+      description: "Zen will run these steps in order and follow each step's success/failure routing. It reports the exact path taken.",
+      destination: prepared.steps.map((step, index) => `${index + 1}. ${step.label} -> ${step.destination} | on success: ${routeLabel(step.onSuccess)} | on failure: ${routeLabel(step.onFailure)}`).join('\n'),
+      approveLabel: 'Run workflow'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      workflowBuilderHelp.textContent = 'Run cancelled.';
+      return;
+    }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Running...';
+    try {
+      const outcome = await window.zen.runWorkflow(workflow.id);
+      const pathSummary = outcome.path.map((step) => `${step.index + 1}. ${step.label} - ${step.outcome}`).join(' -> ');
+      const stoppedEarly = outcome.path.length < prepared.steps.length;
+      const logSummary = `${outcome.path.length} of ${prepared.steps.length} steps visited${stoppedEarly ? `, stopped at step ${outcome.path[outcome.path.length - 1].index + 1}` : ''}`;
+      updateActivity(entry, outcome.completed ? 'completed' : 'failed', { result: logSummary, errorCode: outcome.completed ? '' : 'WORKFLOW_STEP_FAILED' });
+      workflowBuilderHelp.textContent = `"${outcome.name}" ${outcome.completed ? 'completed' : 'stopped'}. Path: ${pathSummary}.`;
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    workflowBuilderHelp.textContent = error.message || 'Zen could not run that workflow.';
+  }
+}
+
+async function removeWorkflowSequence(workflow) {
+  const entry = createActivity('remove-workflow', workflow.name);
+  try {
+    const approved = await requestActionConfirmation({
+      title: `Remove "${workflow.name}"?`,
+      description: 'Zen will delete this saved workflow. The apps, websites, and custom commands it referenced stay approved on their own.',
+      destination: workflow.name,
+      approveLabel: 'Remove workflow'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      workflowBuilderHelp.textContent = 'Removal cancelled.';
+      return;
+    }
+    await window.zen.removeWorkflow(workflow.id);
+    updateActivity(entry, 'completed');
+    workflowBuilderHelp.textContent = `"${workflow.name}" removed locally.`;
+    await loadWorkflows();
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'REMOVE_WORKFLOW_FAILED' });
+    workflowBuilderHelp.textContent = error.message || 'Zen could not remove that workflow.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+function renderWorkflowList(workflows = []) {
+  workflowListElement.innerHTML = '';
+  if (!workflows.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No workflows saved yet.';
+    workflowListElement.append(empty);
+    return;
+  }
+  workflows.forEach((workflow) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app workflow-entry';
+    const label = document.createElement('strong');
+    label.textContent = workflow.name;
+    const steps = document.createElement('ol');
+    workflow.steps.forEach((step) => {
+      const item = document.createElement('li');
+      const typeLabel = step.type === 'open-approved-app' ? 'Open app' : step.type === 'open-website' ? 'Open website' : 'Run custom command';
+      if (step.unavailable) {
+        item.className = 'unavailable';
+        item.textContent = `${typeLabel} - unavailable (${step.reason})`;
+      } else {
+        item.textContent = `${typeLabel} - ${step.label} | on success: ${routeLabel(step.onSuccess)} | on failure: ${routeLabel(step.onFailure)}`;
+      }
+      steps.append(item);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'approved-app-actions';
+    const run = document.createElement('button');
+    run.type = 'button';
+    run.textContent = 'Run';
+    run.disabled = workflow.steps.some((step) => step.unavailable);
+    run.addEventListener('click', () => runWorkflowSequence(workflow));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => removeWorkflowSequence(workflow));
+    actions.append(run, remove);
+    row.append(label, steps, actions);
+    workflowListElement.append(row);
+  });
+}
+
+async function loadWorkflows() {
+  try { renderWorkflowList(await window.zen.listWorkflows()); } catch { workflowBuilderHelp.textContent = 'Zen could not load your workflows.'; }
 }
 
 function renderFolderSearchResults(result) {
@@ -1492,6 +1801,9 @@ async function initialise() {
   loadCommands();
   renderStagedCommandSteps();
   updateCommandStepInputVisibility();
+  loadWorkflows();
+  renderStagedWorkflowSteps();
+  updateWorkflowStepInputVisibility();
   renderActivityLog();
   try {
     const status = await window.zen.getStatus();
@@ -1626,6 +1938,12 @@ commandStepUrl.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') { event.preventDefault(); addCommandStep(); }
 });
 commandBuilderForm.addEventListener('submit', saveCustomCommand);
+workflowStepType.addEventListener('change', updateWorkflowStepInputVisibility);
+addWorkflowStepButton.addEventListener('click', addWorkflowStep);
+workflowStepUrl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') { event.preventDefault(); addWorkflowStep(); }
+});
+workflowBuilderForm.addEventListener('submit', saveWorkflow);
 confirmationApproveButton.addEventListener('click', () => closeWebsiteConfirmation(true));
 confirmationCancelButton.addEventListener('click', () => closeWebsiteConfirmation(false));
 confirmationModal.addEventListener('click', (event) => {

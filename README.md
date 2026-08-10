@@ -204,6 +204,16 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] No code enabled in Day 20 — design only, matching the Day 8/11/15/17 pattern.
 - [x] Day 20 changes committed as `docs: complete Day 20 workflow design`.
 
+## Day 21 safe workflows implementation — complete
+
+- [x] Implement `workflows.js`: 1-10 step / 50-workflow caps, and routing validation that rejects any target that is not "stop", "next", or a strictly later step index, making loops structurally impossible.
+- [x] Steps resolve to an approved app, a website, or an existing saved custom command; a "run custom command" workflow step executes through the same code path as running that command directly.
+- [x] Add the `zen:workflows:*` IPC handlers and a run handler that follows each step's success/failure routing and reports the exact path taken and why.
+- [x] Add a Workflows card on the Activity page with per-step success/failure routing, one Cancel-first confirmation for save and for run, and a path-taken run result.
+- [x] Add `create-workflow` / `run-workflow` / `remove-workflow` activity logging, scoped to name and a short path summary only.
+- [x] Add automated coverage (`scripts/check-workflows.js`), including branch resolution, loop rejection, and fail-closed cases for removed approvals and removed custom commands.
+- [ ] Live click-through in the running desktop app. Not completed this session — see [Project handoff](HANDOFF.md) for details.
+
 ## Technology choices
 
 | Area | Choice |
@@ -239,6 +249,7 @@ The first command downloads Electron once. Zen opens as a local desktop chat app
 - Open **Activity** to review a user-provided HTTPS website before opening it. Zen shows the normalized destination and requires your confirmation; activity records stay local. Zen validates the address, not whether the remote site will return a 404 or sign-in page.
 - In **Activity → Choose what Zen may open**, select a Windows app to approve. Zen saves the approval locally, asks again before every launch, and lets you remove it at any time. For a Chrome/Edge/Brave/Opera/Vivaldi web app, use the browser-web-app form to save a fixed name, browser launcher, and HTTPS address; Zen will not accept arbitrary browser arguments.
 - In **Activity → Custom commands**, bundle apps/websites you've already approved into a named, saved sequence of up to 5 steps. Saving and running each show one confirmation listing every step; Zen replays only what you separately approved.
+- In **Activity → Workflows**, chain approved apps, websites, and saved custom commands into a sequence of up to 10 steps where each step can route to a different later step depending on success or failure. Loops are structurally impossible — every route must point forward or stop. Saving and running each show one confirmation listing every step and its routing; a run reports the exact path taken.
 - In **Settings → Appearance**, use live theme preview cards and choose any safe appearance shortcut to cycle presets while Zen is focused. F8 and F9 remain reserved for voice recording.
 - Hold **F8** to speak; release it to transcribe locally. Press **F9** once to start locked recording and again to stop it.
 - Use **Read aloud** on an assistant message, and **Stop speaking** at any time. The installed local voices are Lessac, Amy, Ryan, and Bryce; Settings can save a slower, normal, faster, or fastest read-aloud speed.

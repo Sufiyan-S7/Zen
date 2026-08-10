@@ -241,6 +241,30 @@
             </form>
             <div class="approved-app-list" id="command-list" aria-live="polite"></div>
           </section>
+          <section class="settings-card" aria-labelledby="workflows-title">
+            <p class="settings-label">BRANCHING SEQUENCES</p>
+            <h2 id="workflows-title">Workflows</h2>
+            <p>Chain up to 10 already-approved apps, websites, and saved custom commands into one sequence where a step can route to a different later step depending on whether it succeeded or failed. A workflow grants no new capability, and loops are structurally impossible: every routing target must point to a strictly later step, or stop.</p>
+            <form id="workflow-builder-form" class="website-form">
+              <label for="workflow-name-input">Workflow name</label>
+              <input id="workflow-name-input" type="text" autocomplete="off" placeholder="Morning setup with fallback" maxlength="60" required />
+              <label for="workflow-step-type">Add a step</label>
+              <div class="setting-row">
+                <select id="workflow-step-type">
+                  <option value="open-approved-app">Open an approved app</option>
+                  <option value="open-website">Open a website</option>
+                  <option value="run-custom-command">Run a custom command</option>
+                </select>
+                <select id="workflow-step-app"></select>
+                <input id="workflow-step-url" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com" maxlength="2048" hidden />
+                <select id="workflow-step-command" hidden></select>
+                <button id="add-workflow-step" type="button">Add step</button>
+              </div>
+              <div class="command-steps" id="staged-workflow-steps" aria-live="polite"></div>
+              <div class="setting-row"><button type="submit">Save workflow</button><span class="settings-help" id="workflow-builder-help" aria-live="polite"></span></div>
+            </form>
+            <div class="approved-app-list" id="workflow-list" aria-live="polite"></div>
+          </section>
           <section class="settings-card" aria-labelledby="tool-status-title">
             <p class="settings-label">APPROVED TOOLS</p>
             <h2 id="tool-status-title">What Zen can do</h2>
