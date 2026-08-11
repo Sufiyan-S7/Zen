@@ -97,6 +97,7 @@ const confirmationDescription = document.querySelector('#confirmation-descriptio
 const confirmationDestination = document.querySelector('#confirmation-destination');
 const confirmationCancelButton = document.querySelector('#confirmation-cancel');
 const confirmationApproveButton = document.querySelector('#confirmation-approve');
+const appShellElement = document.querySelector('#app-shell');
 const modelSelect = document.querySelector('#model-select');
 const modelHelp = document.querySelector('#model-help');
 const themeSelect = document.querySelector('#theme-select');
@@ -727,6 +728,22 @@ function showPage(page) {
   if (showingChat) input.focus();
 }
 
+// Keeps Tab/Shift+Tab cycling between the modal's two buttons only, since aria-modal="true"
+// promises this but browsers do not enforce it automatically. Disabled buttons (e.g. Approve
+// reading "Running..." mid-action) are skipped so focus never lands on an inert control.
+function trapConfirmationFocus(event) {
+  if (event.key !== 'Tab') return;
+  const focusable = [confirmationCancelButton, confirmationApproveButton].filter((element) => element && !element.disabled);
+  if (!focusable.length) return;
+  event.preventDefault();
+  const currentIndex = focusable.indexOf(document.activeElement);
+  const nextIndex = event.shiftKey
+    ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
+    : (currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
+  focusable[nextIndex].focus();
+}
+confirmationModal.addEventListener('keydown', trapConfirmationFocus);
+
 function requestActionConfirmation({ title, description, destination, approveLabel }) {
   if (![title, description, destination, approveLabel].every((value) => typeof value === 'string' && value)) {
     throw new Error('Zen could not verify that action. Nothing was opened.');
@@ -740,6 +757,11 @@ function requestActionConfirmation({ title, description, destination, approveLab
   return new Promise((resolve) => {
     pendingWebsiteConfirmation = resolve;
     confirmationModal.hidden = false;
+    // The dialog is a sibling of #app-shell, not a descendant, so marking the shell inert
+    // while the modal is open cannot also make the modal itself inert. This is what actually
+    // keeps keyboard/screen-reader focus out of the background content that aria-modal="true"
+    // already claims is blocked.
+    if (appShellElement) appShellElement.inert = true;
     confirmationCancelButton.focus();
   });
 }
@@ -761,6 +783,7 @@ function closeWebsiteConfirmation(approved) {
   const resolve = pendingWebsiteConfirmation;
   pendingWebsiteConfirmation = null;
   confirmationModal.hidden = true;
+  if (appShellElement) appShellElement.inert = false;
   confirmationReturnFocus?.focus?.();
   confirmationReturnFocus = null;
   resolve(approved);

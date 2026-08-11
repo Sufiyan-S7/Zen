@@ -7,16 +7,16 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="shell">
+    <main class="shell" id="app-shell">
       <nav class="sidebar" aria-label="Zen navigation">
         <a class="brand" href="#home"><span class="brand-mark">Z</span><span>Zen</span></a>
         <div class="nav-group">
           <button class="nav-item active" id="chat-button" type="button">Chat</button>
-          <button class="nav-item" id="new-chat" type="button">New conversation <span>+</span></button>
-          <button class="nav-item" id="settings-button" type="button">Settings <span>⚙</span></button>
-          <button class="nav-item" id="memory-button" type="button">Memory <span>✦</span></button>
-          <button class="nav-item" id="documents-button" type="button">Documents <span>▤</span></button>
-          <button class="nav-item" id="activity-button" type="button">Activity <span>↗</span></button>
+          <button class="nav-item" id="new-chat" type="button">New conversation <span aria-hidden="true">+</span></button>
+          <button class="nav-item" id="settings-button" type="button">Settings <span aria-hidden="true">⚙</span></button>
+          <button class="nav-item" id="memory-button" type="button">Memory <span aria-hidden="true">✦</span></button>
+          <button class="nav-item" id="documents-button" type="button">Documents <span aria-hidden="true">▤</span></button>
+          <button class="nav-item" id="activity-button" type="button">Activity <span aria-hidden="true">↗</span></button>
         </div>
         <section class="conversation-list" aria-labelledby="conversation-heading">
           <div class="conversation-heading"><p id="conversation-heading">Recent chats</p><span id="conversation-count"></span></div>
@@ -35,7 +35,7 @@
           <form class="composer" id="composer">
             <label class="sr-only" for="message-input">Message Zen</label>
             <textarea id="message-input" rows="1" maxlength="4000" placeholder="Ask Zen anything…" autofocus></textarea>
-            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="voice-input-button" class="voice-button" type="button" disabled aria-describedby="voice-input-help">Voice input unavailable</button><button id="stop-speaking-button" class="voice-button" type="button" hidden>Stop speaking</button><button id="stop-button" type="button" hidden>Stop generating</button><button id="send-button" type="submit">Send <span>↗</span></button></div></div>
+            <div class="composer-bottom"><span>Enter to send · Shift + Enter for a new line</span><div class="composer-actions"><button id="voice-input-button" class="voice-button" type="button" disabled aria-describedby="voice-input-help">Voice input unavailable</button><button id="stop-speaking-button" class="voice-button" type="button" hidden>Stop speaking</button><button id="stop-button" type="button" hidden>Stop generating</button><button id="send-button" type="submit">Send <span aria-hidden="true">↗</span></button></div></div>
             <p class="voice-composer-help" id="voice-input-help">Voice input will only listen while you hold the button. Local voice setup is not complete.</p>
           </form>
         </section>

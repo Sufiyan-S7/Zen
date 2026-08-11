@@ -221,6 +221,14 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] Spot-checked and found clean: settings reset paths, Day 6/9 theme contrast work, and `aria-live` coverage on every dynamic panel.
 - [x] No code changed in Day 22 — audit only, matching the Day 8/11/15/17/20 pattern. Day 23 will implement exactly the four findings above.
 
+## Day 23 accessibility and error-handling fixes — complete
+
+- [x] Modal focus trap: Tab/Shift+Tab now cycles only between Cancel and Approve; `#app-shell` is marked `inert` while the confirmation dialog is open.
+- [x] `aria-hidden="true"` added to all six decorative icon glyphs (five nav icons plus the Send button's arrow), accessible names unchanged.
+- [x] `:focus-visible` ring added to the composer message textarea, consistent with the accent-ring style used elsewhere.
+- [x] The vague `executeStep` error message reworded to be specific, consistent with the rest of `main.js`.
+- [x] `npm run check` passes in full. A short manual Tab-through of the modal and composer field is recommended but not yet confirmed — see [Project handoff](HANDOFF.md).
+
 ## Technology choices
 
 | Area | Choice |

@@ -585,6 +585,48 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   error message in `executeStep` -- then verify with `npm run check` plus a short manual
   Tab-through, and commit as its own scoped change.
 
+## Day 23 -- accessibility and error-handling fixes complete (August 10, 2026)
+
+- Implemented all four items from `docs/AccessibilityErrorHandling.md`'s "Day 23 implementation
+  scope", and only those four -- no unrelated refactoring.
+- **Modal focus trap + inert background:** added `id="app-shell"` to `<main class="shell">`
+  (confirmed it is a sibling of `#action-confirmation`, not an ancestor, so marking it `inert`
+  while the modal is open cannot also make the modal itself inert). Added a `Tab`/`Shift+Tab`
+  keydown handler scoped to the modal that cycles focus between Cancel and Approve only, skipping
+  either if disabled (e.g. Approve reading "Running..." mid-action). `inert` is set on open and
+  cleared on close, alongside the existing focus-restore-on-close behavior.
+- **`aria-hidden="true"` on decorative icons:** applied to all six icon spans found, not just the
+  five originally listed in the audit -- the Send button's arrow glyph is the same pattern and
+  was folded in for consistency. Each button's accessible name is unchanged (visible text label
+  still present in every case).
+- **`:focus-visible` style for the composer textarea:** added a box-shadow ring using the
+  existing `--accent-soft` variable, matching the visual language already used on
+  `.memory-edit-form textarea` elsewhere, so it looks consistent across themes rather than being
+  a one-off color.
+- **Reworded error message:** found already applied, uncommitted, in `main.js`'s `executeStep`
+  helper when this session started -- `'Unsupported step type.'` had already become `"Zen does
+  not recognize this step's action type."`, exactly matching the audit's proposed fix. Not
+  authored by this session; folded into this commit since it is Day 23 work regardless of who
+  wrote it, and it was verified correct before including it.
+- Verified `scripts/check-workflows.js` and `scripts/check-custom-commands.js` still pass with
+  the reworded message (neither asserts on the exact string) -- confirmed, not assumed.
+- `npm run check` passes in full: all syntax checks plus computer-control, documents,
+  custom-commands, and workflows suites.
+- **Sign-off bar met per the audit's own criteria:** no new IPC surface, storage, or safety
+  boundary was introduced by any of the four fixes, so `npm run check` passing is sufficient
+  automated sign-off, consistent with what the audit itself specified. A short manual Tab-through
+  of the confirmation modal and composer field (confirming focus cycles correctly and a visible
+  ring appears) is still recommended before treating this as fully closed the way Day 21's live
+  click-through closed that day out -- not completed by the agent this session (GUI automation
+  tools were unavailable), left for the user.
+- Git state: to be committed as `feat: complete Day 23 accessibility and error-handling fixes`.
+  Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain
+  outside this commit, unrelated and untouched, same as every prior day.
+- Exact next recommended step: the Day 23 manual Tab-through above (a couple of minutes), then
+  Week 4's remaining themes: Windows packaging (with the still-pending GPL/voice-model license
+  review before bundling Piper or whisper.cpp), backup/export, and final release
+  documentation/changelog/tag.
+
 ## Day 22 -- accessibility and error-handling audit complete (August 10, 2026)
 
 - Added `docs/AccessibilityErrorHandling.md`. Unlike Days 8/11/15/17/20, this is not one new capability with a single safety boundary -- it is a targeted audit of everything already built (Days 1-21), verified against the real files rather than assumed generically.

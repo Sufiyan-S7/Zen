@@ -233,7 +233,7 @@ async function executeStep(step) {
     if (!outcome.completed) throw new Error('The referenced custom command did not complete.');
     return;
   }
-  throw new Error('Unsupported step type.');
+  throw new Error("Zen does not recognize this step's action type.");
 }
 
 // Executes a prepared custom command's steps in order, stopping immediately on the first
