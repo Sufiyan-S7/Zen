@@ -229,6 +229,13 @@ Zen is a local-first AI desktop assistant for Windows. It is being built to unde
 - [x] The vague `executeStep` error message reworded to be specific, consistent with the rest of `main.js`.
 - [x] `npm run check` passes in full. A short manual Tab-through of the modal and composer field is recommended but not yet confirmed — see [Project handoff](HANDOFF.md).
 
+## Day 24 GPL and voice-model license review — complete
+
+- [x] whisper.cpp confirmed MIT-licensed by reading its LICENSE file directly — safe to bundle, no further review needed. See [GPL & voice-model license review](docs/VoiceLicenseReview.md).
+- [x] Piper confirmed GPL-3.0 (its original MIT repo was archived in 2025; active development moved to a GPL-3.0 fork). A plausible subprocess-based compliance path exists but still needs real legal sign-off before bundling.
+- [x] Found a concrete, previously-unrecorded risk: the Lessac voice (and Ryan, fine-tuned from it) likely carries a restrictive "Blizzard" research license incompatible with redistribution. Amy's and Bryce's current licensing could not be independently re-confirmed this session.
+- [x] Recommendation: do not bundle any of the four voice models without reading their MODEL_CARD files directly; package Zen's first release without voice bundled, which does not block packaging from starting.
+
 ## Technology choices
 
 | Area | Choice |
@@ -292,6 +299,7 @@ Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Window
 - [Custom commands design](docs/CustomCommands.md)
 - [Workflows design](docs/Workflows.md)
 - [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
+- [GPL & voice-model license review](docs/VoiceLicenseReview.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

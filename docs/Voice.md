@@ -22,7 +22,7 @@ The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin`
 
 - Zen captures microphone audio only after push-to-talk begins, downsampling it to a 16 kHz WAV before passing it through Electron's secure preload bridge.
 - Electron runs the installed local binary, returns only text to the renderer, and removes temporary WAV and transcript files after processing.
-- Piper v1.6.0 is GPL-3.0 licensed and is installed only as an ignored local dependency for this PC. A distributed Zen package must complete a GPL compliance review before including Piper. Each downloaded voice model also needs its own model-card and license review; Bryce's model card lists its dataset as public domain.
+- Piper v1.6.0 is GPL-3.0 licensed and is installed only as an ignored local dependency for this PC. A distributed Zen package must complete a GPL compliance review before including Piper. Each downloaded voice model also needs its own model-card and license review; Bryce's model card lists its dataset as public domain. **Day 24 update:** this per-voice claim was not independently re-confirmed and should not be relied on as-is -- see `docs/VoiceLicenseReview.md`, which also found a concrete signal that the Lessac voice (and Ryan, fine-tuned from it) carries a restrictive "Blizzard" license likely incompatible with redistribution. Do not bundle any of the four voices in a packaged build without reading each MODEL_CARD file directly first.
 - Piper offers four selected local English voices: Lessac, Amy, Ryan, and Bryce. The selected voice is stored locally. The Electron main process returns in-memory WAV bytes to the renderer; **Stop speaking** stops both active synthesis and playback.
 
 ## Test cases before enabling voice

@@ -627,6 +627,56 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   review before bundling Piper or whisper.cpp), backup/export, and final release
   documentation/changelog/tag.
 
+## Day 24 -- GPL and voice-model license review complete (August 10, 2026)
+
+- Added `docs/VoiceLicenseReview.md`. This is a factual review to inform a real legal check
+  before any public distribution, not legal advice, and not a rubber stamp of `docs/Voice.md`'s
+  existing one-line note -- verified independently against the local runtime files and current
+  external sources.
+- **whisper.cpp: confirmed safe to bundle.** Read `vendor/whisper.cpp/LICENSE` directly -- MIT.
+  No further review needed; a standard attribution file is sufficient. This removes one of the
+  two runtimes from any bundling concern entirely.
+- **Piper (the engine): confirmed GPL-3.0, with a history worth recording.** The original
+  `rhasspy/piper` repo was MIT-licensed but was archived (read-only) in October 2025; active
+  development moved to `OHF-Voice/piper1-gpl` under GPL-3.0 in March 2025.
+  `vendor/piper-runtime`'s venv was installed via `pip install piper-tts`, which today resolves
+  to the GPL-3.0 fork -- confirming, not overturning, the existing GPL-3.0 conclusion, but the
+  MIT-to-GPL history wasn't previously recorded. Since Zen invokes Piper as a separate
+  subprocess (never links its code), there is a plausible GPL-3.0 compliance path (full source
+  offer + license text included) if it is ever bundled, but this needs an actual legal check
+  before a real release -- the safest default for now remains Day 5's original decision: local
+  machine dependency, not bundled.
+- **Voice models: the real finding of this review.** `docs/Voice.md`'s existing note ("Bryce's
+  model card lists its dataset as public domain") undersold the risk. Piper's own documentation
+  states the per-voice MODEL_CARD file, not the repo-level license badge, is authoritative, and
+  these vary per voice. Found a concrete signal in the Piper project's own GitHub discussion that
+  the **Lessac voice carries a restrictive "Blizzard" license**, assessed by a project
+  contributor as likely incompatible with commercial/general redistribution -- and that **Ryan
+  is fine-tuned from Lessac medium**, so likely inherits the same restriction. Could not
+  independently re-confirm Amy's or Bryce's current MODEL_CARD text this session (tool
+  limitations, not a clean-bill-of-health finding) -- `docs/Voice.md`'s "public domain" claim for
+  Bryce should be treated as **unverified**, not confirmed, until someone opens the actual file.
+- **Recommendation recorded in the review doc:** do not bundle Lessac or Ryan without a
+  dedicated legal check; do not bundle Amy or Bryce until their MODEL_CARD files are read
+  directly; whisper.cpp needs no further review; Piper's engine has a plausible compliance path
+  but still needs legal sign-off. None of this blocks continued local/personal use -- it only
+  affects packaging Zen for other people with voice included.
+- Updated `docs/Voice.md` with a pointer to this review at the relevant line, without touching
+  the rest of the file -- a pre-existing, unrelated, still-uncommitted local edit to that file
+  (the duplicate "8." read-aloud-speed item, present across several sessions now) remains
+  exactly as it was, untouched and unstaged, consistent with how every prior session has handled
+  it.
+- No other code changed -- review/design only, matching the Day 8/11/15/17/20/22 pattern.
+- Git state: to be committed as `docs: complete Day 24 GPL and voice-model license review`,
+  scoped to `docs/VoiceLicenseReview.md` (new), one specific line of `docs/Voice.md`, and this
+  file. Pre-existing `.cursorrules.txt`, `.backups/`, and `deliverables/` remain untouched.
+- Exact next recommended step: start Windows packaging **without** bundling Piper or any voice
+  model (voice features simply unavailable in the packaged build until the runtime is installed
+  separately, matching how it already behaves today) -- this is the lower-risk path and does not
+  block packaging from starting. A full legal review of the GPL-3.0 subprocess question and the
+  four MODEL_CARD files can happen in parallel or later, before any release that wants to include
+  voice out of the box.
+
 ## Day 22 -- accessibility and error-handling audit complete (August 10, 2026)
 
 - Added `docs/AccessibilityErrorHandling.md`. Unlike Days 8/11/15/17/20, this is not one new capability with a single safety boundary -- it is a targeted audit of everything already built (Days 1-21), verified against the real files rather than assumed generically.
