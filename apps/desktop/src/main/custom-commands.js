@@ -122,11 +122,49 @@ function removeCommand(id) {
   return { id: command.id, name: command.name };
 }
 
+// Day 26/27 backup & export: raw stored records (minimal step shape), not the resolved/
+// UI-facing listCommands() projection -- this is what a restore needs to feed back into
+// createCommand's own validation.
+function exportCommands() { return readStoredCommands(); }
+
+// Restore replaces the current command list -- it does not merge, per the Day 26 design. Each
+// command's steps are re-validated through the exact same resolveSteps used at normal creation
+// time -- nothing from a backup file is ever trusted as pre-approved. The original id is
+// preserved (not re-minted) so any workflow that references this command by id continues to
+// resolve after a restore; a command referencing a step that no longer resolves (e.g. its app
+// approval is gone, or the 50-command cap is reached) is skipped and reported, not silently
+// dropped.
+function restoreCommands(rawCommands) {
+  if (!Array.isArray(rawCommands)) throw safeError('The custom-commands section of that backup is invalid.', 'INVALID_BACKUP_COMMANDS');
+  const skipped = [];
+  const restored = [];
+  for (const raw of rawCommands) {
+    try {
+      const validatedName = validateCommandName(raw?.name);
+      const resolvedSteps = resolveSteps(raw?.steps);
+      if (restored.length >= MAX_COMMANDS) throw safeError(`Zen supports up to ${MAX_COMMANDS} saved custom commands.`, 'TOO_MANY_COMMANDS');
+      const id = typeof raw?.id === 'string' && /^[a-f0-9-]{36}$/i.test(raw.id) ? raw.id : crypto.randomUUID();
+      restored.push({
+        id,
+        name: validatedName,
+        steps: resolvedSteps.map((step) => (step.type === 'open-approved-app' ? { type: step.type, appId: step.appId } : { type: step.type, url: step.url })),
+        createdAt: typeof raw?.createdAt === 'string' ? raw.createdAt : new Date().toISOString()
+      });
+    } catch (error) {
+      skipped.push({ name: raw?.name || 'unnamed command', reason: error.message });
+    }
+  }
+  writeStoredCommands(restored);
+  return { restored: restored.length, skipped };
+}
+
 module.exports = {
   configureCustomCommands,
   previewCommand,
   createCommand,
   listCommands,
   prepareCommandRun,
-  removeCommand
+  removeCommand,
+  exportCommands,
+  restoreCommands
 };

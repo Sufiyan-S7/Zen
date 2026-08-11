@@ -8,6 +8,7 @@ const { configureApprovedApps, toolRegistryStatus, websitePreview, previewApp, p
 const { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument } = require('./documents');
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
+const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -45,6 +46,7 @@ const pendingBrowserWebAppSelections = new Map();
 const pendingFolderSelections = new Map();
 const pendingDocumentSelections = new Map();
 const pendingDocumentQuestions = new Map();
+const pendingBackupRestores = new Map();
 
 function validateMessages(messages) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
@@ -463,6 +465,49 @@ app.whenReady().then(() => {
       path: visitedPath,
       completed: visitedPath.length > 0 && visitedPath.every((entry) => entry.outcome === 'completed')
     };
+  });
+  // Day 26/27 backup & export. Real counts are pulled live in every case -- never a generic
+  // "your data" message -- and restore always shows counts found *in the chosen file*, never
+  // the current in-app state, so the confirmation reflects what will actually happen.
+  ipcMain.handle('zen:backup:store-counts', () => summarizeEnvelope(buildEnvelope({})));
+  ipcMain.handle('zen:backup:export', async (event, localData) => {
+    const envelope = buildEnvelope(localData);
+    const result = await require('electron').dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Save Zen backup',
+      defaultPath: `zen-backup-${envelope.exportedAt.slice(0, 10)}.json`,
+      filters: [{ name: 'Zen backup', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePath) return null;
+    await fsp.writeFile(result.filePath, JSON.stringify(envelope, null, 2), 'utf8');
+    return { path: result.filePath, summary: summarizeEnvelope(envelope) };
+  });
+  ipcMain.handle('zen:backup:choose-file', async (event) => {
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Choose a Zen backup to restore', properties: ['openFile'], filters: [{ name: 'Zen backup', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    let envelope;
+    try {
+      envelope = JSON.parse(await fsp.readFile(result.filePaths[0], 'utf8'));
+    } catch {
+      throw new Error('That file is not valid JSON.');
+    }
+    // Fails closed here -- before any token is issued, and long before any store is touched --
+    // on a malformed file or an unrecognized formatVersion.
+    validateEnvelope(envelope);
+    const token = crypto.randomUUID();
+    pendingBackupRestores.set(token, { webContentsId: event.sender.id, envelope, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, summary: summarizeEnvelope(envelope) };
+  });
+  ipcMain.handle('zen:backup:restore', (event, token) => {
+    const pending = pendingBackupRestores.get(token);
+    pendingBackupRestores.delete(token);
+    if (!pending || pending.webContentsId !== event.sender.id || pending.expiresAt < Date.now()) {
+      throw new Error('Choose the backup file again before restoring.');
+    }
+    // Re-validated fresh again here rather than trusting the earlier choose-file call --
+    // consistent with every other prepare/run pair in this file (commands, workflows).
+    return applyEnvelope(pending.envelope);
   });
   ipcMain.handle('zen:voice-status', () => voiceStatus());
   ipcMain.handle('zen:voice:transcribe', async (_event, audio) => {

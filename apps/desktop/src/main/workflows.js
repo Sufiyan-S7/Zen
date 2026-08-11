@@ -151,6 +151,44 @@ function resolveRoute(route, index, stepCount) {
   return route;
 }
 
+// Day 26/27 backup & export: raw stored records (minimal step shape), not the resolved/
+// UI-facing listWorkflows() projection -- this is what a restore needs to feed back into
+// createWorkflow's own validation.
+function exportWorkflows() { return readStoredWorkflows(); }
+
+// Restore replaces the current workflow list -- it does not merge, per the Day 26 design. Each
+// workflow's steps and routing are re-validated through the exact same resolveSteps used at
+// normal creation time (including the forward-only-index loop check) -- nothing from a backup
+// file is ever trusted as pre-approved. The original id is preserved (not re-minted) for
+// consistency with restoreCommands, though nothing currently references a workflow by id from
+// elsewhere. A workflow referencing a step that no longer resolves is skipped and reported, not
+// silently dropped. Called after restoreCommands() by the backup module, so any
+// "run-custom-command" step can resolve against the already-restored command list (whose ids
+// are themselves preserved from the backup, not re-minted -- see restoreCommands).
+function restoreWorkflows(rawWorkflows) {
+  if (!Array.isArray(rawWorkflows)) throw safeError('The workflows section of that backup is invalid.', 'INVALID_BACKUP_WORKFLOWS');
+  const skipped = [];
+  const restored = [];
+  for (const raw of rawWorkflows) {
+    try {
+      const validatedName = validateWorkflowName(raw?.name);
+      const resolvedSteps = resolveSteps(raw?.steps);
+      if (restored.length >= MAX_WORKFLOWS) throw safeError(`Zen supports up to ${MAX_WORKFLOWS} saved workflows.`, 'TOO_MANY_WORKFLOWS');
+      const id = typeof raw?.id === 'string' && /^[a-f0-9-]{36}$/i.test(raw.id) ? raw.id : crypto.randomUUID();
+      restored.push({
+        id,
+        name: validatedName,
+        steps: resolvedSteps.map(minimalStep),
+        createdAt: typeof raw?.createdAt === 'string' ? raw.createdAt : new Date().toISOString()
+      });
+    } catch (error) {
+      skipped.push({ name: raw?.name || 'unnamed workflow', reason: error.message });
+    }
+  }
+  writeStoredWorkflows(restored);
+  return { restored: restored.length, skipped };
+}
+
 module.exports = {
   configureWorkflows,
   previewWorkflow,
@@ -159,5 +197,7 @@ module.exports = {
   prepareWorkflowRun,
   removeWorkflow,
   resolveRoute,
-  MAX_STEPS
+  MAX_STEPS,
+  exportWorkflows,
+  restoreWorkflows
 };

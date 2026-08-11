@@ -115,6 +115,9 @@ const appearanceHelp = document.querySelector('#appearance-help');
 const appearancePreviewName = document.querySelector('#appearance-preview-name');
 const themePreviewButtons = document.querySelectorAll('[data-theme-preview]');
 const clearConversationsButton = document.querySelector('#clear-conversations');
+const exportBackupButton = document.querySelector('#export-backup');
+const restoreBackupButton = document.querySelector('#restore-backup');
+const backupHelp = document.querySelector('#backup-help');
 const voiceInputButton = document.querySelector('#voice-input-button');
 const voiceStatusElement = document.querySelector('#voice-status');
 const stopSpeakingButton = document.querySelector('#stop-speaking-button');
@@ -470,7 +473,9 @@ function renderActivityLog() {
       'remove-custom-command': 'Remove custom command',
       'create-workflow': 'Save workflow',
       'run-workflow': 'Run workflow',
-      'remove-workflow': 'Remove workflow'
+      'remove-workflow': 'Remove workflow',
+      'backup-export': 'Export backup',
+      'backup-restore': 'Restore backup'
     })[entry.action] || entry.action;
     const status = document.createElement('span');
     status.textContent = entry.status;
@@ -1454,6 +1459,141 @@ async function loadWorkflows() {
   try { renderWorkflowList(await window.zen.listWorkflows()); } catch { workflowBuilderHelp.textContent = 'Zen could not load your workflows.'; }
 }
 
+// Day 26/27 backup & export. Every confirmation shows real counts pulled live -- export shows
+// what is about to be written, restore shows what is found *in the chosen file*, never the
+// current in-app state -- so nobody sees a generic "your data" message.
+async function exportAllData() {
+  backupHelp.textContent = '';
+  let storeCounts;
+  try {
+    storeCounts = await window.zen.getBackupStoreCounts();
+  } catch (error) {
+    backupHelp.textContent = error.message || 'Zen could not prepare that export.';
+    return;
+  }
+  const localCounts = { conversations: conversations.length, memories: memories.length, activityLogEntries: activityLog.length };
+  const entry = createActivity('backup-export', `${localCounts.conversations} conversations, ${storeCounts.approvedApps} approved apps, ${storeCounts.customCommands} custom commands, ${storeCounts.workflows} workflows, ${storeCounts.documents} documents`);
+  try {
+    const approved = await requestActionConfirmation({
+      title: 'Export all local data?',
+      description: 'Zen will save everything below to one file you choose on this computer. Nothing is sent anywhere automatically.',
+      destination: [
+        `${localCounts.conversations} conversation${localCounts.conversations === 1 ? '' : 's'}`,
+        `${localCounts.memories} memor${localCounts.memories === 1 ? 'y' : 'ies'}`,
+        'your saved settings',
+        `${localCounts.activityLogEntries} activity-log entr${localCounts.activityLogEntries === 1 ? 'y' : 'ies'}`,
+        `${storeCounts.approvedApps} approved app${storeCounts.approvedApps === 1 ? '' : 's'}`,
+        `${storeCounts.customCommands} custom command${storeCounts.customCommands === 1 ? '' : 's'}`,
+        `${storeCounts.workflows} workflow${storeCounts.workflows === 1 ? '' : 's'}`,
+        `${storeCounts.documents} document${storeCounts.documents === 1 ? '' : 's'}`
+      ].join('\n'),
+      approveLabel: 'Choose save location'
+    });
+    if (!approved) { updateActivity(entry, 'cancelled'); backupHelp.textContent = 'Export cancelled.'; return; }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Saving…';
+    try {
+      const result = await window.zen.exportBackup({ conversations, settings, activityLog, memories });
+      if (!result) { updateActivity(entry, 'cancelled'); backupHelp.textContent = 'Export cancelled. No file was chosen.'; return; }
+      updateActivity(entry, 'completed', { result: result.path });
+      backupHelp.textContent = `Backup saved to ${result.path}.`;
+    } catch (error) {
+      updateActivity(entry, 'failed', { errorCode: error.code || 'BACKUP_EXPORT_FAILED' });
+      backupHelp.textContent = error.message || 'Zen could not save that backup.';
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'BACKUP_EXPORT_FAILED' });
+    backupHelp.textContent = error.message || 'Zen could not prepare that export.';
+  }
+}
+
+// Restore replaces, it does not merge (Day 26 decision) -- the confirmation says so
+// explicitly, category by category, never as a generic "your data" summary. Every restored
+// record was already re-validated by the main process (backup.js / applyEnvelope) through the
+// exact same validators used at normal creation time; this function's job is only to apply the
+// four localStorage sections it hands back and refresh every on-screen list.
+async function restoreFromBackup() {
+  backupHelp.textContent = '';
+  let chosen;
+  try {
+    chosen = await window.zen.chooseBackupFile();
+  } catch (error) {
+    backupHelp.textContent = error.message || 'Zen could not read that backup file.';
+    return;
+  }
+  if (!chosen) { backupHelp.textContent = 'No backup file was chosen.'; return; }
+  const { token, summary } = chosen;
+  const entry = createActivity('backup-restore', `${summary.conversations} conversations, ${summary.approvedApps} approved apps, ${summary.customCommands} custom commands, ${summary.workflows} workflows, ${summary.documents} documents`);
+  try {
+    const approved = await requestActionConfirmation({
+      title: 'Restore from this backup?',
+      description: 'This REPLACES your current data in every category below with what is in this file. This cannot be undone.',
+      destination: [
+        `${summary.conversations} conversation${summary.conversations === 1 ? '' : 's'}`,
+        `${summary.memories} memor${summary.memories === 1 ? 'y' : 'ies'}`,
+        summary.hasSettings ? 'saved settings' : 'no saved settings in this file',
+        `${summary.activityLogEntries} activity-log entr${summary.activityLogEntries === 1 ? 'y' : 'ies'}`,
+        `${summary.approvedApps} approved app${summary.approvedApps === 1 ? '' : 's'}`,
+        `${summary.customCommands} custom command${summary.customCommands === 1 ? '' : 's'}`,
+        `${summary.workflows} workflow${summary.workflows === 1 ? '' : 's'}`,
+        `${summary.documents} document${summary.documents === 1 ? '' : 's'}`
+      ].join('\n'),
+      approveLabel: 'Replace my data'
+    });
+    if (!approved) { updateActivity(entry, 'cancelled'); backupHelp.textContent = 'Restore cancelled. Nothing was changed.'; return; }
+    confirmationApproveButton.disabled = true;
+    confirmationApproveButton.textContent = 'Restoring…';
+    try {
+      const result = await window.zen.restoreBackup(token);
+      generations.forEach((generation) => window.zen.stopChat(generation.requestId));
+      generations.clear();
+      // Written through the existing storage keys, then re-read with the normal loaders
+      // (loadConversations/loadSettings/loadActivityLog/loadMemories) rather than assigned
+      // directly, so restored data gets exactly the same validation/defaulting as any other
+      // load -- never trusted as already-clean just because it came from a backup file.
+      localStorage.setItem(storageKey, JSON.stringify(result.localData.conversations));
+      localStorage.setItem(settingsStorageKey, JSON.stringify(result.localData.settings));
+      localStorage.setItem(activityStorageKey, JSON.stringify(result.localData.activityLog));
+      localStorage.setItem(memoryStorageKey, JSON.stringify(result.localData.memories));
+      conversations = loadConversations();
+      activeConversationId = conversations[0].id;
+      settings = loadSettings();
+      activityLog = loadActivityLog();
+      memories = loadMemories();
+      applyTheme();
+      showPage('chat');
+      render();
+      renderMemories();
+      renderActivityLog();
+      updateModelStatus();
+      await Promise.all([loadDocuments(), loadApprovedApps(), loadCommands(), loadWorkflows()]);
+      const skippedParts = [];
+      if (result.approvedApps.skipped.length) skippedParts.push(`${result.approvedApps.skipped.length} approved app${result.approvedApps.skipped.length === 1 ? '' : 's'}`);
+      if (result.customCommands.skipped.length) skippedParts.push(`${result.customCommands.skipped.length} custom command${result.customCommands.skipped.length === 1 ? '' : 's'}`);
+      if (result.workflows.skipped.length) skippedParts.push(`${result.workflows.skipped.length} workflow${result.workflows.skipped.length === 1 ? '' : 's'}`);
+      if (result.documents.skipped.length) skippedParts.push(`${result.documents.skipped.length} document${result.documents.skipped.length === 1 ? '' : 's'}`);
+      const skippedNote = skippedParts.length ? ` ${skippedParts.join(', ')} could not be restored (see Activity for reasons) and were skipped, not silently dropped from view.` : '';
+      updateActivity(entry, 'completed', {
+        result: `${result.approvedApps.restored} apps, ${result.customCommands.restored} commands, ${result.workflows.restored} workflows, ${result.documents.restored} documents restored`,
+        errorCode: skippedParts.length ? 'BACKUP_RESTORE_PARTIAL' : ''
+      });
+      backupHelp.textContent = `Backup restored.${skippedNote}`;
+    } catch (error) {
+      updateActivity(entry, 'failed', { errorCode: error.code || 'BACKUP_RESTORE_FAILED' });
+      backupHelp.textContent = error.message || 'Zen could not restore that backup.';
+    } finally {
+      confirmationApproveButton.disabled = false;
+      confirmationApproveButton.textContent = 'Open website';
+    }
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'BACKUP_RESTORE_FAILED' });
+    backupHelp.textContent = error.message || 'Zen could not prepare that restore.';
+  }
+}
+
 function renderFolderSearchResults(result) {
   folderSearchResults.innerHTML = '';
   if (!result.matches.length) {
@@ -2122,5 +2262,7 @@ clearConversationsButton.addEventListener('click', () => {
   render();
   input.focus();
 });
+exportBackupButton.addEventListener('click', exportAllData);
+restoreBackupButton.addEventListener('click', restoreFromBackup);
 
 initialise();

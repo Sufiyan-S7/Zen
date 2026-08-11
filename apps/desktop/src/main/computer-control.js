@@ -228,10 +228,38 @@ function searchFolderNames(folderPath, query) {
 
 function toolRegistryStatus() { return Object.values(TOOL_REGISTRY).map(({ id, label, requiresConfirmation, enabled }) => ({ id, label, requiresConfirmation, enabled })); }
 
+// Day 26/27 backup & export: the raw stored shape (not the UI-facing listApprovedApps()
+// projection) so a restore can fully re-derive each entry through appEntry/browserWebAppEntry.
+function exportApprovedApps() { return readApprovedApps(); }
+
+// Restore replaces the current approved-app list -- it does not merge, per the Day 26 design.
+// Every entry is re-derived through the exact same appEntry/browserWebAppEntry validators used
+// when an app is normally approved; nothing from a backup file is ever trusted as pre-approved.
+// An entry whose executable no longer exists on this machine (or fails any other live check --
+// e.g. it is now a browser launcher) is skipped and reported, not silently dropped or accepted.
+function restoreApprovedApps(rawApps) {
+  if (!Array.isArray(rawApps)) throw new Error('The approved-app section of that backup is invalid.');
+  const restored = [];
+  const skipped = [];
+  for (const raw of rawApps) {
+    try {
+      const entry = raw && raw.kind === 'browser-web-app'
+        ? browserWebAppEntry(raw.executable, raw.label, raw.url)
+        : appEntry(raw?.executable);
+      if (!restored.some((existing) => existing.id === entry.id)) restored.push(entry);
+    } catch (error) {
+      skipped.push({ label: raw?.label || raw?.executable || 'unknown app', reason: error.message });
+    }
+  }
+  writeApprovedApps(restored);
+  return { restored: restored.length, skipped };
+}
+
 module.exports = {
   configureApprovedApps,
   toolRegistryStatus,
   websitePreview,
+  appEntry,
   previewApp,
   previewBrowserWebApp,
   browserWebAppEntry,
@@ -244,5 +272,7 @@ module.exports = {
   validateFolderPath,
   searchFolderNames,
   isBrowserLauncher,
-  validateBrowserWebAppLabel
+  validateBrowserWebAppLabel,
+  exportApprovedApps,
+  restoreApprovedApps
 };

@@ -229,4 +229,44 @@ function removeDocument(id) {
   writeStoredDocuments(documents.filter((entry) => entry.id !== id));
   return { id: item.id, displayName: item.displayName };
 }
-module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument };
+// Day 26/27 backup & export: the full raw stored record, including extractedText -- this
+// already-local text (never re-read from a source file, which per Day 12 was never copied in
+// the first place) is exactly what needs to round-trip through a backup.
+function exportDocuments() { return readStoredDocuments(); }
+
+// Restore replaces the current document store -- it does not merge, per the Day 26 design.
+// There is no re-extraction step (this is already Zen's own processed text, not a source file),
+// but every record's content hash is independently recomputed from its own extractedText and
+// compared to the stored hash, so a corrupted or tampered backup entry is rejected rather than
+// silently trusted.
+function restoreDocuments(rawDocuments) {
+  if (!Array.isArray(rawDocuments)) throw safeError('The documents section of that backup is invalid.', 'INVALID_BACKUP_DOCUMENTS');
+  const restored = [];
+  const skipped = [];
+  for (const raw of rawDocuments) {
+    if (!raw || typeof raw.id !== 'string' || typeof raw.displayName !== 'string' || typeof raw.extractedText !== 'string' || !raw.extractedText) {
+      skipped.push({ displayName: raw?.displayName || 'unknown document', reason: 'This document record is incomplete.' });
+      continue;
+    }
+    const recomputedHash = crypto.createHash('sha256').update(raw.extractedText).digest('hex');
+    if (raw.contentHash && raw.contentHash !== recomputedHash) {
+      skipped.push({ displayName: raw.displayName, reason: 'This document’s content does not match its recorded hash and was not restored.' });
+      continue;
+    }
+    restored.push({
+      id: raw.id,
+      displayName: raw.displayName,
+      type: typeof raw.type === 'string' ? raw.type : 'TXT',
+      sourcePath: typeof raw.sourcePath === 'string' ? raw.sourcePath : '',
+      sourceSize: Number.isFinite(raw.sourceSize) ? raw.sourceSize : raw.extractedText.length,
+      importedAt: typeof raw.importedAt === 'string' ? raw.importedAt : new Date().toISOString(),
+      contentHash: recomputedHash,
+      extractedText: raw.extractedText,
+      status: 'imported'
+    });
+  }
+  writeStoredDocuments(restored);
+  return { restored: restored.length, skipped };
+}
+
+module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument, exportDocuments, restoreDocuments };
