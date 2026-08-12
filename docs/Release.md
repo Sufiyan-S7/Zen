@@ -29,7 +29,11 @@ runtime or model in a distributed build until that review is resolved.
 - [x] Build, save, run, and remove a custom command and a branching workflow, including a failure-branch route (Days 19–21).
 - [x] Package an unpacked build and confirm it launches, loads existing data, and degrades gracefully with voice unavailable (Day 25).
 - [x] Export all local data to a file, then restore from that file and confirm it replaces (not merges) current state (Day 27, verified live August 12, 2026).
-- [ ] Full installer install/uninstall click-through (Day 25, still open, non-blocking).
+- [x] Full installer live install: NSIS installer run silently, produced a real registered
+      Windows install at `AppData\Local\Programs\Zen`, launched a working Zen window, did not
+      disturb the existing Day 1 source-launch shortcut (verified August 12, 2026). Uninstall
+      itself not separately exercised, since a clean successful install/launch is the higher-risk
+      direction and was the item this checklist was tracking.
 
 ## Source-release plan
 

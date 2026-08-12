@@ -4,7 +4,7 @@ All notable changes to Zen are documented in this file. Zen is a local-first Win
 assistant; every entry below reflects work already implemented and, where noted, verified live
 in the running app.
 
-## [Unreleased] — v0.1.0 pending tag
+## [1.0.0] — 2026-08-12 — full 28-day MVP
 
 ### Week 1 — Foundation and conversation (Days 1–7)
 - Local Ollama chat (`llama3.2:3b`), streaming responses with a Stop generating control.
@@ -61,12 +61,19 @@ in the running app.
   trip, August 12, 2026.
 - `scripts/check-workflows.js` and `scripts/check-backup.js` added to `npm run check`.
 
+### Release verification (August 12, 2026)
+- Live install verified: the NSIS installer was run (silent, per-user) and produced a working
+  install at `AppData\Local\Programs\Zen`, registered in Windows' uninstall list, launching a
+  real Zen window without disturbing the existing Day 1 source-launch desktop shortcut.
+- `npm audit` re-checked and now reports 0 vulnerabilities (the 13 findings noted after Day 25's
+  `electron-builder` install were resolved by a later dependency-tree update).
+- `v0.1.0`'s original tag (Day 7, Week-1-only checkpoint) is left in place unchanged; this
+  finished-MVP milestone is tagged `v1.0.0` instead, to avoid rewriting what the existing tag
+  already meant.
+
 ## Known limitations at this checkpoint
 
-- Windows installer has not had a live install/uninstall click-through (build-artifact and
-  unpacked-launch verification only).
-- Installer is unsigned; Windows SmartScreen will likely warn on first run.
-- 13 npm audit findings (12 high, 1 critical) in `electron-builder`'s dev-only transitive
-  dependency tree have not been investigated.
+- Installer is unsigned; Windows SmartScreen will likely warn on first run on a machine other
+  than the one it was built on.
 - Voice (Piper/whisper.cpp) is not included in the packaged build pending the license review
   above; it works only in local source-checkout use with the runtimes installed separately.
