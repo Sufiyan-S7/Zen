@@ -886,3 +886,18 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   pending legal review. Both are optional post-MVP follow-ons, not incomplete original-plan work.
 - Exact next recommended step: none for the original MVP. Continue only with user-directed
   code-signing setup, voice-license review, or a separately scoped v1.1 feature.
+
+## v1.1 planning -- personal desktop agent (August 12, 2026)
+
+- Added `docs/PersonalAgentPlan.md`: a 30-day v1.1 plan for Zen as a local-first personal
+  desktop agent. The plan covers opt-in Windows startup/tray behavior, a configurable global
+  shortcut and compact voice overlay, local speech capture, structured planning, scoped file
+  access, reversible file management, approved-app and accessibility-first desktop automation,
+  Zen-managed browser work, resumable task execution, routines, privacy/a11y audits, and release
+  validation.
+- Core decision proposed for owner confirmation: broad Personal Agent mode may automate
+  observational and reversible work after task approval, but irreversible, security-sensitive,
+  or externally consequential work always receives a specific final confirmation. Credential
+  extraction, bypassing 2FA/CAPTCHAs, and hidden activity are prohibited.
+- No product code changed. Exact next recommended step: confirm the activation shortcut and the
+  proposed personal-agent permission boundary, then begin v1.1 Day 1 design/threat-model work.

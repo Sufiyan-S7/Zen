@@ -284,6 +284,12 @@ runtimes or Piper models until their GPL and individual model-license obligation
 reviewed. See the [release record](docs/Release.md), [code-signing guidance](docs/CodeSigning.md),
 and [voice rules](docs/Voice.md).
 
+## Next planned version
+
+The proposed v1.1 direction is a voice-first personal desktop agent: optional Windows startup,
+a global shortcut that opens a compact command overlay, task planning, scoped file/app/browser
+automation, and explicit safety controls. See the [30-day personal-agent plan](docs/PersonalAgentPlan.md).
+
 ### Desktop shortcut
 
 `Zen.lnk` is available on the Windows desktop. It now launches Electron directly and uses Zen's custom AI-engine icon. Double-click it to start Zen without opening PowerShell first; right-click the shortcut and select **Pin to taskbar** for even faster access.
