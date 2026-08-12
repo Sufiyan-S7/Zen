@@ -278,7 +278,11 @@ The first command downloads Electron once. Zen opens as a local desktop chat app
 
 ## Release status
 
-Zen `v0.1.0` is tagged locally as a tested source release, not a packaged Windows installer. Do not distribute the bundled voice runtimes or Piper models until their GPL and individual model-license obligations have been reviewed. See the [release readiness guide](docs/Release.md) and [voice rules](docs/Voice.md).
+Zen's completed MVP is tagged `v1.0.0` and includes a tested unsigned Windows installer. The
+earlier `v0.1.0` tag remains the Week-1 source checkpoint. Do not distribute bundled voice
+runtimes or Piper models until their GPL and individual model-license obligations have been
+reviewed. See the [release record](docs/Release.md), [code-signing guidance](docs/CodeSigning.md),
+and [voice rules](docs/Voice.md).
 
 ### Desktop shortcut
 

@@ -870,3 +870,19 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Exact next recommended step: reconcile `docs/Release.md` with the completed Day 28 / `v1.0.0`
   release state. After that, no work remains for the original MVP; code signing and packaged-voice
   licensing are optional follow-on work.
+
+## Day 30 -- release-documentation reconciliation (August 12, 2026)
+
+- Reconciled the stale `docs/Release.md` identified in Day 29 with the verified Day 28 state:
+  Zen is complete through Day 28, the Windows installer has had a successful install/launch,
+  `v1.0.0` is the completed-MVP tag, and `v0.1.0` remains the earlier Week-1 checkpoint.
+- Replaced the obsolete pending source-release and future-packaging plans with a release record
+  and clearly labeled optional post-release work: code signing, voice licensing, and broader
+  deployment testing.
+- Updated README release guidance to match the same status and link directly to the release,
+  code-signing, and voice guidance.
+- Validation: reviewed all release-version references after the update; no product code changed.
+- Known limitations remain intentional: the installer is unsigned, and voice is not bundled
+  pending legal review. Both are optional post-MVP follow-ons, not incomplete original-plan work.
+- Exact next recommended step: none for the original MVP. Continue only with user-directed
+  code-signing setup, voice-license review, or a separately scoped v1.1 feature.

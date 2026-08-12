@@ -1,15 +1,15 @@
-# Zen v0.1.0 release readiness
+# Zen v1.0.0 release record and follow-up guidance
 
 ## Current release boundary (updated Day 28, August 12, 2026)
 
-Zen is complete through Day 27 of the 28-day plan: local chat, persistence, settings,
+Zen is complete through Day 28 of the 28-day plan: local chat, persistence, settings,
 speech-to-text/text-to-speech, safe computer control (approved apps, websites, folder search),
 local memory, document import/search/preview/Q&A including PDF text extraction, safe custom
 commands, branching workflows with structurally-impossible loops, an accessibility and
 error-handling pass, an unsigned Windows NSIS installer build, and full local backup/export.
 
-It is a working, packaged Windows build (`deliverables/dist/`) that has **not yet had a live
-install/uninstall click-through** (Day 25, non-blocking) and is **not code-signed**. Voice
+It is a working, packaged Windows build (`deliverables/dist/`) whose NSIS installer has been
+installed and launched successfully on Windows. The installer is **not code-signed**. Voice
 (Piper/whisper.cpp) is deliberately excluded from the packaged build per Day 24's license
 review — Lessac and Ryan likely carry a restrictive "Blizzard" research license incompatible
 with redistribution, and Bryce's "public domain" claim is unverified. Do not bundle any voice
@@ -35,20 +35,23 @@ runtime or model in a distributed build until that review is resolved.
       itself not separately exercised, since a clean successful install/launch is the higher-risk
       direction and was the item this checklist was tracking.
 
-## Source-release plan
+## Completed release record
 
-1. Complete the final regression checklist and record the result in `HANDOFF.md`.
-2. Run `npm.cmd --prefix apps/desktop run check` and `git diff --check`.
-3. Commit release documentation, then create an annotated `v0.1.0` Git tag only after the user approves it.
-4. Publish source only if the repository and documentation are ready. Keep `vendor/`, `deliverables/`, local conversations, recordings, and models out of Git.
+- Final regression checks were completed and recorded in `HANDOFF.md`.
+- `npm.cmd --prefix apps/desktop run check` and `git diff --check` passed for the release.
+- `v0.1.0` remains the earlier Week-1 source checkpoint on `77a549f`; the finished MVP is the
+  annotated `v1.0.0` tag on `3293cfc`.
+- `main` and both tags were pushed to `origin` during Day 28.
+- Keep `vendor/`, `deliverables/`, local conversations, recordings, and models out of Git.
 
-## Future Windows-installer plan
+## Optional post-release work
 
-1. Choose and configure a Windows packaging tool.
-2. Decide whether voice is omitted or bundled.
-3. If bundling voice, complete the Piper GPL and model-license compliance review before packaging.
-4. Test a fresh installation, update/rollback behavior, microphone permissions, and uninstall behavior on a separate Windows profile or PC.
-5. Write installation and troubleshooting instructions for the packaged build.
+1. Obtain and configure a code-signing certificate; the prepared workflow and owner-controlled
+   options are documented in `CodeSigning.md`.
+2. Before distributing a build with bundled voice, complete legal review of Piper GPL-3.0
+   compliance and each proposed voice model's MODEL_CARD/license.
+3. If Zen is distributed more broadly, test upgrade, rollback, microphone permissions, and
+   uninstall on a separate Windows profile or PC.
 
 ## Rollback
 
