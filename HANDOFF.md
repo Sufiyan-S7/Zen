@@ -843,3 +843,30 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   natural next themes are (a) the voice-license legal review needed before bundling voice in a
   distributable build, or (b) code signing if this is ever shared beyond this machine -- both
   optional, both deferred by explicit design decisions already recorded above, not oversights.
+
+## Day 29 -- repository-completion audit (August 12, 2026)
+
+- Audited the supplied session log, this handoff, README, roadmap/release documentation, Git
+  history/tags, and the current working tree rather than accepting the previous session's
+  completion claim at face value.
+- Evidence supporting completion of the original 28-day MVP plan: the full implementation and
+  documentation sequence is present through `81a16f1`; `v1.0.0` is an annotated tag targeting
+  `3293cfc`; the local `origin/main` reference targets `81a16f1`; and
+  `npm.cmd --prefix apps/desktop run check` passed on August 12, including computer-control,
+  document-import, custom-command, workflow, and backup/export safety suites. `git diff --check`
+  also passed.
+- Correction / documentation issue: `docs/Release.md` still says the release is complete only
+  through Day 27, refers to `v0.1.0` as the pending source-release tag, and retains a now-stale
+  future-installer plan. This conflicts with the Day 28 handoff/session-log claims and the actual
+  `v1.0.0` tag. The source code and checked test evidence support the MVP-complete conclusion,
+  but that document needs a focused reconciliation before describing the release documentation as
+  fully current.
+- Still intentionally incomplete, not an unproven planned feature: code signing has only been
+  documented/automated in `.github/workflows/release.yml`; obtaining/configuring a real signing
+  certificate remains user-controlled. Bundled voice remains deferred pending legal review.
+- Current Git state during the audit: unrelated pre-existing local changes remain in
+  `docs/Voice.md` and untracked `.backups/`, `.cursorrules.txt`, and `deliverables/`; none were
+  inspected as implementation changes or modified by this audit.
+- Exact next recommended step: reconcile `docs/Release.md` with the completed Day 28 / `v1.0.0`
+  release state. After that, no work remains for the original MVP; code signing and packaged-voice
+  licensing are optional follow-on work.
