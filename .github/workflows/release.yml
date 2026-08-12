@@ -1,0 +1,46 @@
+name: Build Windows installer
+
+# Builds Zen's NSIS installer whenever a version tag is pushed and attaches it to a GitHub
+# Release. Signs automatically if CSC_LINK / CSC_KEY_PASSWORD repository secrets are present
+# (electron-builder reads these itself - no extra flags needed); otherwise publishes an
+# unsigned build, exactly like every local build so far. See docs/CodeSigning.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run safety and syntax checks
+        run: npm run check
+
+      - name: Build installer
+        run: npm run dist
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Attach installer to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            deliverables/dist/*.exe
+            deliverables/dist/*.blockmap
