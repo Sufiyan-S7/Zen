@@ -801,3 +801,45 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Validation: audit findings cross-checked against the real files (`grep`-equivalent searches for `aria-hidden`, `:focus`, `outline`, and every `throw new Error(` in `main.js`) rather than relying on memory of what the code should contain.
 - Git state: to be committed as `docs: complete Day 22 accessibility and error-handling audit`. Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain unrelated and untouched, same as every prior day. The Day 21 live click-through (Section above) also remains open, independent of this audit.
 - Exact next recommended step: implement Day 23 exactly to the four items in `docs/AccessibilityErrorHandling.md`'s "Day 23 implementation scope" section -- modal focus trap + inert background, aria-hidden on decorative icons, composer focus-visible style, and the one reworded error message -- then verify with `npm run check` plus a short manual Tab-through, and commit as its own scoped change.
+
+## Day 28 -- release documentation, changelog, tag: project complete (August 12, 2026)
+
+- Reconciled this file with the real repo state: Days 25 (Windows packaging), 26 (backup/export
+  design), and 27 (backup/export implementation, closed with a live export/restore round trip)
+  existed as commits but had never been written up here -- added retroactively, verified against
+  each commit's actual diff rather than assumed.
+- Refreshed `docs/Release.md`'s current-release-boundary section (previously stuck describing
+  "Week 1" as current) and expanded its final regression checklist through Week 4.
+- Added `CHANGELOG.md` summarizing all four weeks and known limitations.
+- **Live release verification, not just documentation:** ran the actual packaged NSIS installer
+  (silent, per-user flags) and confirmed a real, working, Windows-registered install at
+  `AppData\Local\Programs\Zen` -- launched correctly, did not disturb the existing Day 1
+  source-launch desktop shortcut. This closes Day 25's last open item. Re-ran `npm audit`: 0
+  vulnerabilities (the 13 findings noted after Day 25's `electron-builder` install were resolved
+  by a later dependency-tree update, not by this pass). Confirmed `deliverables/dist/` is already
+  covered by the existing top-level `dist/` `.gitignore` rule, so no change was needed there.
+- **Tagging decision:** `v0.1.0` already existed locally as an annotated tag from Day 7, pointing
+  at `77a549f` (the Week-1-only checkpoint). Rather than move or overwrite it, this finished
+  28-day MVP is tagged `v1.0.0` on commit `3293cfc`. `v0.1.0` is left exactly as it was.
+- **Pushed to `origin` for the first time this session:** `main` fast-forwarded cleanly
+  (`74e42a0..3293cfc`, no divergence -- `origin/main` was 5 commits behind local before this),
+  and both `v0.1.0` and `v1.0.0` tags were pushed. Verified after push with a fresh `git fetch`
+  and `git log origin/main` matching local exactly.
+- Git state: three commits this session -- `4499a68` (Day 28 docs/changelog), `3293cfc` (release
+  verification: live install + npm audit recheck), and tag `v1.0.0` on `3293cfc`. Pre-existing
+  `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside every
+  commit, unrelated and untouched, same as every prior day of this project.
+- **Project status: the full 28-day plan is complete.** All four weeks implemented, automated
+  checks passing (`npm run check`, `git diff --check`), every capability's live-click-through
+  either closed in-session or by the user directly, the packaged Windows build verified with a
+  real install, and `v1.0.0` tagged and pushed to `origin/main`.
+- Known, non-blocking, and explicitly not treated as loose ends: the installer is unsigned
+  (fine for personal/current use; needs a code-signing certificate before wider public
+  distribution); voice (Piper/whisper.cpp) remains excluded from the packaged build pending a
+  real legal review of the Day 24 findings (Lessac/Ryan's likely-restrictive Blizzard license,
+  Bryce's unverified public-domain claim) -- voice still works normally in local source-checkout
+  use with the runtimes installed separately, exactly as it always has.
+- Exact next recommended step: none required to consider the MVP done. If work continues, the
+  natural next themes are (a) the voice-license legal review needed before bundling voice in a
+  distributable build, or (b) code signing if this is ever shared beyond this machine -- both
+  optional, both deferred by explicit design decisions already recorded above, not oversights.
