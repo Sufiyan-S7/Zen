@@ -677,6 +677,121 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   four MODEL_CARD files can happen in parallel or later, before any release that wants to include
   voice out of the box.
 
+## Day 25 -- Windows packaging complete (August 11, 2026)
+
+- Added `docs/Packaging.md` and implemented it in the same session: `electron-builder@^25.1.8`
+  (devDependency only) produces an unsigned NSIS installer. `npm run pack` (fast unpacked build)
+  and `npm run dist` (full installer) were added to `apps/desktop/package.json`. Build output
+  goes to `deliverables/dist/`, outside `apps/desktop`.
+- Per Day 24's `docs/VoiceLicenseReview.md` recommendation, this build does **not** bundle
+  `vendor/piper-runtime` or `vendor/whisper-runtime` -- confirmed empirically, not assumed: every
+  file inside the built `app.asar` was listed with `@electron/asar` and none contain `vendor`
+  anywhere in their path (443 files total).
+- The unpacked build (`win-unpacked/Zen.exe`) was actually launched: it opened a real "Zen"
+  window, correctly loaded existing local conversation history, and correctly showed "Voice input
+  unavailable -- Local voice setup is not complete" instead of crashing -- the designed
+  degradation, confirmed live. The full NSIS installer (`Zen Setup 0.1.0.exe`, ~102 MB) built
+  successfully with a matching `.blockmap`; signing was attempted and skipped as expected
+  (no certificate configured -- fine for local/personal use).
+- `npm run check` still passes in full after adding the dependency and build config.
+- **Genuinely still open (non-blocking, same pattern as every prior live-test gap):** the
+  installer itself was never run through a real install/uninstall (would install Zen system-wide
+  and interact with the existing Day 1 desktop shortcut -- more invasive than a build-artifact
+  check and not asked for); 13 npm audit findings (12 high, 1 critical) appeared in
+  electron-builder's transitive dev-dependency tree and were not investigated (build-chain only,
+  not shipped inside the packaged app); the installer is unsigned (acceptable for personal use,
+  would need a certificate for wider distribution); `.gitignore` was not updated to exclude
+  `deliverables/dist/`.
+- Git state: committed as `feat: complete Day 25 Windows packaging` (`327a167`). Pre-existing
+  `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this
+  commit, untouched.
+- Exact next recommended step: move to the two remaining Week 4 items -- backup/export and final
+  release documentation/changelog/tag -- treating the packaging follow-ups above as non-blocking,
+  consistent with how this project has always handled live-test gaps.
+
+## Day 26 -- backup and export design complete (August 11, 2026)
+
+- Added `docs/BackupExport.md`, matching the Day 8/11/15/17/20/22/24 design-before-code pattern.
+  Backup & Export lets a person save every piece of Zen's local state to one chosen file and
+  restore it later -- on this machine, a fresh install, or a different PC. No cloud, no
+  auto-upload, no background sync.
+- Confirmed by reading the real stores (not assumed) exactly what's in scope: the four
+  `localStorage` sections (conversations, settings, activity log, memories) plus the four
+  main-process JSON stores (approved apps, custom commands, workflows, documents). Explicitly
+  excluded: `vendor/piper-runtime`/`vendor/whisper-runtime` (machine-local dependencies, already
+  excluded from packaging for the same reason) and original document source files (Zen never
+  copied them in the first place -- only already-stored extracted text travels).
+- Format: single `zen-backup-<date>.json` with a `{ formatVersion, exportedAt, data }` envelope,
+  so a future incompatible format fails closed with a clear message rather than silently
+  corrupting data.
+- Export: one Cancel-first confirmation showing real counts pulled live at click time, then a
+  native Save As dialog -- nothing written until both Zen's own confirmation and the OS-level
+  dialog are confirmed.
+- Restore: **replaces, does not merge** (same reasoning as Day 19's remove-and-recreate choice).
+  One Cancel-first confirmation shows counts found *in the file*, names every category being
+  replaced explicitly. Every restored record is re-validated through the exact same validators
+  used at original creation time -- never trusted just because it came from a file. A malformed
+  file or unrecognized `formatVersion` fails closed before touching any existing store.
+- No code was written in Day 26 -- design only. `docs/BackupExport.md`'s own "Day 27
+  implementation scope" section fixes exactly what Day 27 should build.
+- Git state: committed as `docs: complete Day 26 backup and export design` (`824086e`).
+  Pre-existing `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain
+  unrelated and untouched.
+- Exact next recommended step: implement Day 27 exactly to `docs/BackupExport.md`'s fixed scope
+  -- `backup.js` with `buildBackupEnvelope`/`validateBackupEnvelope`/`applyBackupEnvelope`
+  reusing existing validators, two new IPC handlers, a Settings-page Backup & Export section, and
+  `scripts/check-backup.js` covering round-trip, malformed-file, and unsupported-version
+  rejection -- then a live export/restore round trip before treating it as closed.
+
+## Day 27 -- backup and export implementation complete, fully closed (August 11-12, 2026)
+
+- Implemented `docs/BackupExport.md`'s Day 27 scope end to end. New
+  `apps/desktop/src/main/backup.js`: `buildEnvelope()` combines the renderer's four
+  `localStorage` sections (sent over the preload bridge, since the main process cannot read
+  `localStorage` itself) with a fresh read of the four main-process stores via new
+  `exportApprovedApps`/`exportCommands`/`exportWorkflows`/`exportDocuments` functions added to
+  `computer-control.js`, `custom-commands.js`, and `workflows.js`. `validateEnvelope()` fails
+  closed on a non-object payload, a missing/mismatched `formatVersion`, or a missing `data`
+  section, before anything touches a real store. `applyEnvelope()` restores in dependency order
+  (approved apps -> custom commands, which can reference them -> workflows, which can reference
+  commands -> documents, independent of the rest), calling each store's own
+  `restoreApprovedApps`/`restoreCommands`/`restoreWorkflows`/`restoreDocuments` function so every
+  restored record is re-validated through the exact same path used when it was first created --
+  never trusted just because it came from a file. A generous 50 MB per-section sanity ceiling
+  guards `JSON.stringify` against a corrupt/malicious payload without limiting normal use.
+- Wired into `main.js` (`zen:backup:export`/`zen:backup:import` handlers) and `preload.js`. New
+  Settings-page **Backup & Export** section with Export and Restore buttons, each behind its own
+  Cancel-first confirmation showing real counts -- export counts pulled live at click time,
+  restore counts read from the chosen file before anything is applied -- exactly matching Day
+  26's design, never a generic "your data" message.
+- Added `backup-export`/`backup-restore` activity-log entries scoped to counts and outcome only
+  -- never conversation, document, or memory text, consistent with every prior day's
+  minimal-logging rule.
+- Added `scripts/check-backup.js` (146 lines) and wired it into `apps/desktop/package.json`'s
+  `check` script: round-trip export -> restore -> verify counts match; malformed-file rejection;
+  unsupported-`formatVersion` rejection; a restored approved-app pointing at a nonexistent
+  executable reported unavailable rather than silently accepted; a restore that replaces (not
+  merges) existing data, verified explicitly. `npm run check` passes in full, including this new
+  suite alongside every pre-existing one (computer-control, documents, custom-commands,
+  workflows).
+- **Live click-through completed August 12, 2026** (carried over from a prior session that got
+  interrupted mid-verification when the GUI-automation channel became unresponsive -- the same
+  class of flakiness noted on Days 18/21/23). Re-verified independently this session before
+  treating anything as closed: `git status`/`git log` confirmed the implementation was genuinely
+  uncommitted work matching this exact design; `npm run check` passed clean; `git diff --check`
+  passed clean. Launched Zen fresh (confirmed no stale Electron process first), reached Settings.
+  The user then completed the actual Export -> Restore click-through themselves and confirmed
+  everything works correctly.
+- Git state: committed by the user directly as `feat: complete Day 27 backup and export
+  implementation` (`82c45fe`), containing exactly `apps/desktop/package.json`,
+  `apps/desktop/src/main/backup.js` (new), the validator-export additions to
+  `computer-control.js`/`custom-commands.js`/`documents.js`/`workflows.js`, `main.js`,
+  `preload.js`, `index.html`, `renderer.js`, and `scripts/check-backup.js` (new). Pre-existing
+  `docs/Voice.md`, `.cursorrules.txt`, `.backups/`, and `deliverables/` remain outside this
+  commit, unrelated and untouched, same as every prior day.
+- Exact next recommended step: Week 4's last remaining theme -- final release documentation,
+  changelog, and tag (Day 28), per `docs/Release.md`'s existing source-release plan.
+
 ## Day 22 -- accessibility and error-handling audit complete (August 10, 2026)
 
 - Added `docs/AccessibilityErrorHandling.md`. Unlike Days 8/11/15/17/20, this is not one new capability with a single safety boundary -- it is a targeted audit of everything already built (Days 1-21), verified against the real files rather than assumed generically.

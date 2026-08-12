@@ -1,10 +1,19 @@
 # Zen v0.1.0 release readiness
 
-## Current release boundary
+## Current release boundary (updated Day 28, August 12, 2026)
 
-Zen has completed Week 1 local-chat, persistence, settings, speech-to-text, text-to-speech, and reliability validation. It is ready to be used from its source checkout on this PC.
+Zen is complete through Day 27 of the 28-day plan: local chat, persistence, settings,
+speech-to-text/text-to-speech, safe computer control (approved apps, websites, folder search),
+local memory, document import/search/preview/Q&A including PDF text extraction, safe custom
+commands, branching workflows with structurally-impossible loops, an accessibility and
+error-handling pass, an unsigned Windows NSIS installer build, and full local backup/export.
 
-It is **not yet a distributable Windows installer**. The locally installed Whisper and Piper runtimes are ignored by Git, and Piper is GPL-3.0 licensed. Do not package, upload, or distribute those runtime files or voice models until their licenses, notices, source-code obligations, and each voice model's model card have been reviewed.
+It is a working, packaged Windows build (`deliverables/dist/`) that has **not yet had a live
+install/uninstall click-through** (Day 25, non-blocking) and is **not code-signed**. Voice
+(Piper/whisper.cpp) is deliberately excluded from the packaged build per Day 24's license
+review — Lessac and Ryan likely carry a restrictive "Blizzard" research license incompatible
+with redistribution, and Bryce's "public domain" claim is unverified. Do not bundle any voice
+runtime or model in a distributed build until that review is resolved.
 
 ## Final regression checklist
 
@@ -15,6 +24,12 @@ It is **not yet a distributable Windows installer**. The locally installed Whisp
 - [x] Use F8 hold-to-speak and F9 locked recording with the selected microphone.
 - [x] Read aloud an assistant response with Bryce, then use Stop speaking. Ryan is now selected because Bryce was slower than preferred.
 - [x] Temporarily make Ollama or the selected model unavailable only if safe to do so; confirm Zen shows a clear recovery message, then restore normal operation.
+- [x] Approve, open, and remove an approved app; open an approved website; run a selected-folder filename search (Week 2, Days 8–9).
+- [x] Import, search, preview, and ask a confirmation-gated question over a local document, including a real PDF (Days 12–18).
+- [x] Build, save, run, and remove a custom command and a branching workflow, including a failure-branch route (Days 19–21).
+- [x] Package an unpacked build and confirm it launches, loads existing data, and degrades gracefully with voice unavailable (Day 25).
+- [x] Export all local data to a file, then restore from that file and confirm it replaces (not merges) current state (Day 27, verified live August 12, 2026).
+- [ ] Full installer install/uninstall click-through (Day 25, still open, non-blocking).
 
 ## Source-release plan
 
