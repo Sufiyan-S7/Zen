@@ -901,3 +901,24 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   extraction, bypassing 2FA/CAPTCHAs, and hidden activity are prohibited.
 - No product code changed. Exact next recommended step: confirm the activation shortcut and the
   proposed personal-agent permission boundary, then begin v1.1 Day 1 design/threat-model work.
+
+## v2.0 planning -- personal desktop agent (August 12, 2026)
+
+- User confirmed the Personal Agent safety boundary and rejected the proposed `Ctrl+Win+Space`
+  shortcut because it conflicts with Wispr Flow. The v2.0 default is configurable
+  `Ctrl+Alt+Space`.
+- Added `docs/ZenV2Plan.md`, a reviewed 30-day v2.0 delivery plan. It retains the existing
+  architecture rule that Ollama proposes structured plans while a constrained local registry
+  validates and executes supported actions; it does not promise arbitrary shell execution.
+- The plan sequences tray/overlay/voice and task controls first; scoped folders, reversible file
+  operations, app/window control, and accessibility-first desktop automation second; managed
+  browser work and a deterministic executor third; then routines, security/a11y audits,
+  owner-selected real-world tests, packaging, and release readiness.
+- Review conclusion: feasible on Zen's current Electron/Ollama/voice/control/workflow/backup
+  foundation. The riskiest areas are UI automation and browser reliability; v2.0 mitigates them
+  with a small action registry, explicit pre/postconditions, limited retries, visible progress,
+  emergency stop, and staged acceptance testing.
+- Validation: documentation cross-checked against `docs/Architecture.md` and
+  `docs/ComputerControl.md`; no product code changed.
+- Exact next recommended step: begin Day 1 by defining the v2.0 personal-agent threat model and
+  structured action registry, then implement only after that contract is reviewed.

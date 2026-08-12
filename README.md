@@ -286,9 +286,10 @@ and [voice rules](docs/Voice.md).
 
 ## Next planned version
 
-The proposed v1.1 direction is a voice-first personal desktop agent: optional Windows startup,
-a global shortcut that opens a compact command overlay, task planning, scoped file/app/browser
-automation, and explicit safety controls. See the [30-day personal-agent plan](docs/PersonalAgentPlan.md).
+Zen v2.0 is planned as a voice-first personal desktop agent: optional Windows startup, the
+configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, structured task
+planning, scoped file/app/browser automation, undo, and explicit safety controls. See the
+[30-day v2.0 plan](docs/ZenV2Plan.md).
 
 ### Desktop shortcut
 
@@ -310,6 +311,7 @@ automation, and explicit safety controls. See the [30-day personal-agent plan](d
 - [Workflows design](docs/Workflows.md)
 - [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
 - [GPL & voice-model license review](docs/VoiceLicenseReview.md)
+- [Zen v2.0 personal desktop agent plan](docs/ZenV2Plan.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

@@ -1,4 +1,7 @@
-# Zen v1.1 — 30-day personal desktop agent plan
+# Superseded: Zen v1.1 personal desktop agent plan
+
+The current planning baseline is [Zen v2.0](ZenV2Plan.md). This document is retained as the
+original v1.1 proposal.
 
 ## Objective
 
