@@ -59,7 +59,39 @@ validated action registry executes only supported actions.
   Day 4's voice/typed capture and Day 5's structured planning (this is what "reject ambiguous
   input" resolves to in practice, not just a validation rule).
 
-## Open question — PowerShell / shell scope (flagged, not resolved)
+## Resolved — PowerShell / shell scope (August 13, 2026)
+
+**Decision:** a full PowerShell control channel is included, but off by default behind an explicit
+opt-in toggle — **"Full System Control (PowerShell)"** — in Settings. This replaces the two-
+option fork below, which is retained for its reasoning rather than deleted.
+
+1. One codebase, one build. The channel is fully implemented but inert until the owner turns it
+   on; a fresh clone, a fresh install, or a restored backup always starts with it `false` — never
+   inherited from a config file, preset, or installer default.
+2. Turning it on is deliberately heavy: a confirmation dialog explains exactly what it grants,
+   with a typed acknowledgment (not a single click), matching the weight of a sensitive action
+   because enabling it *is* one.
+3. The toggle unlocks the *channel*, not the sensitive-tier confirmation rule. Once on, most
+   commands run as `routine`; the big-change list (delete, format, uninstall, registry writes,
+   `Stop-Process`/`taskkill` on foreign processes, `Set-ExecutionPolicy`, disk/partition commands)
+   still always demands a fresh confirmation, same as every other sensitive action in
+   `docs/AgentContract.md`.
+4. **Fail closed on ambiguity.** A command that doesn't clearly match a known-safe pattern is
+   treated as sensitive by default, not assumed routine — trigger-list matching alone is
+   guessable around (aliasing, string-built commands, `Invoke-Expression`), so the default when
+   uncertain is the safer one.
+5. Audit records (`docs/AgentContract.md` Section 4) log the real command text, but redact
+   anything that looks like a secret/credential/token in its arguments before storage, same
+   redaction principle used elsewhere.
+6. A dedicated `docs/PowerShellControl.md` (written before this channel is implemented, matching
+   the Day 8/11/15/17/20 design-before-code pattern) will spell out exactly what's gated and what
+   isn't.
+
+This makes the toggle itself, not command content, the thing that has to be deliberately turned
+on — so a public clone of this repo is safe by default, and the owner still gets full local
+control on their own machine by choice.
+
+## Open question — PowerShell / shell scope (superseded by the resolution above, kept for its reasoning)
 
 The owner separately confirmed (Aug 13, 2026) that "run PowerShell" should not need its own
 explicit trusted-folder-style opt-in toggle — it should ride on the same Trusted Folders /
@@ -309,7 +341,9 @@ introducing a small verified action registry, accessibility-first controls, visi
 verification (including a live "Zen is active" indicator during real-browser use), owner-gated
 window handoff, and real-world testing before broader autonomy. It deliberately does not promise
 arbitrary shell commands, stealth, credential handling, or unsupervised submission of live web
-forms, because those would make the personal-agent experience unreliable and unsafe — even though
+forms, because those would make the personal-agent experience unreliable and unsafe -- even though
 the owner has granted broad access, since it all runs locally on their own machine. **(Aug 13
-update: see the "Open question — PowerShell / shell scope" section above — the owner's most
-recent PowerShell answer is not yet reconciled with this paragraph's no-arbitrary-shell stance.)**
+update: resolved -- see the "Resolved -- PowerShell / shell scope" section above. A PowerShell
+channel is now planned, but gated behind an explicit, off-by-default "Full System Control"
+toggle, so this paragraph's no-arbitrary-shell stance holds true for anyone who doesn't
+deliberately opt in.)**

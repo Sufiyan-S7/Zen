@@ -62,11 +62,15 @@ safety boundary in `docs/ZenV1_1Plan.md` and is not extended by an agent without
 - Switching Zen into the owner's active Chrome window (Day 15 boundary — the confirmation toggle
   pop-up *is* this tier's confirmation for that specific action)
 
-**Open, not yet resolved as of this contract:** whether a constrained PowerShell action type
-belongs in this registry at all is an open question — see `docs/ZenV1_1Plan.md`'s "Open question
-— PowerShell / shell scope" section (added Aug 13, 2026). If the owner chooses to add it, its
-big-change trigger list (delete/uninstall/format/registry-write/etc.) would land in this
-`sensitive` list; until then, no PowerShell action is registered (Section 7).
+**Resolved (August 13, 2026):** a full PowerShell action type is included in this project, gated
+behind an explicit, off-by-default **"Full System Control (PowerShell)"** Settings toggle — see
+`docs/ZenV1_1Plan.md`'s "Resolved — PowerShell / shell scope" section for the full design (typed
+confirmation to enable, fail-closed classification on ambiguous commands, redacted audit logging,
+a dedicated `docs/PowerShellControl.md` before implementation). Its big-change trigger list
+(delete/format/uninstall/registry-write/foreign-process-stop/execution-policy/disk commands) lands
+in this `sensitive` list once the toggle exists; everything else it can run is `routine`. The
+toggle itself is registered as a `sensitive` action in Section 3's permission-record sense —
+enabling it requires the same typed-acknowledgment weight as any other sensitive action.
 
 **Routine** — everything else. Once a task is approved, routine steps execute and report without
 re-prompting.
@@ -190,6 +194,11 @@ their own version:
   input. Every input field is a specific, typed value the schema constrains.
 - No action may be registered without a satisfied Section 5 guarantee (safe to abort mid-step, or
   provably atomic).
+
+The future PowerShell action type (Section 2's resolution) follows this same contract when it's
+registered: fixed `sensitive`/`routine` classification per command, typed input only (no free-text
+shell piped straight to a process), and gated overall by the off-by-default toggle rather than
+bypassing this registry.
 
 ## 8. Routine vs. sensitive — the classification rule
 

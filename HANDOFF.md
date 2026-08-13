@@ -1130,3 +1130,46 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Exact next recommended step: owner decides the PowerShell/shell-scope question (two options
   laid out in `docs/ZenV1_1Plan.md`); once resolved, Day 2 (startup and tray lifecycle) can begin
   under whichever registry shape that decision implies.
+
+## PowerShell/shell scope resolved; branch renamed to zen-1.1; pushed to origin (August 13, 2026)
+
+- **PowerShell resolution:** the owner wants full local PowerShell control for themselves, but
+  the project is public on GitHub and must stay safe by default for everyone else. Resolved as:
+  one codebase, one build, with the channel fully implemented but gated behind an off-by-default
+  **"Full System Control (PowerShell)"** Settings toggle. Six specific design points were agreed
+  and written into `docs/ZenV1_1Plan.md`'s "Resolved -- PowerShell / shell scope" section (which
+  replaces, rather than deletes, the prior "Open question" section -- kept for its reasoning):
+  1. Toggle defaults `false` on every fresh clone/install/restore, never inherited from a config
+     file or preset.
+  2. Enabling it requires a real confirmation with a typed acknowledgment, not a single click.
+  3. The toggle unlocks the channel only -- the existing sensitive-tier confirmation rule still
+     applies underneath it; the big-change trigger list (delete/format/uninstall/registry-write/
+     foreign-process-stop/execution-policy/disk commands) always reconfirms regardless.
+  4. Fail closed on ambiguity: a command that doesn't clearly match a known-safe pattern is
+     treated as sensitive by default, not assumed routine -- since trigger-list text-matching
+     alone (as sketched in the superseded `AgentModePlan.md` draft) is guessable around via
+     aliasing, string-built commands, or `Invoke-Expression`.
+  5. Audit records log real command text but redact anything that looks like a secret/credential/
+     token in its arguments, matching the existing minimal-logging/redaction principle.
+  6. A dedicated `docs/PowerShellControl.md` will be written before this channel is implemented,
+     matching the Day 8/11/15/17/20 design-before-code pattern -- not written yet, this session
+     only resolved the shape.
+- Updated `docs/AgentContract.md` Section 2 (now states the resolution instead of flagging it
+  open, and notes the toggle itself is a `sensitive`-tier permission) and Section 7 (the future
+  PowerShell action type follows the same typed-input/fixed-classification registry contract as
+  everything else, gated by the toggle rather than bypassing the registry).
+- No product code changed -- design resolution only. Implementation of the toggle, the PowerShell
+  action type, and `docs/PowerShellControl.md` remain future work, most naturally scoped into
+  Week 2 alongside Days 9-13's other file/app/automation actions.
+- **Branch renamed:** `zen-2.0` -> `zen-1.1` locally (`git branch -m`), matching the plan's new
+  version-by-version naming. Pushed to `origin` with upstream tracking set
+  (`origin/zen-1.1`). **`origin/zen-2.0` still exists on GitHub** -- a rename only updates the
+  local branch; the old remote branch was not deleted, since that's a separate, remote-affecting
+  action left for explicit owner confirmation rather than folded into this pass.
+- Git state: this session's PowerShell-resolution edits to `docs/ZenV1_1Plan.md` and
+  `docs/AgentContract.md` are committed and pushed. `docs/Voice.md` and the other pre-existing
+  untracked items remain outside every commit, same as always.
+- Exact next recommended step: decide whether to delete `origin/zen-2.0` (old, now-superseded
+  remote branch name); then Day 2 (startup and tray lifecycle) can begin -- the PowerShell
+  question that was blocking Week 2's registry shape is now resolved, so nothing else blocks
+  starting Day 2.
