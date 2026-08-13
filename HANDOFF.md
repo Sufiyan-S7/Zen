@@ -922,3 +922,211 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   `docs/ComputerControl.md`; no product code changed.
 - Exact next recommended step: begin Day 1 by defining the v2.0 personal-agent threat model and
   structured action registry, then implement only after that contract is reviewed.
+
+## v2.0 project audit -- Day 1 not yet started, stale docs flagged (August 13, 2026)
+
+- Full repo audit performed via the Filesystem and PowerShell connectors (not from memory or a
+  prior chat) before answering "what do we have to do": `git log`, `git status`, `git remote -v`,
+  `git tag`, and a directory listing of `apps/desktop/src/main` and `docs/`.
+- **Correction to this same entry:** the initial pass of this audit checked `git log`/`git tag`
+  without first checking the current branch, and implicitly treated the repo as if it were all on
+  `main`. It is not. The working tree is on a separate **`zen-2.0`** branch (currently 1 commit
+  ahead of `origin/zen-2.0`, both in sync with GitHub after a `git fetch`); `main` is unchanged
+  and correctly frozen at the v1.0.0/Day 28-30 lineage. All v2.0 planning-doc commits
+  (`docs: define Zen v2 personal agent plan`, `docs: add v1.1 personal desktop agent plan`, etc.)
+  live on `zen-2.0`, not `main`. This was caught only because the user asked to verify against
+  GitHub directly rather than accepting the first pass at face value.
+- **Confirmed: v2.0 implementation has not started.** No `tray`, `overlay`, or `agent`-named file
+  exists anywhere under `apps/desktop/`. Everything that exists for v2.0 today is planning
+  documentation. The MVP (v1.0.0, tagged on `3293cfc`) is unaffected and unchanged.
+- **Found and flagging a real conflict, not silently resolving it:** `docs/AgentModePlan.md` and
+  `docs/AgentModeChecklist.md` (both untracked, written August 12 ~10:17-10:18 PM) describe a
+  different v2.0 design than the current `docs/ZenV2Plan.md` (last revised August 13 12:01 AM,
+  matching the "browser access and permission cadence confirmed" entry below) -- notably a
+  `Ctrl+Win+Space` hotkey and an instant-execute/batch-confirm model, versus `ZenV2Plan.md`'s
+  confirmed `Ctrl+Alt+Space` and per-task-approve-once/sensitive-always-confirms model. File
+  timestamps and this handoff's own prior entry (the user explicitly rejected `Ctrl+Win+Space`
+  for conflicting with Wispr Flow) both indicate `AgentModePlan.md`/`AgentModeChecklist.md` are
+  an earlier, superseded exploration that was never cleaned up -- not a newer direction. Treating
+  `docs/ZenV2Plan.md` as authoritative on that basis, but this is stated as a judgment call for
+  the user to confirm, not an assumed fact.
+- **Documentation inconsistency noted, not fixed:** this file's own "Start Here" section
+  references a `SESSION-LOG.md` "in this same folder" for dated session history. No such file
+  exists anywhere in `C:\PERSONAL\Zen`. Not fabricating one; flagging it so a future session
+  doesn't assume it was checked and found empty versus never having existed.
+- Uncommitted working-tree changes at audit time: `HANDOFF.md`, `docs/Voice.md`, and
+  `docs/ZenV2Plan.md` are modified but not committed; `docs/AgentModePlan.md` and
+  `docs/AgentModeChecklist.md` are untracked; `.backups/`, `.cursorrules.txt`, and `deliverables/`
+  remain the same pre-existing untouched items noted in every prior entry. Nothing was committed
+  or discarded by this audit, per the Working Rules below.
+- No product code changed. This is a documentation/audit-only update, matching the pattern used
+  for every other design-stage day in this project.
+- Exact next recommended step: begin v2.0 Day 1 exactly as scoped in `docs/ZenV2Plan.md` -- the
+  agent contract (task states, risk tiers, permission records, audit fields, emergency-stop
+  behavior, retention limits, the first supported action registry, and the precise
+  routine-vs-sensitive step classification) -- once the user confirms `ZenV2Plan.md` over
+  `AgentModePlan.md`/`AgentModeChecklist.md` and says how to handle the two stale files (delete,
+  archive, or leave as-is).
+
+## v2.0 planning -- browser access and permission cadence confirmed (August 13, 2026)
+
+- Owner confirmed two further v2.0 decisions and `docs/ZenV2Plan.md` was revised accordingly; no
+  product code changed, design only.
+- **Browser identity:** Zen will attach to the owner's real Chrome profile (real logins, cookies,
+  autofill) rather than a separate throwaway browser -- owner's explicit call, since it all runs
+  locally on their own machine. Default is Zen's own separate Chrome window; the owner can hand
+  Zen their active window on request (voice/typed "use my current window"), gated by a
+  confirmation toggle pop-up, scoped to that task, reverting after. A visible "Zen is active"
+  indicator is required on whichever window Zen currently controls. Saved autofill/passwords may
+  be used for **draft** forms only -- live submission, checkout, and password entry remain gated
+  by the existing sensitive-action confirmation rule.
+- **Permission cadence:** once a task is approved, Zen does not re-prompt for routine/reversible
+  steps within that task -- it works through and reports the result. Sensitive/crucial actions
+  (delete/overwrite, send/publish/upload, install, purchase, account/security, credentials,
+  CAPTCHA, 2FA) always still require a specific final confirmation regardless of the standing
+  task approval.
+- `docs/ZenV2Plan.md` Day 15 was rewritten from "Managed browser session" (separate sandboxed
+  Chromium) to "Real Chrome session, attached"; Days 16-17, 21-22, 25, 27, and 29 updated to
+  reflect real-browser handling and the per-task confirmation cadence. Weeks 1, 2, and 4's
+  remaining structure is unchanged.
+- Validation: revision reviewed against the owner's own stated decisions in this session; no
+  automated checks apply to a documentation-only change.
+- Exact next recommended step: unchanged -- begin Day 1 (v2.0 agent contract: task states, risk
+  tiers, the routine-vs-sensitive step classification, permission records, audit fields,
+  emergency-stop behavior, and the first action registry), now against the finalized plan above.
+
+## Day 1 -- v2.0 agent contract complete (August 13, 2026)
+
+- Added `docs/AgentContract.md`, the constitution the rest of v2.0 builds on: a fixed task-state
+  graph, the two-tier risk model, permission-record and audit-record schemas, the emergency-stop
+  guarantee, a retention default, and the action-registry contract -- design only, no product
+  code.
+- **Task states:** `proposed -> approved -> running -> (paused | blocked) -> completed | failed |
+  cancelled`. Added one state beyond the plan's original prose (`blocked`, for a sensitive-action
+  confirmation or a non-fatal snag mid-task) and flagged it explicitly as a judgment call for the
+  owner to confirm, not treated as already-settled, per this Project's `INSTRUCTIONS.md` Section 5
+  rule against presenting a guess as a confirmed fact.
+- **Risk tiers:** routine/sensitive only (no third tier, to keep classification mechanical). The
+  sensitive list is exactly the safety boundary already confirmed in `docs/ZenV2Plan.md`
+  (delete/overwrite, send/publish/upload, install, purchase, account/security, credentials,
+  CAPTCHA/2FA, live web-form submission, and Day 15's active-Chrome-window handoff) -- not
+  extended here without owner approval.
+- **Permission records** reuse the existing v1.0.0 approved-app/folder-grant shape and extend it to
+  `browser` (Day 15). **Audit records** add a `confirmationId` field specifically so a sensitive
+  step's execution can be proven to trace back to its own fresh confirmation, not the standing
+  task-level approval.
+- **Self-corrected before finalizing:** an earlier draft of this same plan (reviewed with the
+  owner in chat before this file was written) listed real actions -- `read_file`, `list_dir`,
+  `launch_app`, `focus_window` -- as Day 1's "first action registry." Caught and fixed: those
+  actions belong to Day 9 and Day 12, which is where their own validation/exclusion review
+  happens. Day 1's registry instead contains exactly one no-op test action (`noop.wait`) plus the
+  registration contract every real action must satisfy later -- fixed `riskTier`, typed
+  `inputSchema`, no raw shell/path/argument input, and a satisfied emergency-stop-safety guarantee
+  before it can be registered at all.
+- Defined a concrete retention default (30 days rolling, manual clear available) rather than
+  leaving it as an open "cap or manual clear" question, since the contract needs a fixed number to
+  be testable.
+- Section 9 fixes six success criteria / test fixtures for the contract itself (state-machine
+  transitions, unregistered-action rejection, malformed-input rejection, sensitive-step
+  fresh-confirmation-even-mid-task, emergency-stop guarantees, retention pruning) so Day 5 and Day
+  18 have a concrete target instead of each re-interpreting the prose plan independently.
+- Explicitly did not decide the fate of `docs/AgentModePlan.md` / `docs/AgentModeChecklist.md` in
+  this pass -- confirmed with the owner that it doesn't block Day 1 and remains open.
+- Verified before writing: repo state re-checked directly this session (`git branch
+  --show-current` -> `zen-2.0`; `git status` showed pre-existing uncommitted `HANDOFF.md`,
+  `README.md`, `docs/Voice.md`, `docs/ZenV2Plan.md` and untracked `.backups/`,
+  `.cursorrules.txt`, `deliverables/`, `docs/AgentModePlan.md`, `docs/AgentModeChecklist.md`).
+  None of these block Day 1 and none were touched by this update, per the owner's explicit
+  instruction this session to leave them as-is unless they block the current step.
+- No product code changed. `docs/AgentContract.md` is documentation only, matching the Day
+  8/11/15/17/20/22/24/26 design-before-code pattern from the v1.0.0 build.
+- Git state: `docs/AgentContract.md` (new) and this handoff update are uncommitted on `zen-2.0`,
+  same session. Not committed or pushed -- per `INSTRUCTIONS.md`, Claude does not commit/push
+  without the owner's explicit approval in this session.
+- Exact next recommended step: owner reviews `docs/AgentContract.md`, in particular the added
+  `blocked` state and the 30-day retention default (the two places this pass made a judgment call
+  rather than following the plan prose verbatim). Once confirmed, Day 2 (startup and tray
+  lifecycle: opt-in launch at sign-in, tray menu, hide-on-close, visible Quit, duplicate-process
+  prevention) can begin.
+
+## Correction -- Day 1 file never actually reached the repo (August 13, 2026)
+
+- The prior entry above claimed `docs/AgentContract.md` was written to this repo. It was not --
+  it had been created with a tool that writes to the assistant's own sandboxed environment, not
+  this machine. The owner caught this directly (checked File Explorer, the file wasn't there) and
+  flagged it rather than trusting the write-up, consistent with `INSTRUCTIONS.md`'s "check
+  filesystem directly" rule.
+- Re-created `docs/AgentContract.md` at the correct path using the Filesystem connector, verified
+  with `Test-Path` (`True`) and `git status` (`?? docs/AgentContract.md`) immediately after. No
+  content changed from what was described in the entry above -- only the tool used to write it.
+- No other file was affected. Noted here as a correction, not a rewrite of the entry above, per
+  the append-only handling this file uses throughout.
+
+## v2.0 -> v1.1 rename, and three build-plan answers folded in (August 13, 2026)
+
+- The owner directed two changes this session: (1) answer three previously-open questions from
+  `docs/AgentModePlan.md`'s "Open design questions" section, explicitly choosing to fold them into
+  the current live plan (`docs/ZenV2Plan.md`/`docs/AgentContract.md`) rather than reviving
+  `AgentModePlan.md`'s different instant-execute/batch-confirm model; and (2) rename "Zen v2.0"
+  to "Zen v1.1" everywhere it's used as the plan's name, since the owner will now update Zen
+  version-by-version going forward.
+- **Flagged before acting, per `INSTRUCTIONS.md`'s conflict-flagging rule:** the three answered
+  questions were verbatim from `docs/AgentModePlan.md`, not `docs/ZenV2Plan.md` -- and the two
+  documents describe materially different safety models (instant-execute-then-batch-confirm vs.
+  this plan's approve-once-per-task-then-sensitive-always-confirms). Presented the comparison to
+  the owner directly rather than silently merging; the owner chose to keep the current
+  per-task-approval model as baseline (their "option B") and have the three answers translated
+  into it as cleanly as they apply, not to revive `AgentModePlan.md`.
+- **Renamed `docs/ZenV2Plan.md` -> `docs/ZenV1_1Plan.md`.** Every internal "v2.0" reference
+  updated to "v1.1" (title, product brief, acceptance-standard heading, Day 1/29/30 headings).
+  Added a naming note at the top of the file recording the rename and that no other content
+  changed as part of it.
+- **Folded in, applying directly:** overlay popup should be short/compact (Wispr-Flow-sized) with
+  a live waveform while listening, not a static transcript line (Day 3); an unclear/failed voice
+  command offers **re-ask** or **retry**, and a transcript that fails to load shows "Failed to
+  load transcript" and closes the overlay rather than staying open broken (Day 4).
+- **Not folded in silently -- flagged as a new, real, unresolved conflict instead:** the owner's
+  third answer (PowerShell should ride on the same Trusted-Folders-style permission gate as file
+  access, no separate opt-in toggle) implies a PowerShell execution channel is wanted. But this
+  plan's own Plan Review section explicitly states Zen "does not promise arbitrary shell
+  commands," and no PowerShell action exists anywhere in the current Week 1-4 structure or the
+  Day 1 action registry. Added an explicit "Open question -- PowerShell / shell scope" section to
+  `docs/ZenV1_1Plan.md` laying out both real options (keep the no-shell boundary and cover
+  file/app needs through the already-planned registered actions, or add a narrowly scoped
+  PowerShell action type gated the same way, with a big-change trigger list under the existing
+  sensitive-tier rule) -- explicitly not resolved by this pass, since it changes what Week 2's
+  action registry needs to contain. Cross-referenced from `docs/AgentContract.md` Section 2 as
+  well, so Day 1's own sensitive-action list doesn't silently imply an answer either.
+- **`docs/AgentContract.md`** updated: title and internal `v2.0` references changed to `v1.1`;
+  now links to `docs/ZenV1_1Plan.md` by its new filename; Section 2 (risk tiers) carries the same
+  PowerShell open-question note as above rather than silently omitting or silently including a
+  PowerShell entry in the sensitive list.
+- **Naming collision resolved, not ignored:** `docs/PersonalAgentPlan.md` (the older, already-
+  superseded v1.1-era exploration, flagged as an open cleanup item in an earlier entry below) had
+  independently titled itself "Zen v1.1 personal desktop agent plan." Reassigning "v1.1" to the
+  live plan would have left two different, unrelated designs both claiming that name. Retitled
+  only that file's header/links to "Superseded: original personal-agent draft (early
+  exploration)" with an explicit naming note; its retained proposal content below the header is
+  untouched.
+- **Deliberately left untouched:** `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`
+  themselves still say "v2.0" internally. Their fate (delete/archive/leave) remains the same open
+  question carried over from the prior session's audit -- renaming their internal version label
+  while that's still undecided would be presumptuous about content whose disposition isn't
+  settled yet.
+- **`README.md` updated:** "Next planned version" section and the documentation index link both
+  now say v1.1 and point at `docs/ZenV1_1Plan.md`, with a short note explaining the rename and
+  that the PowerShell question is still open.
+- **Historical entries in this file, above, were deliberately NOT rewritten.** Every prior
+  mention of "v2.0" in this handoff accurately reflects what the project was called at the time
+  those entries were written; changing them now would misrepresent the historical record this
+  file exists to preserve. Going forward, new entries use "v1.1."
+- No product code changed. This is a documentation/naming/design-question update only.
+- Git state: `docs/ZenV1_1Plan.md` (new, replacing deleted `docs/ZenV2Plan.md`),
+  `docs/AgentContract.md`, `docs/PersonalAgentPlan.md`, `README.md`, and this file are all
+  uncommitted on `zen-2.0` (the branch name itself was not renamed -- that's a separate decision
+  the owner hasn't made, and branch renames have their own remote-tracking implications worth a
+  deliberate choice rather than folding into this pass). Not committed or pushed, per
+  `INSTRUCTIONS.md`.
+- Exact next recommended step: owner decides the PowerShell/shell-scope question (two options
+  laid out in `docs/ZenV1_1Plan.md`); once resolved, Day 2 (startup and tray lifecycle) can begin
+  under whichever registry shape that decision implies.

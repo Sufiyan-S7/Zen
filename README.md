@@ -286,10 +286,23 @@ and [voice rules](docs/Voice.md).
 
 ## Next planned version
 
-Zen v2.0 is planned as a voice-first personal desktop agent: optional Windows startup, the
+Zen v1.1 is planned as a voice-first personal desktop agent: optional Windows startup, the
 configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, structured task
 planning, scoped file/app/browser automation, undo, and explicit safety controls. See the
-[30-day v2.0 plan](docs/ZenV2Plan.md).
+[30-day v1.1 plan](docs/ZenV1_1Plan.md).
+
+(Renamed August 13, 2026: this plan was developed and referred to as "v2.0" through Day 1 of its
+implementation; the owner has moved to updating Zen version-by-version, so it is now v1.1, the
+next version after the shipped `v1.0.0` MVP. `docs/ZenV2Plan.md` no longer exists as a filename;
+its content lives on, renamed, at `docs/ZenV1_1Plan.md`.)
+
+As of August 13, 2026, v1.1 is planning-only: Day 1's agent contract (`docs/AgentContract.md`) is
+written but no implementation has started (no tray, overlay, or agent code exists yet). Two
+earlier draft design files, `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, describe a
+different, superseded hotkey/confirmation model (including a constrained PowerShell channel) and
+should not be treated as current pending cleanup; `docs/ZenV1_1Plan.md` is authoritative, though
+its own PowerShell-scope question is itself still open. See [HANDOFF.md](HANDOFF.md) for the full
+audit.
 
 ### Desktop shortcut
 
@@ -311,7 +324,7 @@ planning, scoped file/app/browser automation, undo, and explicit safety controls
 - [Workflows design](docs/Workflows.md)
 - [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
 - [GPL & voice-model license review](docs/VoiceLicenseReview.md)
-- [Zen v2.0 personal desktop agent plan](docs/ZenV2Plan.md)
+- [Zen v1.1 personal desktop agent plan](docs/ZenV1_1Plan.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
