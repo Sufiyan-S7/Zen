@@ -1173,3 +1173,14 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
   remote branch name); then Day 2 (startup and tray lifecycle) can begin -- the PowerShell
   question that was blocking Week 2's registry shape is now resolved, so nothing else blocks
   starting Day 2.
+
+## origin/zen-2.0 deleted (August 13, 2026)
+
+- Owner confirmed deletion. Ran `git push origin --delete zen-2.0`. `git branch -r` now shows
+  only `origin/main` and `origin/zen-1.1`; local branch remains `zen-1.1`. No new branch was
+  needed since the prior session's `git branch -m` rename already produced `zen-1.1` on both
+  local and remote -- this only removed the leftover old remote name.
+- No product code or documentation content changed. Nothing outstanding blocks Day 2.
+- Exact next recommended step: begin Day 2 -- startup and tray lifecycle (opt-in launch at
+  Windows sign-in, tray menu, hide-on-close, visible Quit, duplicate-process prevention), per
+  `docs/ZenV1_1Plan.md`.
