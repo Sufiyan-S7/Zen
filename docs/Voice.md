@@ -15,6 +15,7 @@ The official `whisper.cpp` v1.9.2 Windows x64 runtime and its `ggml-base.en.bin`
 5. If the microphone is denied, unavailable, or already in use, Zen explains the problem and does not retry automatically.
 6. Zen never falls back to browser, operating-system, or cloud speech recognition without a separate explicit user decision.
 7. Read aloud is optional, can be stopped at any time, and uses only the selected local Piper engine. Zen creates a temporary WAV, transfers its bytes to the app for playback, and deletes the temporary file immediately.
+8. Read-aloud speed is selected locally in Settings for each installed voice separately. Zen accepts only the built-in slower, normal, faster, or fastest values, validates the selection in Electron's main process, and passes it to Piper's local `--length-scale` setting. It never changes speech through an online service.
 8. The microphone picker lists audio inputs reported by Windows, including Bluetooth headset microphones. Zen uses the selected device only for the next push-to-talk request; selecting a device does not start recording.
 9. Keyboard control is deliberately split into two independent keys: `F8` is hold-to-speak and stops immediately on release; `F9` starts locked recording and a later `F9` stops and transcribes. The `Fn` key is handled by keyboard hardware and is not reliably available to Windows applications, so it cannot be used as a Zen shortcut.
 

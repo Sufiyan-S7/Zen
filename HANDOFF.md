@@ -1184,3 +1184,39 @@ Recommended follow-up: add a friendly renderer guard that disables sending and e
 - Exact next recommended step: begin Day 2 -- startup and tray lifecycle (opt-in launch at
   Windows sign-in, tray menu, hide-on-close, visible Quit, duplicate-process prevention), per
   `docs/ZenV1_1Plan.md`.
+
+## Memory recall + auto-save — external work, committed uncommitted-on-disk (August 14, 2026)
+
+Sufi did this work directly (outside a proposed Claude session plan) and asked Claude to review
+and commit it. Found via `git status --porcelain` at session start: 6 modified files, no new
+files. Not part of the v1.1 Day-by-day sequence — v1.1 Day 2 (tray/startup lifecycle) has **not**
+started; this is a v1.0.0-line change layered on top of `zen-1.1`.
+
+**What changed:**
+- `apps/desktop/src/renderer/renderer.js` (+392/-9) and `docs/Memory.md` (+9): Memory entries the
+  user saved are now sent to Ollama as chat context automatically (capped ~4,000 chars) — this
+  reverses v1.0.0's original boundary that memory never reached the model. A pattern-matcher also
+  now **auto-saves** facts volunteered in chat (name, location, job, email, phone, "remember
+  that...") with no confirmation prompt before saving.
+- `apps/desktop/src/main/main.js` (+24/-6) and `preload.js` (+2/-1): wiring to pass
+  `memoryContext` through IPC from renderer to the Ollama chat call.
+- `apps/desktop/src/renderer/index.html` (+6/-2): Memory page copy rewritten to disclose the new
+  behavior plainly — tells the user memories are now shared with the local model automatically
+  and picked up from chat.
+- `docs/Voice.md` (+3/-2): unrelated doc fix — documents the existing per-voice read-aloud speed
+  setting (`--length-scale`), not new code; unclear if related to the same working session.
+
+**Flagged, not resolved:** auto-save has no confirmation step and no visible "here's what's being
+sent" moment before recall context is used, unlike document Q&A's excerpt-preview pattern in
+v1.0.0. `docs/Memory.md` itself notes this gap and that there's no dedicated off switch yet. This
+is a real divergence from the project's standing "confirmation required for sensitive actions"
+convention — flagged to Sufi, not auto-corrected.
+
+**Git action taken:** committed locally to `zen-1.1` as an explicit, isolated commit (not folded
+into Day 2 work). Push held pending Sufi's go-ahead, per `AGENT-UPDATE-PROTOCOL.md`'s
+push-exception rule (this touches a privacy/security-relevant boundary).
+
+**Last Verified Commit:** see commit hash noted after commit runs below.
+
+Exact next recommended step: still Day 2 -- startup and tray lifecycle, per `docs/ZenV1_1Plan.md`
+-- once Sufi decides whether to push this memory change as-is or add a confirmation gate first.

@@ -857,6 +857,99 @@ async function openApprovedApp(app) {
   }
 }
 
+// Chat-triggered opening. Reuses the exact same confirmation modal, activity logging, and IPC
+// calls as the Activity tab's own flows above -- chat is never a second, looser path to the
+// same capability. Every open still stops for its own fresh confirmation, regardless of how
+// the request was phrased.
+async function handleChatAppOpenRequest(conversation, content, resolvedMatch) {
+  const pushAssistantMessage = (text) => {
+    conversation.messages.push({ role: 'assistant', content: text, createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+  };
+  let match = resolvedMatch;
+  if (match === undefined) {
+    let apps = [];
+    try { apps = await window.zen.listApprovedApps(); } catch { apps = []; }
+    match = findApprovedAppMatch(apps, content);
+  }
+  if (!match) {
+    pushAssistantMessage('Zen didn\'t recognise an approved app in that message. Approve one first in Activity → Choose what Zen may open, then ask again by name -- Zen will still confirm before every launch.');
+    return;
+  }
+  const destination = match.kind === 'browser-web-app' ? match.url : match.executable;
+  const entry = createActivity('open-approved-app', destination);
+  let approved = false;
+  try {
+    approved = await requestActionConfirmation({
+      title: `Open ${match.label}?`,
+      description: match.kind === 'browser-web-app'
+        ? 'Zen will open this fixed HTTPS address using the selected browser launcher.'
+        : 'Zen will start this approved application on your computer.',
+      destination,
+      approveLabel: match.kind === 'browser-web-app' ? 'Open web app' : 'Open app'
+    });
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: 'INVALID_APPROVED_APP' });
+    pushAssistantMessage(error.message || 'Zen could not verify that app. Nothing was opened.');
+    return;
+  }
+  if (!approved) {
+    updateActivity(entry, 'cancelled');
+    pushAssistantMessage(`Cancelled. ${match.label} was not opened.`);
+    return;
+  }
+  try {
+    const result = await window.zen.openApprovedApp(match.id);
+    updateActivity(entry, 'completed', { result: result.destination });
+    pushAssistantMessage(result.kind === 'browser-web-app'
+      ? `${result.label} was sent to its approved browser launcher.`
+      : `${result.label} was opened.`);
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'OPEN_APPROVED_APP_FAILED' });
+    pushAssistantMessage(error.message || `Zen could not open ${match.label}.`);
+  }
+}
+
+async function handleChatWebsiteOpenRequest(conversation, rawUrl) {
+  const pushAssistantMessage = (text) => {
+    conversation.messages.push({ role: 'assistant', content: text, createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+  };
+  let preview;
+  try {
+    preview = await window.zen.previewWebsite(rawUrl);
+  } catch (error) {
+    pushAssistantMessage(error.message || 'Zen could not validate that website. Only HTTPS addresses can be opened.');
+    return;
+  }
+  const entry = createActivity('open-website', preview.url);
+  let approved = false;
+  try {
+    approved = await requestWebsiteConfirmation(preview);
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: 'INVALID_WEBSITE' });
+    pushAssistantMessage(error.message || 'Zen could not verify that website. Nothing was opened.');
+    return;
+  }
+  if (!approved) {
+    updateActivity(entry, 'cancelled');
+    pushAssistantMessage('Cancelled. The website was not opened.');
+    return;
+  }
+  try {
+    const result = await window.zen.openWebsite(preview.url);
+    updateActivity(entry, 'completed', { result: result.url });
+    pushAssistantMessage(`Sent ${result.hostname} to your default browser. A 404 or sign-in page is a response from that website; Zen cannot verify that a page exists.`);
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'OPEN_WEBSITE_FAILED' });
+    pushAssistantMessage(error.message || 'Zen could not open that website.');
+  }
+}
+
 async function addBrowserWebApp(event) {
   event.preventDefault();
   approvedAppsHelp.textContent = '';
@@ -1679,11 +1772,275 @@ function isAppOpenRequest(content) {
   return /\b(open|launch|start)\b/i.test(content) && /\b(app|application|explorer|xampp|minecraft|chrome|browser)\b/i.test(content);
 }
 
+// Approved-app labels and how a user naturally types them often differ only in spacing/casing
+// (label "ProtonDrive" vs typed "Proton Drive"). Stripping everything but letters/digits after
+// splitting PascalCase/camelCase boundaries into spaces makes both sides comparable without
+// weakening the match -- it still requires the whole label to appear in order, just tolerant of
+// spacing and case, not a loose fuzzy/partial match.
+function normalizeForAppMatch(text) {
+  return text
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function findApprovedAppMatch(apps, content) {
+  const normalizedContent = normalizeForAppMatch(content);
+  return apps.find((app) => app.label && normalizedContent.includes(normalizeForAppMatch(app.label))) || null;
+}
+
+// Detection is driven primarily by the user's own approved-app names, not a fixed word list --
+// "open Proton Drive" must be caught even though "Proton Drive" matches no generic keyword.
+// Any message with an open-ish verb is checked against every approved app's label; only if a
+// verb is present AND either a named app matches or generic app language is used does this
+// count as an app-open request, so ordinary chat ("open to feedback", "let's open with...")
+// stays out of the way.
+async function detectAppOpenIntent(content) {
+  if (!/\b(open|launch|start|run)\b/i.test(content)) return { isRequest: false, match: null };
+  let apps = [];
+  try { apps = await window.zen.listApprovedApps(); } catch { apps = []; }
+  const match = findApprovedAppMatch(apps, content);
+  if (match) return { isRequest: true, match };
+  return { isRequest: isAppOpenRequest(content), match: null };
+}
+
 function isFileListRequest(content) {
   if (/\b(list|show|display|enumerate|find|search)\b/i.test(content) && /\b(files?|folders?|directories|contents?)\b/i.test(content)) return true;
   if (/\bwhat('s| is| are)?\s+(in|inside)\b/i.test(content) && /[A-Za-z]:\\/.test(content)) return true;
   if (/[A-Za-z]:\\[^\s]*/.test(content) && /\b(list|show|files?|folders?|contents?)\b/i.test(content)) return true;
   return false;
+}
+
+// Folder search is filename-substring matching (see computer-control.js validateSearchQuery) --
+// a SINGLE literal term, not tokenized -- and the grant is one-use (a fresh folder pick is
+// required for every search, so a failed guess can't be silently retried with a different term
+// the way document search can). That means joining multiple words together would rarely match
+// anything, so this picks one best candidate: a word that looks like a filename (has an
+// extension) if present, else the first significant word in reading order. Punctuation is
+// trimmed only from each word's edges so extensions like "resume.pdf" survive intact.
+const FOLDER_SEARCH_STOPWORDS = new Set([
+  'list', 'show', 'display', 'enumerate', 'find', 'search', 'files', 'file', 'folders', 'folder',
+  'directories', 'directory', 'contents', 'content', 'in', 'inside', 'my', 'the', 'a', 'an', 'for',
+  'of', 'what', 'is', 'are', 'this', 'that', 'me', 'please', 'named', 'name', 'called'
+]);
+
+function deriveFolderSearchQuery(content) {
+  const withoutPaths = content.replace(/[A-Za-z]:\\\S*/g, ' ');
+  const words = withoutPaths.split(/\s+/)
+    .map((word) => word.replace(/^[^\w.]+|[^\w.]+$/g, ''))
+    .filter(Boolean)
+    .filter((word) => word.length > 1 && !FOLDER_SEARCH_STOPWORDS.has(word.toLowerCase()));
+  if (!words.length) return '';
+  return words.find((word) => /\.[a-z0-9]{2,5}$/i.test(word)) || words[0];
+}
+
+// Mirrors reviewFolderSearch() (the Activity-tab flow) exactly: preview the query, open the same
+// native one-use folder picker, show the same confirmation with the real folder path and term,
+// then the same one-use searchFolder() call. No new capability is introduced -- this is the same
+// time-boxed, root-bound, filename-only, 100-result-capped grant, just reachable from chat.
+async function handleChatFolderSearchRequest(conversation, content) {
+  const pushAssistantMessage = (text) => {
+    conversation.messages.push({ role: 'assistant', content: text, createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+  };
+  const query = deriveFolderSearchQuery(content);
+  if (!query) {
+    pushAssistantMessage('Tell Zen a specific file or folder name to search for -- for example, "find invoice files in my Documents folder" -- then Zen will ask you to pick the folder and confirm before searching.');
+    return;
+  }
+  let previewQuery;
+  try {
+    previewQuery = await window.zen.previewSearchQuery(query);
+  } catch (error) {
+    pushAssistantMessage(error.message || 'Zen could not use that as a search term.');
+    return;
+  }
+  const selected = await window.zen.chooseSearchFolder();
+  if (!selected) {
+    pushAssistantMessage('No folder was selected, so nothing was searched.');
+    return;
+  }
+  const entry = createActivity('search-folder', `${selected.folderPath} · filename search`);
+  let approved = false;
+  try {
+    approved = await requestActionConfirmation({
+      title: 'Search this folder?',
+      description: 'Zen will read file and folder names in this location only. It will not open, change, or upload files.',
+      destination: `Search ${selected.folderPath} for names containing "${previewQuery.query}"`,
+      approveLabel: 'Search folder'
+    });
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: 'INVALID_SEARCH' });
+    pushAssistantMessage(error.message || 'Zen could not verify that search. Nothing was searched.');
+    return;
+  }
+  if (!approved) {
+    updateActivity(entry, 'cancelled');
+    pushAssistantMessage('Cancelled. That folder was not searched.');
+    return;
+  }
+  try {
+    const result = await window.zen.searchFolder(selected.token, previewQuery.query);
+    const resultText = result.capped
+      ? `${result.count} matches (list capped at 100).`
+      : `${result.count} match${result.count === 1 ? '' : 'es'} in ${result.folderPath}.`;
+    updateActivity(entry, 'completed', { result: resultText });
+    const shown = result.matches.slice(0, 15).map((match) => `- ${match.name} (${match.type}) — ${match.path}`).join('\n');
+    const more = result.count > 15 ? `\n…and ${result.count - 15} more. See Activity for the full list.` : '';
+    pushAssistantMessage(shown ? `${resultText}\n\n${shown}${more}` : resultText);
+  } catch (error) {
+    updateActivity(entry, 'failed', { errorCode: 'SEARCH_FOLDER_FAILED' });
+    pushAssistantMessage(error.message || 'Zen could not search that folder.');
+  }
+}
+
+function isDocumentQuestionRequest(content) {
+  return /\b(document|documents|doc|docs|file|files|notes?|resume|cv)\b/i.test(content)
+    && /\b(say|says|said|mention|mentions|according|based on|from my|in my|what does|what do|tell me|search|find)\b/i.test(content);
+}
+
+// searchDocuments() does a literal, single-phrase substring match (see documents.js), so a whole
+// natural-language question like "what does my resume say about my skills" won't match anything
+// verbatim. Question-y stopwords are stripped, then the remaining significant words are tried as
+// search terms -- full phrase first, then individual words longest-first -- against the same
+// window.zen.searchDocuments() used by the Documents tab, until one actually matches something.
+const DOCUMENT_QUESTION_STOPWORDS = new Set([
+  'what', 'does', 'do', 'my', 'the', 'a', 'an', 'is', 'are', 'say', 'says', 'said', 'about', 'tell',
+  'me', 'according', 'to', 'in', 'on', 'from', 'based', 'find', 'search', 'for', 'document', 'documents',
+  'doc', 'docs', 'file', 'files', 'note', 'notes', 'mention', 'mentions', 'and', 'or', 'of', 'with',
+  'this', 'that', 'these', 'those', 'it', 'its', 'can', 'you', 'please'
+]);
+
+function deriveDocumentSearchCandidates(content) {
+  const words = content.replace(/[?.!,;:]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const significant = words.filter((word) => word.length > 2 && !DOCUMENT_QUESTION_STOPWORDS.has(word.toLowerCase()));
+  const candidates = [];
+  if (significant.length > 1) candidates.push(significant.join(' '));
+  [...significant].sort((a, b) => b.length - a.length).forEach((word) => { if (!candidates.includes(word)) candidates.push(word); });
+  return candidates;
+}
+
+async function findDocumentSearchMatch(content) {
+  for (const candidate of deriveDocumentSearchCandidates(content)) {
+    try {
+      const result = await window.zen.searchDocuments(candidate);
+      if (result?.results?.length) return candidate;
+    } catch { /* try the next candidate */ }
+  }
+  return null;
+}
+
+// Mirrors askAboutDocumentResults() (the Documents-tab flow) exactly -- same prepareDocumentQuestion
+// cap (3 documents / 4,000 characters), same confirmation dialog showing the exact excerpts before
+// any model call, same startDocumentQuestion path. The only difference is the search query is
+// derived from the chat question instead of typed separately. The raw message was already pushed
+// onto the conversation by the submit handler above with the same trimmed text prepareDocumentQuestion
+// validates, so the backend's last-message integrity check passes without pushing a duplicate --
+// this just attaches documentSources to that existing message for the "sourced from" UI note.
+async function handleChatDocumentQuestion(conversation, content) {
+  const pushAssistantMessage = (text) => {
+    conversation.messages.push({ role: 'assistant', content: text, createdAt: new Date().toISOString() });
+    updateConversationMetadata(conversation);
+    saveConversations();
+    render();
+  };
+  let docs = [];
+  try { docs = await window.zen.listDocuments(); } catch { docs = []; }
+  if (!docs.length) {
+    pushAssistantMessage('No documents are imported yet. Use Documents → Import to add TXT, MD, CSV, or JSON files, then ask again.');
+    return;
+  }
+  const query = await findDocumentSearchMatch(content);
+  if (!query) {
+    pushAssistantMessage('Zen could not find matching text in your imported documents for that question. Try mentioning an exact word or phrase from the document, or use Documents → Search to look manually.');
+    return;
+  }
+  let preview;
+  try {
+    preview = await window.zen.prepareDocumentQuestion(query, content);
+  } catch (error) {
+    pushAssistantMessage(error.message || 'Zen could not prepare that document question.');
+    return;
+  }
+  const names = preview.excerpts.map((excerpt) => excerpt.displayName);
+  const entry = createActivity('document-qa', `${names.join(', ')} · ${preview.characterCount} characters`);
+  const excerptText = preview.excerpts.map((excerpt) => `Document: ${excerpt.displayName}\n\n${excerpt.text}`).join('\n\n---\n\n');
+  let approved = false;
+  try {
+    approved = await requestActionConfirmation({
+      title: 'Ask Zen about these excerpts?',
+      description: `Zen will send your question and these excerpts to your local model. Nothing leaves this computer.${preview.truncated ? ' The matching text was truncated to Zen’s 3-document / 4,000-character limit.' : ''}`,
+      destination: `Question:\n${preview.question}\n\nApproved excerpts (${preview.characterCount} characters):\n${excerptText}`,
+      approveLabel: 'Ask Zen'
+    });
+  } catch (error) {
+    updateActivity(entry, 'rejected', { errorCode: error.code || 'INVALID_DOCUMENT_QUESTION' });
+    pushAssistantMessage(error.message || 'Zen could not prepare that document question.');
+    return;
+  }
+  if (!approved) {
+    updateActivity(entry, 'cancelled');
+    pushAssistantMessage('Question cancelled. No document text was sent to the local model.');
+    return;
+  }
+  const lastMessage = conversation.messages.at(-1);
+  if (lastMessage && lastMessage.role === 'user' && lastMessage.content === preview.question) {
+    lastMessage.documentSources = names;
+  }
+  saveConversations();
+  const generation = { requestId: crypto.randomUUID(), conversationId: conversation.id, content: '', createdAt: new Date().toISOString(), documentQaActivity: entry };
+  generations.set(generation.requestId, generation);
+  setBusy();
+  renderMessages();
+  window.zen.startDocumentQuestion(preview.token, generation.requestId, messagePayload(), settings.model);
+}
+
+// Auto-save-from-chat (opt-in by the user via Memory tab settings note). Each pattern matches a
+// clause the user typed and reformats it into a short, plain-language fact -- never the raw
+// sentence verbatim -- so saved memories stay consistent whether added manually or from chat.
+// This runs entirely locally against the typed message text; nothing is sent anywhere to decide
+// what to save, and every result still passes through the same 500-char/dedupe rules as a
+// manually-typed memory.
+const AUTO_MEMORY_PATTERNS = [
+  { pattern: /\bmy name is\s+([^.!?\n]+)/i, format: (m) => `The user's name is ${m[1].trim()}.` },
+  { pattern: /\byou can call me\s+([^.!?\n]+)/i, format: (m) => `The user prefers to be called ${m[1].trim()}.` },
+  { pattern: /\bcall me\s+([^.!?\n]+)/i, format: (m) => `The user prefers to be called ${m[1].trim()}.` },
+  { pattern: /\bi live in\s+([^.!?\n]+)/i, format: (m) => `The user lives in ${m[1].trim()}.` },
+  { pattern: /\bi work (?:at|for)\s+([^.!?\n]+)/i, format: (m) => `The user works at ${m[1].trim()}.` },
+  { pattern: /\bi work as\s+([^.!?\n]+)/i, format: (m) => `The user works as ${m[1].trim()}.` },
+  { pattern: /\bmy job is\s+([^.!?\n]+)/i, format: (m) => `The user's job is ${m[1].trim()}.` },
+  { pattern: /\bmy birthday is\s+([^.!?\n]+)/i, format: (m) => `The user's birthday is ${m[1].trim()}.` },
+  { pattern: /\bmy email(?:\s+address)? is\s+([^.!?\n]+)/i, format: (m) => `The user's email is ${m[1].trim()}.` },
+  { pattern: /\bmy phone(?:\s+number)? is\s+([^.!?\n]+)/i, format: (m) => `The user's phone number is ${m[1].trim()}.` },
+  { pattern: /\bi prefer\s+([^.!?\n]+)/i, format: (m) => `The user prefers ${m[1].trim()}.` },
+  { pattern: /^remember(?: that)?\s+([^.!?\n]+)/i, format: (m) => `${m[1].trim()[0].toUpperCase()}${m[1].trim().slice(1)}.` },
+  { pattern: /^(?:please )?note(?: that)?\s+([^.!?\n]+)/i, format: (m) => `${m[1].trim()[0].toUpperCase()}${m[1].trim().slice(1)}.` }
+];
+
+function splitIntoClauses(content) {
+  return content.split(/(?<=[.!?])\s+|\n+/).map((part) => part.trim()).filter(Boolean);
+}
+
+function autoSaveMemoryFromMessage(content) {
+  let saved = false;
+  splitIntoClauses(content).forEach((clause) => {
+    for (const { pattern, format } of AUTO_MEMORY_PATTERNS) {
+      const match = clause.match(pattern);
+      if (!match || !match[1] || !match[1].trim()) continue;
+      const text = format(match).slice(0, 500);
+      if (!text || memories.some((memory) => memory.text.toLowerCase() === text.toLowerCase())) break;
+      const now = new Date().toISOString();
+      memories.unshift({ id: crypto.randomUUID(), text, createdAt: now, updatedAt: now, source: 'chat' });
+      saved = true;
+      break;
+    }
+  });
+  if (saved) {
+    saveMemories();
+    if (!memoryPage.hidden) renderMemories();
+  }
 }
 
 async function loadToolStatus() {
@@ -2021,30 +2378,45 @@ form.addEventListener('submit', async (event) => {
   const conversation = activeConversation();
   conversation.messages.push({ role: 'user', content, createdAt: new Date().toISOString() });
   updateConversationMetadata();
+  autoSaveMemoryFromMessage(content);
   input.value = '';
   input.style.height = 'auto';
   saveConversations();
   render();
-  if (isAppOpenRequest(content)) {
-    conversation.messages.push({ role: 'assistant', content: 'To open an approved app, use Activity → Choose what Zen may open. Zen will ask for confirmation before every launch.', createdAt: new Date().toISOString() });
-    updateConversationMetadata(conversation);
-    saveConversations();
-    render();
+  const appIntent = await detectAppOpenIntent(content);
+  if (appIntent.isRequest) {
+    await handleChatAppOpenRequest(conversation, content, appIntent.match);
+    return;
+  }
+  const websiteMatch = content.match(/https?:\/\/\S+/i);
+  if (websiteMatch) {
+    await handleChatWebsiteOpenRequest(conversation, websiteMatch[0]);
+    return;
+  }
+  if (isDocumentQuestionRequest(content)) {
+    await handleChatDocumentQuestion(conversation, content);
     return;
   }
   if (isFileListRequest(content)) {
-    conversation.messages.push({ role: 'assistant', content: 'To search file names in a folder you choose, use Activity → Search a folder. Zen will ask you to pick the folder, confirm the search, and show matching names and paths locally. It will not read file contents or change anything.', createdAt: new Date().toISOString() });
-    updateConversationMetadata(conversation);
-    saveConversations();
-    render();
+    await handleChatFolderSearchRequest(conversation, content);
     return;
   }
   const generation = { requestId: crypto.randomUUID(), conversationId: conversation.id, content: '', createdAt: new Date().toISOString() };
   generations.set(generation.requestId, generation);
   setBusy();
   renderMessages();
-  window.zen.startChat(generation.requestId, messagePayload(), settings.model);
+  window.zen.startChat(generation.requestId, messagePayload(), settings.model, buildMemoryContext());
 });
+
+// Feeds saved memories into the chat request as plain-language context so the local model can
+// recall them (e.g. the user's name) -- this is the one point memory text reaches Ollama for
+// regular chat, matching the confirmation-free "routine" tier used elsewhere for local-only,
+// non-sensitive context. Capped well under the per-message limit so it can never crowd out the
+// actual conversation.
+function buildMemoryContext() {
+  if (!memories.length) return '';
+  return memories.slice(0, 50).map((memory) => `- ${memory.text}`).join('\n').slice(0, 4000);
+}
 
 input.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
 input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 180)}px`; });

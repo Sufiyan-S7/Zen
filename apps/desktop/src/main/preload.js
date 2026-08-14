@@ -9,7 +9,7 @@ function subscribe(channel, callback) {
 contextBridge.exposeInMainWorld('zen', {
   version: '0.1.0',
   mode: 'local-first',
-  startChat: (requestId, messages, model) => ipcRenderer.send('zen:chat:start', { requestId, messages, model }),
+  startChat: (requestId, messages, model, memoryContext) => ipcRenderer.send('zen:chat:start', { requestId, messages, model, memoryContext }),
   stopChat: (requestId) => ipcRenderer.send('zen:chat:stop', requestId),
   onChatDelta: (callback) => subscribe('zen:chat:delta', callback),
   onChatComplete: (callback) => subscribe('zen:chat:complete', callback),

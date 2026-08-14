@@ -33,9 +33,10 @@ const PIPER_VOICES = {
 const SYSTEM_PROMPT = [
   'You are Zen, a private local desktop assistant.',
   'Be concise, practical, and honest about what you can do.',
-  'Never say or imply that you opened, launched, navigated to, or completed any computer action. Chat cannot execute actions.',
-  'If asked to open File Explorer, tell the user to use Activity → Choose what Zen may open. If asked to open a website or a browser-installed web app, direct them to Activity → Open a website. If asked to list or find files or folders, direct them to Activity → Search a folder.',
-  'Do not claim to control files, apps, or the browser beyond those user-confirmed Activity actions.',
+  'You are only ever generating a reply, not executing anything -- if a request to open an approved app or an HTTPS website was going to be acted on, that happens in a separate step before your reply generation, with its own confirmation dialog, and you would not be generating a conversational reply about it at all. So never say or imply, in your own generated text, that you opened, launched, navigated to, or completed any computer action, are about to, or are asking permission to -- you cannot do any of that yourself, and doing so would be fabricating an outcome that did not happen.',
+  'If asked to open an app that is not yet approved, tell the user to approve it first in Activity → Choose what Zen may open. If asked to list or find files or folders, that is also detected and handled outside your reply generation the same way, with its own folder picker and confirmation -- never claim to have already listed or searched files yourself in your own generated text, for the same reason as above.',
+  'Do not claim to control files or the browser beyond user-approved apps, user-approved websites, and user-confirmed Activity actions.',
+  'You have not been given the contents of any imported document in this reply -- if this conversation does not already show document excerpts above, do not guess, answer from general knowledge, or imply you checked the document. Instead say you don\'t have that document\'s content in this reply and suggest asking again using an exact word or phrase from the document, or using Documents → Ask.',
   'Never request or reveal sensitive personal information unless the user explicitly needs it.'
 ].join(' ');
 const DOCUMENT_QA_SYSTEM_PROMPT = 'You are Zen, answering a question from user-approved local document excerpts. Answer only from the provided excerpts. If the excerpts do not contain the answer, say plainly that the answer is not contained in the excerpts. Do not infer unstated document content.';
@@ -148,13 +149,26 @@ function selectPiperVoice(voiceId) {
   return voice;
 }
 
-async function startChatRequest(event, { requestId, messages, model, systemPrompt = SYSTEM_PROMPT } = {}) {
+// Memory text only ever reaches Ollama through this one path (regular chat), same rule Day 10's
+// design doc set for the future recall feature: capped well below the per-message limit, and
+// never trusted as pre-sanitized just because it came from local storage.
+function validateMemoryContext(memoryContext) {
+  if (memoryContext === undefined || memoryContext === null || memoryContext === '') return '';
+  if (typeof memoryContext !== 'string') throw new Error('Memory context is invalid.');
+  return memoryContext.slice(0, 4_000);
+}
+
+async function startChatRequest(event, { requestId, messages, model, systemPrompt = SYSTEM_PROMPT, memoryContext } = {}) {
   let key;
   let controller;
   try {
     key = requestKey(event.sender, requestId);
     if (activeRequests.has(key)) throw new Error('This chat request is already running.');
     const selectedModel = validateModel(model);
+    const safeMemoryContext = validateMemoryContext(memoryContext);
+    const finalSystemPrompt = safeMemoryContext
+      ? `${systemPrompt}\n\nThe user has saved these facts about themselves in Zen's local Memory page. Use them naturally when relevant (for example, if asked their name), but don't recite the raw list unless asked to:\n${safeMemoryContext}`
+      : systemPrompt;
     controller = new AbortController();
     activeRequests.set(key, controller);
     const response = await fetch(OLLAMA_URL, {
@@ -164,7 +178,7 @@ async function startChatRequest(event, { requestId, messages, model, systemPromp
       body: JSON.stringify({
         model: selectedModel,
         stream: true,
-        messages: [{ role: 'system', content: systemPrompt }, ...validateMessages(messages)]
+        messages: [{ role: 'system', content: finalSystemPrompt }, ...validateMessages(messages)]
       })
     });
     if (!response.ok) throw new Error(`Ollama could not respond (${response.status}). Check that ${selectedModel} is installed.`);
