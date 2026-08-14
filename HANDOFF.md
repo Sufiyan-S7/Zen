@@ -1216,7 +1216,8 @@ convention — flagged to Sufi, not auto-corrected.
 into Day 2 work). Push held pending Sufi's go-ahead, per `AGENT-UPDATE-PROTOCOL.md`'s
 push-exception rule (this touches a privacy/security-relevant boundary).
 
-**Last Verified Commit:** see commit hash noted after commit runs below.
+**Last Verified Commit:** `9a4c6de` (local commit on `zen-1.1`, 1 ahead of `origin/zen-1.1` -- not pushed).
 
 Exact next recommended step: still Day 2 -- startup and tray lifecycle, per `docs/ZenV1_1Plan.md`
 -- once Sufi decides whether to push this memory change as-is or add a confirmation gate first.
+
