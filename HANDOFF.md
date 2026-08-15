@@ -1331,3 +1331,62 @@ prior entry.
 `whisper.cpp` capture into the overlay, live waveform indicator, typed-entry fallback as an equal
 first-class input path, editable transcript + retry/re-ask handling for low-confidence
 transcription.
+
+
+## v2.0 sprint — Block C: voice + typed input (August 15, 2026)
+
+Executing `docs/ZenV2-2Day-Sprint-Plan.md` Steps 12-15. Resumed a prior session that had stopped
+mid-block (likely token-limited): `git status` at session start showed `main.js`,
+`overlay-preload.js`, and `preload.js` already modified but uncommitted -- the overlay-submit
+IPC handler and the `zenOverlay.submit`/`getVoiceStatus`/`transcribeVoice` preload bridge were in
+place, but nothing in `overlay.js`/`overlay.html`/`renderer.js` had been wired to use them yet.
+Verified this via `git diff` before writing anything, per `INSTRUCTIONS.md` Section 2.
+
+**What changed:**
+- Step 12 (voice capture): `overlay.js` now has its own hold-to-talk recorder --
+  `getUserMedia`/`AudioContext`/`ScriptProcessor` capture, `downsample`/`makeWav` to 16kHz WAV --
+  mirroring `renderer.js`'s existing v1.0 implementation but reached through the already-bridged
+  `window.zenOverlay.getVoiceStatus()` / `transcribeVoice()` channels (same whisper.cpp engine,
+  no second transcription path). Mic button starts disabled and enables once voice status
+  confirms `whisper-cli`/model are present, same pattern as the main window's voice button.
+- Step 13 (waveform): `overlay.html`/`overlay.css` add a 5-bar waveform row that replaces the
+  text input while recording; `overlay.js` drives it off a live `AnalyserNode` (separate from the
+  `ScriptProcessor` used for the actual transcription audio).
+- Step 14 (typed fallback): `overlay.js` submits typed text on Enter via
+  `window.zenOverlay.submit()`. On the main-window side, `renderer.js` now listens for
+  `window.zen.onOverlayMessage()` and hands the text to the *existing* composer
+  (`input.value = text; form.requestSubmit();`) rather than a second send path -- app-open/
+  website/document-question/folder-search intent detection and memory auto-save all stay
+  single-sourced. If a generation is already running, the composer's own existing busy guard
+  drops it, matching same-window Enter-while-busy behavior; no new guard needed.
+- Step 15 (editable transcript + retry): a successful transcription lands in the overlay's input
+  for review -- Enter still required to send it, exactly like typed entry, never auto-sent. On
+  failure, the overlay stays open/idle/editable with the failure reason as the placeholder.
+
+**Flagged judgment calls (`INSTRUCTIONS.md` Section 5):**
+1. Whisper.cpp here (`whisper-cli -nt -otxt`) returns plain text with no confidence score, so
+   "low-confidence transcription" has no numeric signal to branch on. Operationalized instead as:
+   any transcription failure (silence or engine error) triggers the same re-ask/retry UI --
+   overlay stays open, mic re-enabled, reason shown in the placeholder. This is also read as the
+   "failed to load transcript" clean-close requirement: a failure never leaves the overlay stuck
+   on "Transcribing...", and Escape still closes it from that state.
+2. Escape during an active recording cancels the recording first (discarding the in-progress
+   audio) rather than closing the overlay outright; a second Escape (now idle) closes it. Not
+   specified by the sprint plan -- chosen over silently discarding+closing in one keypress.
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passed (all existing safety-check
+scripts; this script does not itself touch `overlay.js`/`overlay-preload.js`, so both were also
+verified directly with `node --check` -- syntax-clean). Manual smoke test of hold-to-talk,
+waveform, typed Enter-to-send, and retry-on-failure not yet performed by the owner -- see Testing
+below.
+
+**Git state:** committing as a Block-boundary commit on `zen-2.0`; will push (routine change, no
+deletions/config/credentials/security involved -- no push-exception hold).
+
+**Known issues / open items:** the two judgment calls above are the owner's to confirm; nothing
+else carried forward. The Block A `click-control`/`blocked`-state items remain open, unchanged.
+
+**Exact next recommended step:** Block D (task planning & execution core) -- Steps 16-21: initial
+action-registry subset (open-app, open-website, read-file, list-folder), goal to plan step, the
+deterministic executor, one-approval-per-task + sensitive re-confirmation gate, pause/resume/
+cancel + emergency stop, and the append-only local audit log.

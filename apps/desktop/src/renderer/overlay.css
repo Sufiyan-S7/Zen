@@ -50,3 +50,24 @@ html, body { height: 100%; margin: 0; background: #07130f; overflow: hidden; fon
   font-size: 14px;
   cursor: not-allowed;
 }
+.overlay-mic:not(:disabled) { cursor: pointer; color: #b9f55b; border-color: #3f6a4c; }
+.overlay-mic.recording { background: #1c4a2d; color: #eafbe0; border-color: #4f8a5f; }
+
+.overlay-waveform {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+}
+.overlay-waveform span {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: #b9f55b;
+  transform: scaleY(.15);
+  transition: transform .06s ease-out;
+}

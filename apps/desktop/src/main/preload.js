@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('zen', {
   getVoiceStatus: () => ipcRenderer.invoke('zen:voice-status'),
   transcribeVoice: (audio) => ipcRenderer.invoke('zen:voice:transcribe', audio),
   onVoiceShortcut: (callback) => subscribe('zen:voice-shortcut', callback),
+  onOverlayMessage: (callback) => subscribe('zen:overlay:message', callback),
   speakVoice: (text, voiceId, speed) => ipcRenderer.invoke('zen:voice:speak', text, voiceId, speed),
   stopVoiceSpeech: () => ipcRenderer.send('zen:voice:stop-speaking')
 });

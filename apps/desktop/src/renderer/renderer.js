@@ -2369,6 +2369,17 @@ if (window.zen) {
   });
   window.zen.onChatCancelled(({ requestId }) => finishGeneration(requestId, 'Generation stopped.'));
   window.zen.onVoiceShortcut(handleVoiceShortcut);
+  // Block C, Step 12/14: overlay hands off typed/transcribed text here rather than running a
+  // second send path -- setting input.value and reusing the composer's own submit handler keeps
+  // app-open/website/document-question/folder-search intent detection and memory auto-save
+  // single-sourced. If a generation is already running, the submit handler's own busy guard
+  // drops it, matching how a same-window Enter press behaves while busy.
+  window.zen.onOverlayMessage((text) => {
+    if (typeof text !== 'string' || !text.trim()) return;
+    showPage('chat');
+    input.value = text;
+    form.requestSubmit();
+  });
 }
 
 form.addEventListener('submit', async (event) => {

@@ -693,6 +693,17 @@ app.whenReady().then(() => {
       : [];
   });
   ipcMain.on('zen:overlay:close', () => hideOverlay());
+  // Block C, Step 12: the overlay hands typed/transcribed text off to the main window's
+  // existing chat pipeline rather than running a second message-send code path -- website/app
+  // intent detection, memory auto-save, and document-question routing all stay single-sourced.
+  ipcMain.on('zen:overlay:submit', (_event, text) => {
+    if (typeof text !== 'string' || !text.trim() || text.length > 4_000) return;
+    if (!mainWindow) createWindow();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('zen:overlay:message', text.trim());
+    hideOverlay();
+  });
   createWindow();
   createTray();
   registerHotkey();
