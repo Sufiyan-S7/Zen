@@ -59,5 +59,9 @@ contextBridge.exposeInMainWorld('zen', {
   onVoiceShortcut: (callback) => subscribe('zen:voice-shortcut', callback),
   onOverlayMessage: (callback) => subscribe('zen:overlay:message', callback),
   speakVoice: (text, voiceId, speed) => ipcRenderer.invoke('zen:voice:speak', text, voiceId, speed),
-  stopVoiceSpeech: () => ipcRenderer.send('zen:voice:stop-speaking')
+  stopVoiceSpeech: () => ipcRenderer.send('zen:voice:stop-speaking'),
+  // Block D, Step 17-19: goal -> plan -> popup. proposeTask resolves once Ollama has decided
+  // whether the message is a task at all; if it is, the plan popup (a separate window) takes
+  // over approve/pause/cancel from there -- nothing further comes back through this bridge.
+  proposeTask: (goal) => ipcRenderer.invoke('zen:task:propose', goal)
 });

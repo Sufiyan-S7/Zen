@@ -1,0 +1,53 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: transparent; overflow: hidden; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  padding: 14px;
+  border: 1px solid #426b51;
+  border-radius: 14px;
+  background: rgba(9, 27, 19, .97);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+  color: #f2f7ee;
+}
+
+.task-header { display: flex; align-items: center; gap: 8px; }
+.task-mark {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  border-radius: 7px; background: #b9f55b; color: #102014; font-size: 12px; font-weight: 700;
+}
+.task-state { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: #96ad9e; }
+
+.task-goal { font-size: 14px; line-height: 1.4; color: #f2f7ee; }
+
+.task-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+.task-step { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.35; }
+.task-step-icon { flex: none; width: 16px; text-align: center; }
+.task-step-label { color: #d8e6da; }
+.task-step[data-status="completed"] .task-step-icon { color: #b9f55b; }
+.task-step[data-status="failed"] .task-step-icon { color: #ef7a6b; }
+.task-step[data-status="running"] .task-step-icon { color: #7fd4ff; }
+.task-step[data-status="cancelled"] .task-step-icon,
+.task-step[data-status="skipped"] .task-step-icon { color: #6f8c7a; }
+.task-step[data-status="pending"] .task-step-icon { color: #4d6a58; }
+
+.task-actions { display: flex; gap: 8px; }
+.task-actions button {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: 1px solid #3f6a4c;
+  background: #102b1f;
+  color: #eafbe0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.task-actions button.primary { background: #b9f55b; color: #102014; border-color: #b9f55b; }
+.task-actions button.danger { border-color: #7a3c34; color: #ef7a6b; }
+.task-actions button:hover { filter: brightness(1.08); }

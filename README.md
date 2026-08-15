@@ -293,14 +293,18 @@ planning, scoped file/app/browser automation, undo, and explicit safety controls
 
 As of August 15, 2026, this plan is being executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
-schedule. Block B (instant invocation) is complete: system tray, single-instance lock, the
-`Ctrl+Alt+Space` global hotkey, and the compact command overlay all work and are manually
-verified. `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, previously described here as
-existing superseded draft files, do **not** actually exist in this repo — that was a stale
-reference from an earlier session and has been corrected (verified via direct filesystem check,
-Aug 15, 2026). `docs/ZenV2-2Day-Sprint-Plan.md` is authoritative for this sprint;
-`docs/AgentContract.md` holds the underlying task/risk/permission contract. See
-[HANDOFF.md](HANDOFF.md) for the full audit.
+schedule. **Day 1 (Blocks A-D) is complete and manually verified**, closing out the foundation and
+core agent loop: system tray, single-instance lock, the `Ctrl+Alt+Space` global hotkey, the
+compact command overlay, push-to-talk voice input with typed fallback, and — new this block — a
+working goal-to-plan-to-execution loop. Typing `Task: <goal>` in chat routes to a local-model
+planner, shows the plan in a separate top-right popup window, and on approval runs it through a
+deterministic executor with per-step timeouts/retries, pause/resume/cancel, a global
+`Ctrl+Alt+Escape` emergency stop, and an append-only local audit log. `docs/AgentModePlan.md` and
+`docs/AgentModeChecklist.md`, previously described here as existing superseded draft files, do
+**not** actually exist in this repo — that was a stale reference from an earlier session and has
+been corrected (verified via direct filesystem check, Aug 15, 2026). `docs/ZenV2-2Day-Sprint-Plan.md`
+is authoritative for this sprint; `docs/AgentContract.md` holds the underlying task/risk/permission
+contract. See [HANDOFF.md](HANDOFF.md) for the full audit.
 
 ### Desktop shortcut
 

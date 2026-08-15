@@ -175,6 +175,18 @@ function documentPreview(id, query, occurrence = 0) {
   const end = Math.min(item.extractedText.length, start + MAX_PREVIEW_LENGTH);
   return { id: item.id, displayName: item.displayName, type: item.type, occurrence, text: `${start ? '…' : ''}${item.extractedText.slice(start, end)}${end < item.extractedText.length ? '…' : ''}` };
 }
+// Block D, Step 16 (action-registry.js's read-file): full (bounded) text of one already-
+// imported document. Distinct from documentPreview, which requires a search query and returns
+// only the text around one match -- a plain "read this file" task step has no query to give it.
+const MAX_READ_CHARS = 8000;
+function readDocumentText(id) {
+  if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) throw safeError('That document record is invalid.', 'INVALID_DOCUMENT');
+  const item = readStoredDocuments().find((entry) => entry?.id === id && entry.status === 'imported' && typeof entry.extractedText === 'string');
+  if (!item) throw safeError('That imported document is no longer available in Zen.', 'DOCUMENT_NOT_FOUND');
+  const truncated = item.extractedText.length > MAX_READ_CHARS;
+  return { id: item.id, displayName: item.displayName, type: item.type, text: item.extractedText.slice(0, MAX_READ_CHARS), truncated };
+}
+
 function validateDocumentQuestion(question) {
   if (typeof question !== 'string' || !question.trim() || question.length > 4000 || /[\u0000-\u001f\u007f]/.test(question)) {
     throw safeError('Enter a plain-text question up to 4,000 characters long.', 'INVALID_DOCUMENT_QUESTION');
@@ -269,4 +281,4 @@ function restoreDocuments(rawDocuments) {
   return { restored: restored.length, skipped };
 }
 
-module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument, exportDocuments, restoreDocuments };
+module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, readDocumentText, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument, exportDocuments, restoreDocuments };

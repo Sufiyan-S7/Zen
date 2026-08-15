@@ -5,6 +5,7 @@ const path = require('node:path');
 let approvedAppsPath = '';
 
 const MAX_SEARCH_RESULTS = 100;
+const MAX_LIST_RESULTS = 200;
 const MAX_SEARCH_QUERY_LENGTH = 200;
 const BROWSER_LAUNCHER_NAMES = new Set([
   'brave.exe', 'chrome.exe', 'chrome_proxy.exe', 'firefox.exe',
@@ -226,6 +227,32 @@ function searchFolderNames(folderPath, query) {
   return { folderPath: rootFolder, query: term, matches, capped, count: matches.length };
 }
 
+// Block D, Step 16 (action-registry.js's list-folder): non-recursive, one level deep -- unlike
+// searchFolderNames this has no query, so it returns the folder's own direct contents.
+function listFolderContents(folderPath) {
+  const rootFolder = validateFolderPath(folderPath);
+  let entries;
+  try {
+    entries = fs.readdirSync(rootFolder, { withFileTypes: true });
+  } catch {
+    throw new Error('Zen could not read that folder.');
+  }
+  const items = [];
+  let capped = false;
+  for (const entry of entries) {
+    if (items.length >= MAX_LIST_RESULTS) { capped = true; break; }
+    if (entry.isSymbolicLink()) continue;
+    const entryPath = path.join(rootFolder, entry.name);
+    let verifiedPath;
+    try { verifiedPath = fs.realpathSync(entryPath); } catch { continue; }
+    if (!isPathInsideRoot(verifiedPath, rootFolder) && verifiedPath !== rootFolder) continue;
+    let type = 'file';
+    try { type = fs.statSync(verifiedPath).isDirectory() ? 'folder' : 'file'; } catch { continue; }
+    items.push({ name: entry.name, path: verifiedPath, type });
+  }
+  return { folderPath: rootFolder, items, capped, count: items.length };
+}
+
 function toolRegistryStatus() { return Object.values(TOOL_REGISTRY).map(({ id, label, requiresConfirmation, enabled }) => ({ id, label, requiresConfirmation, enabled })); }
 
 // Day 26/27 backup & export: the raw stored shape (not the UI-facing listApprovedApps()
@@ -259,6 +286,7 @@ module.exports = {
   configureApprovedApps,
   toolRegistryStatus,
   websitePreview,
+  listFolderContents,
   appEntry,
   previewApp,
   previewBrowserWebApp,

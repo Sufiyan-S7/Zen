@@ -9,9 +9,13 @@ const { configureDocuments, previewDocuments, importDocuments, listDocuments, se
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
+const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, requestCancel } = require('./task-executor');
+const { planTask } = require('./task-planner');
+const { configureAuditLog, appendAuditRecord, pruneAuditLog } = require('./audit-log');
 
 let mainWindow = null;
 let overlayWindow = null;
+let taskPopupWindow = null;
 let tray = null;
 let isQuitting = false;
 
@@ -39,6 +43,10 @@ if (!gotSingleInstanceLock) {
 
 const TRAY_ICON_PATH = path.resolve(__dirname, '../../../../assets/zen-icon.ico');
 const OVERLAY_HOTKEY = 'Ctrl+Alt+Space';
+// Block D, Step 20: global emergency-stop shortcut, distinct from the invocation hotkey above.
+// Not specified by the sprint plan's prose -- flagged per INSTRUCTIONS.md Section 5 as a chosen
+// default (Ctrl+Alt+Esc mirrors the reach-for-it-in-a-hurry familiarity of Ctrl+Alt+Del).
+const EMERGENCY_STOP_HOTKEY = 'Ctrl+Alt+Escape';
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -428,6 +436,60 @@ function toggleOverlay() {
   else showOverlay();
 }
 
+// Block D, Step 19: small, fixed-position popup for plan review + approve/pause/cancel --
+// distinct from the overlay (Block B/C, capture bar, top-center, closes on blur). This one
+// stays up through a running task even if focus moves elsewhere, so it does not hide on blur.
+// Placed top-right of the nearest display, matching the Windows-toast-notification corner --
+// not specified by the sprint plan beyond "a specific place on screen"; flagged per
+// INSTRUCTIONS.md Section 5 as a chosen default.
+const TASK_POPUP_WIDTH = 340;
+const TASK_POPUP_HEIGHT = 320;
+
+function createTaskPopupWindow() {
+  taskPopupWindow = new BrowserWindow({
+    width: TASK_POPUP_WIDTH,
+    height: TASK_POPUP_HEIGHT,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    backgroundColor: '#07130f',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'task-popup-preload.js')
+    }
+  });
+  taskPopupWindow.loadFile(path.join(__dirname, '../renderer/task-popup.html'));
+  taskPopupWindow.on('closed', () => { taskPopupWindow = null; });
+}
+
+function positionTaskPopup() {
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const { x, y, width } = display.workArea;
+  const margin = 16;
+  taskPopupWindow.setPosition(Math.round(x + width - TASK_POPUP_WIDTH - margin), Math.round(y + margin));
+}
+
+function showTaskPopup(task) {
+  if (!taskPopupWindow) createTaskPopupWindow();
+  positionTaskPopup();
+  taskPopupWindow.show();
+  taskPopupWindow.webContents.once('did-finish-load', () => taskPopupWindow.webContents.send('zen:task:update', task));
+  if (!taskPopupWindow.webContents.isLoadingMainFrame()) taskPopupWindow.webContents.send('zen:task:update', task);
+}
+
+function hideTaskPopup() {
+  if (taskPopupWindow && taskPopupWindow.isVisible()) taskPopupWindow.hide();
+}
+
+function pushTaskUpdate(task) {
+  if (taskPopupWindow && !taskPopupWindow.isDestroyed()) taskPopupWindow.webContents.send('zen:task:update', task);
+}
+
 // Block B, Step 9: global hotkey with conflict detection. register() returns false rather than
 // throwing when another application already owns the accelerator, so a failed registration is
 // surfaced (tray tooltip + log) instead of silently doing nothing when the owner later presses
@@ -441,11 +503,24 @@ function registerHotkey() {
   return ok;
 }
 
+// Block D, Step 20: global emergency-stop shortcut. Cancels whichever task is currently
+// running/paused/blocked (Section 5's guarantees are enforced by task-executor.js itself --
+// this handler only signals the request). If no task is active, it is a harmless no-op.
+function registerEmergencyStopHotkey() {
+  const ok = globalShortcut.register(EMERGENCY_STOP_HOTKEY, () => {
+    for (const task of listActiveTasks()) requestCancel(task.id);
+  });
+  if (!ok) console.error(`Zen could not register the ${EMERGENCY_STOP_HOTKEY} emergency-stop hotkey -- another application may already be using it.`);
+  return ok;
+}
+
 app.whenReady().then(() => {
   configureApprovedApps(app.getPath('userData'));
   configureDocuments(app.getPath('userData'));
   configureCustomCommands(app.getPath('userData'));
   configureWorkflows(app.getPath('userData'));
+  configureAuditLog(app.getPath('userData'));
+  pruneAuditLog();
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
   ipcMain.handle('zen:tools:preview-website', (_event, url) => websitePreview(url));
@@ -704,9 +779,34 @@ app.whenReady().then(() => {
     mainWindow.webContents.send('zen:overlay:message', text.trim());
     hideOverlay();
   });
+  ipcMain.handle('zen:task:propose', async (_event, goal) => {
+    if (typeof goal !== 'string' || !goal.trim()) throw new Error('A task needs a non-empty goal.');
+    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments() });
+    if (!plan.isTask) return { isTask: false };
+    const task = proposeTask(goal.trim(), plan.steps);
+    showTaskPopup(task);
+    return { isTask: true, task };
+  });
+  ipcMain.handle('zen:task:approve', (_event, taskId) => {
+    const task = approveTask(taskId, {
+      auditFn: appendAuditRecord,
+      onUpdate: pushTaskUpdate,
+      // Not exercised by any Block D action (all routine) -- see task-executor.js's runTask.
+      // A future sensitive action surfaces its fresh-confirmation prompt through this same
+      // popup rather than a second dialog system.
+      confirmSensitiveStep: async () => null
+    });
+    return task;
+  });
+  ipcMain.handle('zen:task:pause', (_event, taskId) => requestPause(taskId));
+  ipcMain.handle('zen:task:resume', (_event, taskId) => requestResume(taskId));
+  ipcMain.handle('zen:task:cancel', (_event, taskId) => requestCancel(taskId));
+  ipcMain.on('zen:task:popup-close', () => hideTaskPopup());
+
   createWindow();
   createTray();
   registerHotkey();
+  registerEmergencyStopHotkey();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

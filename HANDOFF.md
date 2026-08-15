@@ -1390,3 +1390,95 @@ else carried forward. The Block A `click-control`/`blocked`-state items remain o
 action-registry subset (open-app, open-website, read-file, list-folder), goal to plan step, the
 deterministic executor, one-approval-per-task + sensitive re-confirmation gate, pause/resume/
 cancel + emergency stop, and the append-only local audit log.
+
+
+## v2.0 sprint — Block D: task planning & execution core (August 15, 2026)
+
+Executing `docs/ZenV2-2Day-Sprint-Plan.md` Steps 16-21. Resumed a prior session that had stopped
+mid-block (likely token-limited): `git status` at session start showed
+`action-registry.js`, `audit-log.js`, `task-executor.js`, `task-planner.js`, the task-popup
+window files, and both new `scripts/check-*.js` files already present and syntactically valid,
+but `apps/desktop/package.json`'s `check` script had not been updated to actually run the two new
+check scripts or `node --check` the five new/changed source files -- confirmed via `git diff`
+and `npm run check`'s command list before writing anything, per `INSTRUCTIONS.md` Section 2.
+
+**What changed:**
+- Step 16: `action-registry.js` -- initial registry subset (`open-app`, `open-website`,
+  `list-folder`, `read-file`, plus the internal `noop.wait` test action), each reusing existing
+  v1.0.0 execution primitives (`computer-control.js`, `documents.js`) rather than a second path.
+- Step 17: `task-planner.js` -- goal to structured plan via the local Ollama model, JSON-only
+  response constrained to the Step 16 registry; single-action chat requests keep using the
+  existing lightweight detectors unchanged. `renderer.js`'s `isTaskRequest()` gates this on an
+  explicit `Task:` prefix rather than a fuzzier heuristic (flagged judgment call, see below).
+- Step 18: `task-executor.js` -- the single deterministic executor and the full
+  `docs/AgentContract.md` Section 1 state machine (`proposed -> approved -> running ->
+  paused/blocked -> completed/failed/cancelled`), preconditions via registry validation,
+  bounded retries (2 attempts) and a 15s per-step timeout, no action invoked outside `runTask()`.
+- Step 19: one-approval-per-task + sensitive-step re-confirmation gate -- implemented in
+  `runTask()` even though none of Block D's four real actions are `sensitive`, so Block E's
+  `delete-file` lands on a working gate rather than a second implementation. Surfaced through a
+  new top-right popup window (`task-popup.html/css/js`, `task-popup-preload.js`,
+  `createTaskPopupWindow`/`showTaskPopup` in `main.js`) -- a separate `BrowserWindow`, not a modal
+  on the main window, so it is never blocked by the existing v1.0 confirm-action dialog's
+  `inert` state.
+- Step 20: pause/resume/cancel wired through `task-executor.js` + the popup's controls, plus a
+  global emergency-stop hotkey `Ctrl+Alt+Escape` (`registerEmergencyStopHotkey` in `main.js`)
+  that cancels every active task regardless of which window has focus.
+- Step 21: `audit-log.js` -- append-only local audit log at `task-audit.log` in the userData
+  folder, `docs/AgentContract.md` Section 4's exact record shape, 30-day rolling retention
+  (`pruneAuditLog`, called once on startup), redaction of password/credential/secret/token-named
+  input fields before a record is ever written.
+
+**Bug found and fixed during this session (pre-existing, not part of Block D's own code):**
+`apps/desktop/package.json`'s `check` script did not `node --check` any of the five new/changed
+Block D source files, nor run `scripts/check-action-registry.js` /
+`scripts/check-task-executor.js` -- `npm run check` was silently passing without ever touching
+Block D's code. Fixed by adding all five files and both check scripts to the `check` command in
+the same order/pattern as every existing entry. This was very likely where the prior session's
+token budget ran out (mid-edit on `check-task-executor.js`), leaving the wiring gap uncaught by
+its own passing-looking check runs.
+
+**Flagged judgment calls (`INSTRUCTIONS.md` Section 5):**
+1. `isTaskRequest()` requires an explicit `Task:` prefix rather than inferring multi-step intent
+   from ordinary phrasing. Chosen for zero false-positive risk (no accidental extra Ollama call
+   or accidental task-popup trigger on normal chat) over a fuzzier heuristic; a dedicated UI
+   entry point can replace this once Agent Home (Block H) exists. Not specified by the sprint
+   plan.
+2. Read-file in this Block D subset is scoped to Zen's existing imported-document library
+   (`documentId`), not an arbitrary file path -- the persistent folder/app permission grant
+   (`docs/AgentContract.md` Section 3) doesn't exist until Block E Step 22, and full
+   recursive-search read-file is Block E Step 23 per `docs/ActionRegistrySkeleton.md`. Interim
+   scope, not a shortcut on the contract.
+3. Task-popup screen position (top-right corner, 16px margin) is a chosen default, not specified
+   by the sprint plan beyond "a specific place on screen."
+
+**Manual smoke test (owner-performed, this session):** `Task: open antigravity` correctly bypassed
+the old v1.0 app-open confirmation flow entirely; the top-right task popup appeared showing the
+proposed plan (`open-app`) with Start/Dismiss controls; Start ran the step and Antigravity opened,
+popup reflected completion. Pause, Resume, Cancel mid-run, and the global `Ctrl+Alt+Escape`
+emergency stop were all separately tested and confirmed working by the owner. One non-Block-D
+observation surfaced during testing: the existing v1.0 confirm-action modal (used by the old
+plain "open X" chat phrasing, distinct from `Task:`) sets the whole app shell `inert` while open,
+so the chat input silently ignores input, including a new `Task:`-prefixed message, until that
+modal's own Cancel/Open app button is clicked -- expected v1.0 behavior, not a defect, but worth
+knowing when testing.
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passes in full, now actually exercising
+all five new/changed Block D files plus both new check scripts (`Action-registry checks passed.`,
+`Task-executor checks passed.`). Manual smoke test above passed in full.
+
+**Git state:** committing as the Day 1 boundary commit on `zen-2.0` (Blocks A-D, Steps 1-21); will
+push -- routine change, no deletions/config/credentials/security involved, no push-exception hold.
+
+**Known issues / open items:** the three judgment calls above are the owner's to confirm; nothing
+else carried forward from Block D. The Block A `click-control` gap (flagged in
+`docs/AgentContract.md` Section 7) remains open for Block F Step 25, unchanged.
+
+**LinkedIn draft (Day 1 batched, big/catch-up format -- see `LINKEDIN_DRAFTS.md`):** written and
+delivered alongside this update, per `AGENT-UPDATE-PROTOCOL.md`'s sprint-scoped override.
+
+**Exact next recommended step:** Day 2, Block E (file/folder + permissions) -- Steps 22-24:
+persistent folder-permission grant + permissions page, `search-folder`/`read-file` (full,
+arbitrary-path) registry actions, and `move-file`/`copy-file`/`rename-file`/`delete-file` as a
+file-organize plan with preview-before-execute, Recycle-Bin-routed deletes, and Undo where
+supported.
