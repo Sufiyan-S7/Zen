@@ -291,11 +291,6 @@ configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, st
 planning, scoped file/app/browser automation, undo, and explicit safety controls. See the
 [30-day v2.0 plan](docs/ZenV2Plan.md).
 
-(Renamed August 13, 2026: this plan was developed and referred to as "v2.0" through Day 1 of its
-implementation; the owner has moved to updating Zen version-by-version, so it is now v2.0, the
-next version after the shipped `v1.0.0` MVP. `docs/ZenV2Plan.md` no longer exists as a filename;
-its content lives on, renamed, at `docs/ZenV2Plan.md`.)
-
 As of August 15, 2026, this plan is being executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
 schedule. `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, previously described here as
