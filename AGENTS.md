@@ -14,3 +14,10 @@ For every task that changes, diagnoses, validates, or reports material work in t
 4. Do not consider a Zen task complete until the continuity documentation is current.
 
 The purpose is to let a new agent continue work without relying on chat history. Preserve the existing project conventions: local-first operation, privacy by default, and user confirmation for impactful actions.
+
+## Related protocols — Required
+
+Also read `INSTRUCTIONS.md` (verification discipline, commit/push defaults, judgment-call
+flagging) and `AGENT-UPDATE-PROTOCOL.md` (the three-layer checklist for shipping a noticeable
+change — commit, changelog, README, LinkedIn draft) before starting work. Both live at the repo
+root alongside this file.

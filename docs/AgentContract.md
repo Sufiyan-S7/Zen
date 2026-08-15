@@ -1,14 +1,19 @@
-# v1.1 Agent Contract — Day 1 Design
+# v2.0 Agent Contract
 
-> **Renamed August 13, 2026** from "v2.0" to "v1.1" — see `docs/ZenV1_1Plan.md`'s own naming
-> note and `HANDOFF.md` for the full rationale. No content below changed as part of the rename.
+> This document was drafted under the "v1.1" label (Aug 13, 2026), then that label was renamed to
+> "v2.0" for the 2-day sprint (Aug 15, 2026) with a literal, full text rewrite of every "v1.1"
+> mention per owner decision — see `HANDOFF.md` for the full history. The blockquote that
+> previously described the earlier v2.0→v1.1 rename has been removed here since the literal
+> rewrite made it self-contradictory ("from v2.0 to v2.0"); this is a small legibility cleanup,
+> not a re-litigation of the historical-rewrite decision itself — flagged per `INSTRUCTIONS.md`
+> Section 5.
 
 ## Purpose
 
-This document is the constitution for Zen's v1.1 personal-agent executor. It defines the task
+This document is the constitution for Zen's v2.0 personal-agent executor. It defines the task
 lifecycle, the risk model, the permission and audit schemas, emergency-stop guarantees, retention
-limits, and the shape of the action registry — before any of it is implemented. Every later v1.1
-day of `docs/ZenV1_1Plan.md` (tray/overlay, planning, approve/pause/stop, folder access, app
+limits, and the shape of the action registry — before any of it is implemented. Every later v2.0
+day of `docs/ZenV2Plan.md` (tray/overlay, planning, approve/pause/stop, folder access, app
 control, browser work, the deterministic executor itself) builds on exactly this contract rather than inventing its own
 states or confirmation rules.
 
@@ -49,7 +54,7 @@ judgment calls about which bucket an action lands in; two tiers keeps the rule m
 
 **Sensitive** — always requires a fresh, specific confirmation at the moment it executes,
 regardless of the standing task-level approval. This list is fixed by the already-confirmed
-safety boundary in `docs/ZenV1_1Plan.md` and is not extended by an agent without owner approval:
+safety boundary in `docs/ZenV2Plan.md` and is not extended by an agent without owner approval:
 
 - Delete or overwrite existing data
 - Send, publish, or upload anything
@@ -64,7 +69,7 @@ safety boundary in `docs/ZenV1_1Plan.md` and is not extended by an agent without
 
 **Resolved (August 13, 2026):** a full PowerShell action type is included in this project, gated
 behind an explicit, off-by-default **"Full System Control (PowerShell)"** Settings toggle — see
-`docs/ZenV1_1Plan.md`'s "Resolved — PowerShell / shell scope" section for the full design (typed
+`docs/ZenV2Plan.md`'s "Resolved — PowerShell / shell scope" section for the full design (typed
 confirmation to enable, fail-closed classification on ambiguous commands, redacted audit logging,
 a dedicated `docs/PowerShellControl.md` before implementation). Its big-change trigger list
 (delete/format/uninstall/registry-write/foreign-process-stop/execution-policy/disk commands) lands
@@ -165,27 +170,43 @@ Emergency stop is a single global action, available whenever a task is `running`
 - Permission records (Section 3) are retained until explicitly revoked — they are grants, not
   history, so the 30-day rule does not apply to them.
 
-## 7. Action registry — Day 1 scaffold only
+## 7. Action registry — complete v2.0 schema
 
-**Correction to the Day-1 proposal reviewed earlier (unrelated to the later v2.0→v1.1 rename
-below):** an early draft of this plan listed real
-actions (`read_file`, `list_dir`, `launch_app`, `focus_window`) as the "first registry." That was
-wrong for Day 1 specifically — those actions belong to Day 9 (file discovery) and Day 12 (app/window
-control) respectively, which is where their own validation and exclusion rules get designed. Adding
-them here would let Week 2/3 capability quietly exist a week early with none of that day's scoped
-review. Day 1's registry is a **schema and one no-op test action**, nothing that touches a real
-file, app, or website:
+Finalized for the 2-day sprint (per `docs/ZenV2-2Day-Sprint-Plan.md` Block A Step 5): every
+action type used anywhere in v2.0 is schema-defined here with a fixed risk tier and required
+confirmation type, even though most are not implemented until their own block below. Companion
+tracker: `docs/ActionRegistrySkeleton.md` (fill in Status per action as it's actually built).
 
-```json
-{
-  "id": "noop.wait",
-  "riskTier": "routine",
-  "inputSchema": { "seconds": "number, 0–5" },
-  "description": "Waits, does nothing else. Exists to test task-state transitions, approval, pause/stop, and audit logging end-to-end before any real action type is registered."
-}
-```
+| Action ID | Risk tier | Confirmation |
+| --- | --- | --- |
+| `noop.wait` | routine | standing task approval (test action; touches nothing outside Zen's own process) |
+| `open-app` | routine | standing task approval |
+| `open-website` | routine | standing task approval |
+| `read-file` | routine | standing task approval; scoped to a live, unrevoked folder/app permission (Section 3) |
+| `list-folder` | routine | standing task approval |
+| `search-folder` | routine | standing task approval |
+| `move-file` | routine | standing task approval + preview-before-execute (Block E Step 24) |
+| `copy-file` | routine | standing task approval + preview-before-execute |
+| `rename-file` | routine | standing task approval + preview-before-execute |
+| `delete-file` | **sensitive** | fresh confirmation at execution, Recycle-Bin-routed, Undo where supported |
+| `click-control` | routine | standing task approval — see flagged gap below |
+| `type-into-field` | routine, except credential/password fields | fresh confirmation when the target field is a credential/password field ("entering credentials" is fixed-sensitive in Section 2); standing approval otherwise |
+| `run-powershell` | routine by default; **sensitive** for trigger-pattern matches | one-time typed acknowledgment to enable the toggle, plus a fresh confirmation whenever a step matches the delete/format/uninstall/registry-write/kill-process/execution-policy/disk trigger list (Section 2) |
+| `browser-navigate` | routine | standing task approval |
+| `browser-read` | routine | standing task approval; page content always treated as untrusted data, never instructions |
+| `browser-form-fill-draft` | routine | standing task approval — draft only, no submit/checkout/password/CAPTCHA/2FA autonomy |
+| `run-routine` | routine at the registry level | standing task approval; each constituent step still resolves its own tier and permission at run time (no bulk exemption from Section 8) |
 
-Registry contract every future action must satisfy, fixed now so later days don't each invent
+**Flagged judgment call (`INSTRUCTIONS.md` Section 5):** `click-control` and `type-into-field`
+are registered `routine` because their action *type* has no fixed sensitive effect, but a
+specific instance can hit one (e.g. clicking a "Delete"/"Send" control, typing into a password
+field) — the same runtime-pattern problem Section 2 already solved for `run-powershell` via its
+trigger-pattern classifier. `type-into-field` inherits a narrow version of that exception here
+(credential-field detection forces sensitive). `click-control` has no equivalent detector yet;
+closing that gap is Block F Step 25's job when the accessibility-automation layer is designed, not
+decided ad hoc here. Owner to confirm this is the right interim default before Step 25 lands.
+
+Registry contract every action must satisfy, fixed now so later blocks don't each invent
 their own version:
 
 - Registered by `id`, fixed `riskTier`, and an explicit `inputSchema` — the executor rejects any
@@ -202,8 +223,8 @@ bypassing this registry.
 
 ## 8. Routine vs. sensitive — the classification rule
 
-Because the registry above intentionally contains no real actions yet, this section fixes the
-*rule* future days apply, not a populated table:
+Section 7's table is the populated result; this section fixes the *rule* that produced it and
+that later blocks must keep applying as each action is actually implemented:
 
 - An action's `riskTier` is fixed at registration time by matching it against the Section 2 fixed
   list. If an action's effect matches any item on that list (delete/overwrite, send/publish/upload,
@@ -215,10 +236,10 @@ Because the registry above intentionally contains no real actions yet, this sect
   "the owner already deleted a file like this once this task") — the tier is a property of the
   action, not the situation.
 
-## 9. Success criteria and test fixtures — Day 1 itself
+## 9. Success criteria and test fixtures — contract itself
 
-Day 1 has no product code, so its own "success" is that the contract above is implementable and
-testable. Concretely, before Day 2 begins:
+Block A has no product code, so its own "success" is that the contract above is implementable and
+testable. Concretely, before Block D (executor) begins:
 
 | Check | Fixture |
 | --- | --- |
@@ -229,17 +250,18 @@ testable. Concretely, before Day 2 begins:
 | Emergency stop guarantees hold | Stop mid-step on a task with 3 remaining `noop.wait` steps; confirm none of the 3 execute, the task lands in `cancelled`, and the audit trail shows the correct `cancelled`/`skipped` split |
 | Retention default is enforced | A synthetic audit record dated 31 days in the past is pruned by the (future) retention job; one dated 29 days in the past is not |
 
-These fixtures are written against the contract now so Day 5 (structured planning) and Day 18
-(deterministic executor) have a fixed target to implement against, rather than each writing its
-own interpretation of "approve, pause, stop" from the prose plan alone.
+These fixtures are written against the contract now so Block D Step 17 (structured planning) and
+Step 18 (deterministic executor) have a fixed target to implement against, rather than each
+writing its own interpretation of "approve, pause, stop" from the prose plan alone.
 
-## Explicit exclusions (Day 1)
+## Explicit exclusions (as of Block A)
 
-- No real action is registered. `noop.wait` is the only entry and it touches nothing outside
-  Zen's own process.
-- No UI is built. The overlay (Day 3), plan review (Day 6), and Agent home (Day 22) are separate,
-  later days.
+- No real action is implemented in code yet — Section 7 is a complete schema, not working
+  executor code. `noop.wait` remains the only action safe to test end-to-end before Block D.
+- No UI is built. The overlay (Block B), plan review (Block D Step 19), and Agent Home (Block H
+  Step 30) are separate, later blocks.
 - No permission is actually granted by this document — Section 3's schema is defined, but the
-  folder/app/browser grant flows themselves are Day 8 and Day 15 work.
-- This document does not decide the fate of `docs/AgentModePlan.md` / `docs/AgentModeChecklist.md`
-  — that remains an open question for the owner, separate from and not blocking this contract.
+  folder/app/browser grant flows themselves are Block E Step 22 and Block G Step 27 work.
+- `docs/AgentModePlan.md` / `docs/AgentModeChecklist.md` are confirmed absent from this repo
+  (verified `Test-Path`, Aug 15, 2026) — not an open question, per
+  `docs/AgentKickoffBrief.md`.

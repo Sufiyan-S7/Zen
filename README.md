@@ -286,23 +286,24 @@ and [voice rules](docs/Voice.md).
 
 ## Next planned version
 
-Zen v1.1 is planned as a voice-first personal desktop agent: optional Windows startup, the
+Zen v2.0 is planned as a voice-first personal desktop agent: optional Windows startup, the
 configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, structured task
 planning, scoped file/app/browser automation, undo, and explicit safety controls. See the
-[30-day v1.1 plan](docs/ZenV1_1Plan.md).
+[30-day v2.0 plan](docs/ZenV2Plan.md).
 
 (Renamed August 13, 2026: this plan was developed and referred to as "v2.0" through Day 1 of its
-implementation; the owner has moved to updating Zen version-by-version, so it is now v1.1, the
+implementation; the owner has moved to updating Zen version-by-version, so it is now v2.0, the
 next version after the shipped `v1.0.0` MVP. `docs/ZenV2Plan.md` no longer exists as a filename;
-its content lives on, renamed, at `docs/ZenV1_1Plan.md`.)
+its content lives on, renamed, at `docs/ZenV2Plan.md`.)
 
-As of August 13, 2026, v1.1 is planning-only: Day 1's agent contract (`docs/AgentContract.md`) is
-written but no implementation has started (no tray, overlay, or agent code exists yet). Two
-earlier draft design files, `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, describe a
-different, superseded hotkey/confirmation model (including a constrained PowerShell channel) and
-should not be treated as current pending cleanup; `docs/ZenV1_1Plan.md` is authoritative, though
-its own PowerShell-scope question is itself still open. See [HANDOFF.md](HANDOFF.md) for the full
-audit.
+As of August 15, 2026, this plan is being executed as a compressed 2-day sprint
+(`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
+schedule. `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, previously described here as
+existing superseded draft files, do **not** actually exist in this repo — that was a stale
+reference from an earlier session and has been corrected (verified via direct filesystem check,
+Aug 15, 2026). `docs/ZenV2-2Day-Sprint-Plan.md` is authoritative for this sprint;
+`docs/AgentContract.md` holds the underlying task/risk/permission contract. See
+[HANDOFF.md](HANDOFF.md) for the full audit.
 
 ### Desktop shortcut
 
@@ -324,7 +325,7 @@ audit.
 - [Workflows design](docs/Workflows.md)
 - [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
 - [GPL & voice-model license review](docs/VoiceLicenseReview.md)
-- [Zen v1.1 personal desktop agent plan](docs/ZenV1_1Plan.md)
+- [Zen v2.0 personal desktop agent plan](docs/ZenV2Plan.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity

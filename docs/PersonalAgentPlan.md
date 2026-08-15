@@ -1,11 +1,11 @@
 # Superseded: original personal-agent draft (early exploration)
 
-> **Naming note (August 13, 2026):** this document originally called itself "Zen v1.1." That
+> **Naming note (August 13, 2026):** this document originally called itself "Zen v2.0." That
 > version number has since been reassigned to the current live plan — see below. This file's
 > own content is unchanged below this header; only the header/links were updated, to avoid two
-> different designs both claiming to be "v1.1."
+> different designs both claiming to be "v2.0."
 
-The current planning baseline is [Zen v1.1](ZenV1_1Plan.md) (renamed from `ZenV2Plan.md` on
+The current planning baseline is [Zen v2.0](ZenV2Plan.md) (renamed from `ZenV2Plan.md` on
 August 13, 2026 — see `HANDOFF.md`). This document is retained as the original early-exploration
 proposal that predates that plan.
 
@@ -200,7 +200,7 @@ changing security settings.
 **Day 28 — packaging and operations update**
 
 - Update installer/startup guidance, backup schema, troubleshooting, and release workflow for
-  v1.1. Keep voice excluded from distributed builds unless its licensing decision changes.
+  v2.0. Keep voice excluded from distributed builds unless its licensing decision changes.
 
 **Day 29 — final regression and release candidate**
 

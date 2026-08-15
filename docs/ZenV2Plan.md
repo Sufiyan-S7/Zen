@@ -1,20 +1,20 @@
-# Zen v1.1 — 30-day personal desktop agent plan
+# Zen v2.0 — 30-day personal desktop agent plan
 
 > **Renamed August 13, 2026:** this plan was originally written and developed under the name
 > "Zen v2.0" (file `docs/ZenV2Plan.md`). The owner has moved to updating Zen version-by-version
-> going forward, so this is now **v1.1** — the very next version after the shipped `v1.0.0` MVP.
+> going forward, so this is now **v2.0** — the very next version after the shipped `v1.0.0` MVP.
 > No content below changed as part of the rename, only the version label, this file's name, and
 > the three items marked **(Aug 13 update)** below.
 
 ## Product brief
 
-Build Zen v1.1 as the owner's local-first Windows personal agent. Zen starts optionally at
+Build Zen v2.0 as the owner's local-first Windows personal agent. Zen starts optionally at
 Windows sign-in, remains available in the system tray, and opens a compact command overlay from
 the global shortcut **Ctrl + Alt + Space**. The user can speak or type a goal, review Zen's
 action plan, approve it, watch it work across permitted files, desktop applications, and the web,
 then pause or stop it at any moment.
 
-Zen v1.1 must feel immediate like a voice-command tool, but it must not convert a language-model
+Zen v2.0 must feel immediate like a voice-command tool, but it must not convert a language-model
 response into unrestricted Windows commands. The model proposes structured tasks; Zen's local,
 validated action registry executes only supported actions.
 
@@ -121,7 +121,7 @@ Nothing below assumes either answer. Days 9, 12, and 13 (file/app/automation) ar
 correctly under option 1; if the owner picks option 2, those days — and `docs/AgentContract.md`'s
 action registry — need a scoped follow-up before Week 2 implementation begins.
 
-## v1.1 acceptance standard
+## v2.0 acceptance standard
 
 By Day 30, the owner can sign in, invoke Zen from anywhere, say or type a real task, see the
 exact files/apps/sites it will touch, approve it once, follow live step-by-step progress without
@@ -133,7 +133,7 @@ receive a specific final confirmation no matter how broad the task-level approva
 
 ### Week 1 — instant invocation and agent control plane
 
-**Day 1 — v1.1 agent contract**
+**Day 1 — v2.0 agent contract**
 
 - Finalize task states, risk tiers, permission records, audit fields, emergency-stop behavior,
   retention limits, and the first supported action registry.
@@ -307,7 +307,7 @@ receive a specific final confirmation no matter how broad the task-level approva
   and release automation. Preserve the existing unsigned/voice-licensing limitations unless
   separately resolved.
 
-**Day 29 — v1.1 release candidate**
+**Day 29 — v2.0 release candidate**
 
 - Run automated suites and a manual acceptance checklist covering startup, overlay, voice,
   permissions (including browser access and window handoff), file/app/browser tools, undo, task
@@ -316,7 +316,7 @@ receive a specific final confirmation no matter how broad the task-level approva
 **Day 30 — owner acceptance and release**
 
 - Perform final owner walkthrough, document outcomes and known limits, update README/HANDOFF/
-  changelog, create a v1.1 tag only with approval, and publish only appropriate source/artifacts.
+  changelog, create a v2.0 tag only with approval, and publish only appropriate source/artifacts.
 
 ## Required acceptance walkthroughs
 
