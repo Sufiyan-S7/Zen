@@ -1276,3 +1276,58 @@ confirmation still pending on that interim default and on the `blocked` task-sta
 integration, single-instance lock, global hotkey (`Ctrl+Alt+Space`), compact overlay window,
 manual smoke test.
 
+
+## v2.0 sprint — Block B: instant invocation (August 15, 2026)
+
+Executing `docs/ZenV2-2Day-Sprint-Plan.md` Steps 7-11, continuing from Block A.
+
+**What changed (`apps/desktop/src/main/main.js`):**
+- Step 7: system tray (`createTray`) using `assets/zen-icon.ico` — "Open Zen" / "Quit Zen"
+  context menu, click-to-toggle. Hide-on-close on the main window: the X button hides rather
+  than quits; only "Quit Zen" (or an OS-level quit) sets `isQuitting` and lets it really close.
+- Step 8: single-instance lock (`app.requestSingleInstanceLock`), second launch focuses the
+  existing window instead of opening a duplicate.
+- Step 9: global hotkey `Ctrl+Alt+Space` (`registerHotkey`) with conflict detection —
+  `globalShortcut.register()`'s boolean return is checked and a failure is logged and reflected
+  in the tray tooltip rather than silently doing nothing.
+- Step 10: compact overlay window (`createOverlayWindow`/`showOverlay`/`hideOverlay`/
+  `toggleOverlay`) — new files `src/renderer/overlay.html`, `overlay.css`, `overlay.js`, and
+  `src/main/overlay-preload.js` (isolated `window.zenOverlay` bridge, separate from the main
+  window's `window.zen`). Escape-to-close, click-away (blur) to close, autofocus on show.
+- Step 11: manual smoke test performed by the owner — tray, hide-on-close, hotkey-from-3-apps,
+  overlay open/close/click-away/Escape, focus-restore, and Quit Zen all confirmed working.
+
+**Two bugs found and fixed during smoke testing:**
+1. Single-instance lock didn't actually stop a second launch from initializing: `app.quit()`
+   only requests an async shutdown, so `app.whenReady()` still fired and the second process
+   registered its own tray/hotkey/IPC handlers before quitting (visible as duplicate "could not
+   register hotkey" log). Fixed by adding `process.exit(0)` immediately after `app.quit()` in the
+   lock-failure branch.
+2. The four new overlay files (`overlay.html`, `overlay.css`, `overlay.js`,
+   `overlay-preload.js`) were initially written to the agent's own sandboxed filesystem instead
+   of the real repo, so `main.js`'s `loadFile` pointed at files that didn't exist on disk. This
+   produced a hard-to-diagnose symptom: the overlay window still opened (transparent, always-on-
+   top, focused) but rendered a blank/failed-load page, which combined with the original
+   `transparent: true` + `alwaysOnTop(..., 'screen-saver')` config to appear as a full-screen
+   gray block that captured all keyboard input and couldn't be typed into or dismissed by
+   clicking through to other apps. Fixed by: (a) writing the four files for real at their correct
+   paths, and (b) simplifying the overlay window to `alwaysOnTop: true` (default level) with an
+   opaque `#07130f` background instead of `transparent: true` + the `screen-saver` z-order level,
+   since that combination is a known bad interaction with Windows/Electron compositing.
+
+**Validation:** `npm.cmd --prefix apps\\desktop run check` passed after each change. Manual
+smoke test (Step 11) passed in full after both fixes, confirmed by the owner: tray icon/menu,
+hide-on-close, hotkey from 3 different foreground apps, overlay open/type/close (hotkey again,
+click-away, Escape), focus-restore, and Quit Zen (process fully exits, no leftover `electron.exe`).
+
+**Git state:** committed to `zen-2.0` as a Block-boundary commit (see commit log); pushed —
+routine change, no deletions/config/credentials/security involved, so no push-exception hold.
+
+**Known issues / open items:** none carried forward from Block B. The Block A
+`click-control`/`blocked`-state judgment calls remain open for the owner, unchanged from the
+prior entry.
+
+**Exact next recommended step:** Block C (voice + typed input) — Steps 12-15: wire push-to-talk
+`whisper.cpp` capture into the overlay, live waveform indicator, typed-entry fallback as an equal
+first-class input path, editable transcript + retry/re-ask handling for low-confidence
+transcription.

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut, nativeImage, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
@@ -9,6 +9,36 @@ const { configureDocuments, previewDocuments, importDocuments, listDocuments, se
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
+
+let mainWindow = null;
+let overlayWindow = null;
+let tray = null;
+let isQuitting = false;
+
+// Block B, Step 8: single-instance lock. A second launch (e.g. the desktop shortcut clicked
+// again while Zen is already running in the tray) hands off to the running instance instead of
+// opening a duplicate app.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  // app.quit() only requests an async shutdown -- 'ready' can still fire before it completes,
+  // which would let this second process register the tray/hotkey/IPC handlers anyway. Exiting
+  // the process immediately is the reliable way to guarantee it never does.
+  app.quit();
+  process.exit(0);
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    } else {
+      createWindow();
+    }
+  });
+}
+
+const TRAY_ICON_PATH = path.resolve(__dirname, '../../../../assets/zen-icon.ico');
+const OVERLAY_HOTKEY = 'Ctrl+Alt+Space';
 
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 const DEFAULT_MODEL = 'llama3.2:3b';
@@ -284,7 +314,20 @@ function createWindow() {
     }
   });
 
+  mainWindow = window;
   window.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  // Block B, Step 7: hide-on-close. The X button keeps Zen running in the tray; only the tray's
+  // "Quit Zen" item (or an OS-level quit) sets isQuitting and lets the window actually close.
+  window.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      window.hide();
+    }
+  });
+  window.on('closed', () => {
+    if (mainWindow === window) mainWindow = null;
+  });
 
   let holdShortcutActive = false;
   window.webContents.on('before-input-event', (event, input) => {
@@ -310,6 +353,92 @@ function createWindow() {
   window.webContents.setWindowOpenHandler(({ url }) => {
     return { action: 'deny' };
   });
+}
+
+// Block B, Step 7: system tray. Left-click / "Open Zen" shows-or-creates the main window;
+// "Quit Zen" is the one path that actually exits (sets isQuitting so the hide-on-close handler
+// above lets the window close for real).
+function createTray() {
+  const icon = nativeImage.createFromPath(TRAY_ICON_PATH);
+  tray = new Tray(icon.isEmpty() ? icon : icon.resize({ width: 16, height: 16 }));
+  tray.setToolTip('Zen');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open Zen', click: () => { if (!mainWindow) createWindow(); else { mainWindow.show(); mainWindow.focus(); } } },
+    { type: 'separator' },
+    { label: 'Quit Zen', click: () => { isQuitting = true; app.quit(); } }
+  ]));
+  tray.on('click', () => {
+    if (!mainWindow) createWindow();
+    else if (mainWindow.isVisible()) mainWindow.focus();
+    else mainWindow.show();
+  });
+}
+
+// Block B, Step 10: compact command overlay, sized like a capture bar rather than the full app
+// window. Created once and reused (show/hide) so repeated hotkey presses are instant.
+function createOverlayWindow() {
+  overlayWindow = new BrowserWindow({
+    width: 640,
+    height: 76,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    backgroundColor: '#07130f',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'overlay-preload.js')
+    }
+  });
+  overlayWindow.loadFile(path.join(__dirname, '../renderer/overlay.html'));
+  // Clicking away closes the overlay, same as Escape -- it is a transient capture bar, not a
+  // window the owner is expected to alt-tab back to.
+  overlayWindow.on('blur', () => hideOverlay());
+  overlayWindow.on('closed', () => { overlayWindow = null; });
+}
+
+function positionOverlay() {
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const { x, y, width } = display.workArea;
+  const winWidth = 640;
+  overlayWindow.setPosition(
+    Math.round(x + (width - winWidth) / 2),
+    Math.round(y + display.workArea.height * 0.22)
+  );
+}
+
+function showOverlay() {
+  if (!overlayWindow) createOverlayWindow();
+  positionOverlay();
+  overlayWindow.show();
+  overlayWindow.focus();
+  overlayWindow.webContents.send('zen:overlay:shown');
+}
+
+function hideOverlay() {
+  if (overlayWindow && overlayWindow.isVisible()) overlayWindow.hide();
+}
+
+function toggleOverlay() {
+  if (overlayWindow && overlayWindow.isVisible()) hideOverlay();
+  else showOverlay();
+}
+
+// Block B, Step 9: global hotkey with conflict detection. register() returns false rather than
+// throwing when another application already owns the accelerator, so a failed registration is
+// surfaced (tray tooltip + log) instead of silently doing nothing when the owner later presses
+// Ctrl+Alt+Space and nothing happens.
+function registerHotkey() {
+  const ok = globalShortcut.register(OVERLAY_HOTKEY, toggleOverlay);
+  if (!ok) {
+    console.error(`Zen could not register the ${OVERLAY_HOTKEY} global hotkey -- another application may already be using it.`);
+    if (tray) tray.setToolTip('Zen (hotkey unavailable: Ctrl+Alt+Space already in use)');
+  }
+  return ok;
 }
 
 app.whenReady().then(() => {
@@ -563,7 +692,10 @@ app.whenReady().then(() => {
       ? data.models.map((model) => model?.name).filter((model) => typeof model === 'string')
       : [];
   });
+  ipcMain.on('zen:overlay:close', () => hideOverlay());
   createWindow();
+  createTray();
+  registerHotkey();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -571,4 +703,10 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Block B, Step 9: release the global hotkey on quit -- Electron does not do this automatically,
+// and a leaked registration would keep Ctrl+Alt+Space bound to a dead process handle.
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });

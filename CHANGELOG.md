@@ -4,6 +4,13 @@ All notable changes to Zen are documented in this file. Zen is a local-first Win
 assistant; every entry below reflects work already implemented and, where noted, verified live
 in the running app.
 
+## [Unreleased] — Zen v2.0
+
+### Added — 2026-08-15
+- Instant invocation (Block B): system tray (icon, hide-on-close, Quit Zen), single-instance
+  lock, global `Ctrl+Alt+Space` hotkey with conflict detection, and a compact command overlay
+  window (Escape-to-close, click-away-to-close, focus-restore on close).
+
 ## [1.0.0] — 2026-08-12 — full 28-day MVP
 
 ### Week 1 — Foundation and conversation (Days 1–7)

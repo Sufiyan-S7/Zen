@@ -293,7 +293,9 @@ planning, scoped file/app/browser automation, undo, and explicit safety controls
 
 As of August 15, 2026, this plan is being executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
-schedule. `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, previously described here as
+schedule. Block B (instant invocation) is complete: system tray, single-instance lock, the
+`Ctrl+Alt+Space` global hotkey, and the compact command overlay all work and are manually
+verified. `docs/AgentModePlan.md` and `docs/AgentModeChecklist.md`, previously described here as
 existing superseded draft files, do **not** actually exist in this repo — that was a stale
 reference from an earlier session and has been corrected (verified via direct filesystem check,
 Aug 15, 2026). `docs/ZenV2-2Day-Sprint-Plan.md` is authoritative for this sprint;

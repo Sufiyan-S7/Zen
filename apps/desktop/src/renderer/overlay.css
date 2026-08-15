@@ -1,0 +1,52 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: #07130f; overflow: hidden; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+
+.overlay-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 0 14px;
+  border: 1px solid #426b51;
+  border-radius: 16px;
+  background: rgba(9, 27, 19, .96);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+
+.overlay-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #b9f55b;
+  color: #102014;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.overlay-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #f2f7ee;
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+.overlay-input::placeholder { color: #6f8c7a; }
+
+.overlay-mic {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #315343;
+  border-radius: 9px;
+  background: #102b1f;
+  color: #96ad9e;
+  font-size: 14px;
+  cursor: not-allowed;
+}
