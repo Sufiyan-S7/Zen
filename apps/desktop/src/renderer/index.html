@@ -239,6 +239,27 @@
             </div>
             <p class="settings-help" id="powershell-help" aria-live="polite">Checking PowerShell status…</p>
           </section>
+          <section class="settings-card" aria-labelledby="browser-control-title">
+            <p class="settings-label">OFF BY DEFAULT · PERSISTENT GRANT</p>
+            <h2 id="browser-control-title">Browser control</h2>
+            <p id="browser-control-description">Off by default. When granted, Task mode can open pages, read visible page text (always treated as untrusted content, never as instructions), and draft-fill non-credential form fields, using a Zen-controlled Chrome window running your real profile. It never submits a form, checks out, or fills a password/PIN/verification-code field. The first time each session, Zen launches its own Chrome using your profile — if your regular Chrome is already open, close it first.</p>
+            <div class="setting-row" id="browser-permission-off-controls">
+              <button class="primary-button" id="grant-browser-permission" type="button">Grant browser access</button>
+            </div>
+            <div class="setting-row" id="browser-permission-on-controls" hidden>
+              <button class="secondary-button" id="revoke-browser-permission" type="button">Revoke</button>
+            </div>
+            <p class="settings-help" id="browser-permission-help" aria-live="polite">Checking browser permission…</p>
+            <div class="setting-row" id="browser-handoff-controls" hidden>
+              <label for="browser-handoff-select">Window mode</label>
+              <select id="browser-handoff-select">
+                <option value="own-window">Zen's own window (default)</option>
+                <option value="current-window">Reuse Zen's active tab</option>
+              </select>
+              <button class="secondary-button" id="set-browser-handoff" type="button">Set</button>
+            </div>
+            <p class="settings-help" id="browser-handoff-help" aria-live="polite"></p>
+          </section>
           <section class="settings-card" aria-labelledby="folder-search-title">
             <p class="settings-label">LOCAL FILE SEARCH</p>
             <h2 id="folder-search-title">Search a folder</h2>

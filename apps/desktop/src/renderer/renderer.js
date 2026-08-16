@@ -75,6 +75,19 @@ const enablePowerShellButton = document.querySelector('#enable-powershell');
 const disablePowerShellButton = document.querySelector('#disable-powershell');
 const powershellHelp = document.querySelector('#powershell-help');
 let requiredPowerShellAcknowledgment = '';
+// Block G, Step 27: browser permission is a single persistent on/off grant (mirrors
+// PowerShell's off/on-controls visibility pattern, not folder's list-of-records pattern, since
+// there is only ever one live browser grant), plus the own-window/current-window handoff select.
+const grantBrowserPermissionButton = document.querySelector('#grant-browser-permission');
+const revokeBrowserPermissionButton = document.querySelector('#revoke-browser-permission');
+const browserPermissionOffControls = document.querySelector('#browser-permission-off-controls');
+const browserPermissionOnControls = document.querySelector('#browser-permission-on-controls');
+const browserPermissionHelp = document.querySelector('#browser-permission-help');
+const browserHandoffControls = document.querySelector('#browser-handoff-controls');
+const browserHandoffSelect = document.querySelector('#browser-handoff-select');
+const setBrowserHandoffButton = document.querySelector('#set-browser-handoff');
+const browserHandoffHelp = document.querySelector('#browser-handoff-help');
+let activeBrowserPermissionId = null;
 const commandBuilderForm = document.querySelector('#command-builder-form');
 const commandNameInput = document.querySelector('#command-name-input');
 const commandStepType = document.querySelector('#command-step-type');
@@ -650,6 +663,85 @@ async function disablePowerShellControl() {
     await loadPowerShellStatus();
   } catch (error) {
     powershellHelp.textContent = error.message || 'Zen could not turn off PowerShell control.';
+  }
+}
+
+// Block G, Step 27: browser-access permission. A plain-click grant (no typed acknowledgment) --
+// unlike PowerShell, its risk tier per AgentContract.md Section 7 is "routine", not the
+// PowerShell/folder-delete category that gets extra confirmation friction.
+function renderBrowserPermissionStatus(records = []) {
+  const live = records.find((entry) => !entry.revokedAt);
+  activeBrowserPermissionId = live ? live.id : null;
+  browserPermissionOffControls.hidden = Boolean(live);
+  browserPermissionOnControls.hidden = !live;
+  browserHandoffControls.hidden = !live;
+  browserPermissionHelp.textContent = live
+    ? 'Granted ' + new Date(live.grantedAt).toLocaleString() + '.'
+    : 'Not granted. Task mode cannot use the browser until you grant access.';
+}
+async function loadBrowserPermissionStatus() {
+  try {
+    renderBrowserPermissionStatus(await window.zen.getBrowserPermissionStatus());
+  } catch {
+    browserPermissionHelp.textContent = 'Zen could not load browser permission status.';
+  }
+}
+async function grantBrowserPermissionEntry() {
+  browserPermissionHelp.textContent = '';
+  try {
+    await window.zen.grantBrowserPermission();
+    await loadBrowserPermissionStatus();
+    await loadBrowserHandoffStatus();
+  } catch (error) {
+    browserPermissionHelp.textContent = error.message || 'Zen could not grant browser access.';
+  }
+}
+async function revokeBrowserPermissionEntry() {
+  if (!activeBrowserPermissionId) return;
+  try {
+    await window.zen.revokeBrowserPermission(activeBrowserPermissionId);
+    await loadBrowserPermissionStatus();
+  } catch (error) {
+    browserPermissionHelp.textContent = error.message || 'Zen could not revoke browser access.';
+  }
+}
+// Own-window vs. current-window handoff. Switching TO current-window asks for confirmation
+// (it is Step 27's opt-in confirmation-toggle, matching browser-control.js's own
+// setHandoffMode requirement that confirmed must be explicitly true); switching back to
+// own-window is always safe and needs no confirmation.
+function renderBrowserHandoffStatus(status) {
+  browserHandoffSelect.value = status.mode;
+  browserHandoffHelp.textContent = status.mode === 'current-window'
+    ? 'Current window: Zen reuses whichever tab it last used in its own Chrome window (not your regular browser window -- Chrome cannot attach to an already-running, non-debug window). Reverts to Zen\'s own window automatically after 10 minutes of no browser activity.'
+    : 'Own window (default): every browser step opens a fresh tab in Zen\'s own Chrome window.';
+}
+async function loadBrowserHandoffStatus() {
+  try {
+    renderBrowserHandoffStatus(await window.zen.getBrowserHandoffStatus());
+  } catch {
+    browserHandoffHelp.textContent = 'Zen could not load the browser window-mode setting.';
+  }
+}
+async function setBrowserHandoffMode() {
+  const mode = browserHandoffSelect.value;
+  try {
+    if (mode === 'current-window') {
+      const approved = await requestActionConfirmation({
+        title: 'Reuse Zen\'s active browser tab?',
+        description: 'Zen will reuse whichever tab it last used in its own Chrome window instead of opening a fresh tab for every task. This is still Zen\'s own Chrome window, not your regular browser window -- Chrome has no supported way to attach to an already-running, non-debug window. This reverts to "own window" automatically after 10 minutes of no browser activity, or immediately if you switch it back here.',
+        destination: 'Window mode: current-window',
+        approveLabel: 'Use current window'
+      });
+      if (!approved) { browserHandoffHelp.textContent = 'Cancelled. Window mode is unchanged.'; return; }
+      await window.zen.setBrowserHandoff('current-window', true);
+    } else {
+      await window.zen.setBrowserHandoff('own-window', false);
+    }
+    await loadBrowserHandoffStatus();
+  } catch (error) {
+    browserHandoffHelp.textContent = error.message || 'Zen could not change the browser window mode.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
   }
 }
 function hexToRgb(hex) { return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)); }
@@ -2470,6 +2562,8 @@ async function initialise() {
   loadApprovedApps();
   loadFolderPermissions();
   loadPowerShellStatus();
+  loadBrowserPermissionStatus();
+  loadBrowserHandoffStatus();
   loadCommands();
   renderStagedCommandSteps();
   updateCommandStepInputVisibility();
@@ -2636,6 +2730,9 @@ chooseApprovedAppButton.addEventListener('click', addApprovedApp);
 chooseFolderPermissionButton.addEventListener('click', grantFolderPermissionEntry);
 enablePowerShellButton.addEventListener('click', enablePowerShellControl);
 disablePowerShellButton.addEventListener('click', disablePowerShellControl);
+grantBrowserPermissionButton.addEventListener('click', grantBrowserPermissionEntry);
+revokeBrowserPermissionButton.addEventListener('click', revokeBrowserPermissionEntry);
+setBrowserHandoffButton.addEventListener('click', setBrowserHandoffMode);
 browserWebAppForm.addEventListener('submit', addBrowserWebApp);
 commandStepType.addEventListener('change', updateCommandStepInputVisibility);
 addCommandStepButton.addEventListener('click', addCommandStep);

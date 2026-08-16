@@ -1697,3 +1697,98 @@ Owner's explicit go-ahead needed before pushing this one.
 a `click-control`/`type-into-field` task against a real running approved app, a routine and a
 sensitive-trigger `run-powershell` task) -- then Day 2 Block G (browser control) per
 `docs/ZenV2-2Day-Sprint-Plan.md`.
+
+
+## v2.0 sprint -- Block F push + smoke-test attempt (August 16, 2026, follow-up session)
+
+Verified live repo state before acting (INSTRUCTIONS.md Section 2): zen-2.0 was 1 commit
+ahead of origin/zen-2.0 (cb28f7f, the Block F commit held locally per the prior session's
+security-sensitive-push exception). Owner gave explicit go-ahead to push this session.
+
+**Pushed cb28f7f to origin/zen-2.0.** origin/zen-2.0 now matches local HEAD, working tree
+clean apart from the same pre-existing untracked .backups//.cursorrules.txt/deliverables/
+clutter noted in the Block F entry above (still not cleaned up, still the owner's call).
+
+**Live in-app smoke test: attempted, not completed -- flagging rather than claiming it passed.**
+Tried to drive the desktop app (PowerShell toggle, a click-control/	ype-into-field step, a
+un-powershell step) via UI-automation tooling. Stopped for two reasons: (1) the owner's screen
+was live-shared in an active Zoom call, so driving mouse/keyboard input risked exposing in-app
+state to that call without a clear signal it was wanted -- owner confirmed proceeding was fine,
+but by then (2) the automation tool itself proved unreliable in this session: one call hung 4
+minutes before erroring, click coordinates from a stale snapshot landed on the wrong target, and
+the Zen window kept reverting to minimized after clicks that should have opened Settings. Given
+that, running a security-sensitive live test (enabling PowerShell execution, confirming the
+sensitive-command re-confirmation popup) through an automation path I couldn't fully trust felt
+like the wrong tradeoff versus just flagging the gap honestly, per this project's own
+not-overstating-verification-level norm (see Block F entry above).
+
+**Still NOT done, same as before:** live in-app click-through of the PowerShell toggle, a real
+click-control/	ype-into-field step against a running approved app, and a real un-powershell
+step (routine + sensitive-trigger). Recommend the owner run this manually when not on a shared
+call, or a future session retry with more reliable UI-automation tooling.
+
+**Also noticed, not investigated further:** the Zen app's own chat history shows a prior,
+apparently-unfinished task ("copy Zen Feature.txt from Plans folder to Plans\temp folder") whose
+plan was reportedly presented in a "small window in the top-right corner" but never confirmed
+started. Unrelated to Block F; flagged for the owner, not touched.
+
+**Exact next recommended step:** Day 2, Block G (browser control) per
+docs/ZenV2-2Day-Sprint-Plan.md, with the live smoke-test gap above still owed before declaring
+Block F fully verified.
+
+
+## v2.0 sprint -- Block G live verification + bug fix (August 17, 2026)
+
+Picked up with Block G's code (`browser-control.js`, `check-browser-control.js`,
+`check-browser-control-live.js`, `browser-indicator.html`) already present on disk but
+**uncommitted** (untracked in git) and not yet live-tested -- no HANDOFF.md entry existed for
+Block G before this one. Verified live state directly (`git status`, reading the actual files)
+rather than trusting the absence of a prior entry to mean "not started."
+
+**What I did this session:**
+- Ran `npm run check`-style deterministic checks for browser control
+  (`node scripts/check-browser-control.js`) -- passed.
+- Ran the opt-in live round trip (`node scripts/check-browser-control-live.js`) against real
+  Chrome with the owner's real profile, owner confirming Chrome was closed first each time.
+  First two attempts hit `browser-control.js`'s own fail-closed guard (leftover `chrome.exe`
+  background processes the owner hadn't fully closed -- confirmed via `tasklist`, not assumed).
+  Owner closed those; a subsequent attempt hit a 15s CDP-attach timeout once (not reproduced
+  again -- most likely first-launch-after-force-kill profile overhead, not a code bug; noted but
+  not chased further since it didn't recur).
+- With a debug-enabled Chrome actually attached, the live script **failed on `browserRead`**:
+  empty text/fields immediately after a successful `browserNavigate`. Traced the real cause in
+  `resolveTarget()`: own-window mode (the default) called `newTarget('about:blank')` on *every*
+  call with no memory of the previous tab, so `browserNavigate` opened and navigated Tab A while
+  the very next `browserRead` opened an unrelated blank Tab B and read nothing from it.
+  `browserFormFillDraft` had the identical exposure, just not yet hit by the test order.
+- **Fixed in `apps/desktop/src/main/browser-control.js`:** added a module-level `ownWindowTarget`
+  cache; `resolveTarget()` now reuses that cached tab across calls in own-window mode (checked
+  live against `listTargets()` each time in case the owner closed it or Chrome restarted),
+  opening a fresh tab only when there isn't one yet. Mirrors the pattern current-window/handoff
+  mode already used. Comment above `resolveTarget()` updated to describe the corrected behavior.
+- Re-verified: `node --check` on the edited file, deterministic checks re-run clean
+  (`Browser-control checks passed.`), then the live script re-run **passed in full** --
+  navigate, read (129 real characters back), and form-fill-draft's expected rejection of a
+  nonexistent field, all against the same tab as designed.
+
+**Flagged judgment call, not settled by me:** Block G's own header comment already flags that
+"current window" access is an interim reading the owner should confirm (see that comment in
+`browser-control.js` and the Block G entry structure in `docs/ZenV2-2Day-Sprint-Plan.md` Step 27)
+-- unchanged by this session's fix, restated here so it isn't lost. Separately, the one
+unreproduced CDP-attach timeout above is noted, not diagnosed further -- flagging in case it
+recurs rather than treating a single non-repro as understood.
+
+**Validation:** `node scripts/check-browser-control.js` passes; `node
+scripts/check-browser-control-live.js` passes in full against a real Chrome/real profile, live,
+end to end.
+
+**Git state:** Per `INSTRUCTIONS.md` Section 4 and `AGENT-UPDATE-PROTOCOL.md` Section 2, this
+touches browser automation against a real logged-in profile (permission-gated, credential-field
+exclusion, prompt-injection boundary) -- read as security/auth-adjacent, same category Block F's
+PowerShell work was held for. **Committing locally; holding the push** pending explicit owner
+go-ahead, consistent with the Block F precedent above. All of Block G (not just this session's
+fix) was still uncommitted before this pass, so this commit covers the full block, not only the
+bugfix.
+
+**Exact next recommended step:** owner go-ahead to push, then Day 2 Block H (routines, Agent Home
+page, final full pass) per `docs/ZenV2-2Day-Sprint-Plan.md` -- Block H has not been started yet.

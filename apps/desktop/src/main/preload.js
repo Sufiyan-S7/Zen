@@ -71,5 +71,13 @@ contextBridge.exposeInMainWorld('zen', {
   // Block F, Step 26: off-by-default PowerShell toggle, surfaced on the Activity page.
   getPowerShellStatus: () => ipcRenderer.invoke('zen:powershell:status'),
   enablePowerShell: (typedAcknowledgment) => ipcRenderer.invoke('zen:powershell:enable', typedAcknowledgment),
-  disablePowerShell: () => ipcRenderer.invoke('zen:powershell:disable')
+  disablePowerShell: () => ipcRenderer.invoke('zen:powershell:disable'),
+  // Block G, Step 27: browser-access permission (persistent on/off, plain-click grant per its
+  // routine risk tier) and the own-window/current-window handoff toggle, surfaced on the
+  // Activity page.
+  getBrowserPermissionStatus: () => ipcRenderer.invoke('zen:browser:permission-status'),
+  grantBrowserPermission: () => ipcRenderer.invoke('zen:browser:grant'),
+  revokeBrowserPermission: (id) => ipcRenderer.invoke('zen:browser:revoke', id),
+  getBrowserHandoffStatus: () => ipcRenderer.invoke('zen:browser:handoff-status'),
+  setBrowserHandoff: (mode, confirmed) => ipcRenderer.invoke('zen:browser:set-handoff', mode, confirmed)
 });

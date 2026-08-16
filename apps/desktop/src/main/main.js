@@ -12,8 +12,12 @@ const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = re
 const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
 const { planTask } = require('./task-planner');
 const { configureAuditLog, appendAuditRecord, pruneAuditLog } = require('./audit-log');
-const { configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions } = require('./permissions');
+const {
+  configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions,
+  grantBrowserPermission, revokeBrowserPermission, listBrowserPermissions
+} = require('./permissions');
 const { configurePowerShellControl, powerShellToggleStatus, enablePowerShell, disablePowerShell } = require('./powershell-control');
+const { setHandoffMode, handoffStatus, onBrowserActiveChange } = require('./browser-control');
 
 let mainWindow = null;
 let overlayWindow = null;
@@ -414,6 +418,49 @@ function createOverlayWindow() {
   overlayWindow.on('closed', () => { overlayWindow = null; });
 }
 
+// Block G, Step 27: the required visible "Zen is active" indicator while the owner has opted
+// into "use my current window" handoff. A small, click-through, always-on-top badge -- never
+// interactive itself (no preload, no IPC surface) since its only job is passive visibility, not
+// control. Shown/hidden by browser-control.js's onBrowserActiveChange callback, registered once
+// at startup below.
+let browserIndicatorWindow = null;
+
+function createBrowserIndicatorWindow() {
+  browserIndicatorWindow = new BrowserWindow({
+    width: 220,
+    height: 40,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: false,
+    backgroundColor: '#3a1f00',
+    webPreferences: { contextIsolation: true, nodeIntegration: false }
+  });
+  browserIndicatorWindow.setIgnoreMouseEvents(true);
+  browserIndicatorWindow.loadFile(path.join(__dirname, '../renderer/browser-indicator.html'));
+  browserIndicatorWindow.on('closed', () => { browserIndicatorWindow = null; });
+}
+
+function positionBrowserIndicator() {
+  const display = screen.getPrimaryDisplay();
+  const { x, y, width } = display.workArea;
+  browserIndicatorWindow.setPosition(Math.round(x + width - 220 - 16), Math.round(y + 16));
+}
+
+function showBrowserIndicator() {
+  if (!browserIndicatorWindow) createBrowserIndicatorWindow();
+  positionBrowserIndicator();
+  browserIndicatorWindow.show();
+}
+
+function hideBrowserIndicator() {
+  if (browserIndicatorWindow) browserIndicatorWindow.hide();
+}
+
 function positionOverlay() {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const { x, y, width } = display.workArea;
@@ -527,6 +574,10 @@ app.whenReady().then(() => {
   configureAuditLog(app.getPath('userData'));
   configurePermissions(app.getPath('userData'));
   configurePowerShellControl(app.getPath('userData'));
+  // Block G, Step 27: the "Zen is active" indicator's show/hide is driven entirely by
+  // browser-control.js's own handoff state (set/cleared/auto-reverted there) -- main.js only
+  // reacts to the callback, it never toggles the indicator directly.
+  onBrowserActiveChange((active) => { if (active) showBrowserIndicator(); else hideBrowserIndicator(); });
   pruneAuditLog();
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
@@ -789,7 +840,8 @@ app.whenReady().then(() => {
   ipcMain.handle('zen:task:propose', async (_event, goal) => {
     if (typeof goal !== 'string' || !goal.trim()) throw new Error('A task needs a non-empty goal.');
     const grantedFolders = listPermissions().filter((entry) => !entry.revokedAt).map((entry) => entry.scope);
-    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders });
+    const browserGranted = listBrowserPermissions().some((entry) => !entry.revokedAt);
+    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders, browserGranted });
     if (!plan.isTask) return { isTask: false };
     // Defense-in-depth: proposeTask's validateInput is shape-only for every action now (see
     // action-registry.js), so this should rarely fire -- but if the model ever names an
@@ -854,6 +906,17 @@ app.whenReady().then(() => {
   ipcMain.handle('zen:powershell:status', () => powerShellToggleStatus());
   ipcMain.handle('zen:powershell:enable', (_event, typedAcknowledgment) => enablePowerShell(typedAcknowledgment));
   ipcMain.handle('zen:powershell:disable', () => disablePowerShell());
+
+  // Block G, Step 27: browser-access permission (a simple persistent on/off consent, unlike
+  // folder grants) and the own-window/current-window handoff toggle. grantBrowserPermission
+  // only ever accepts 'agent-permissions-page' as its source -- see permissions.js.
+  ipcMain.handle('zen:browser:permission-status', () => listBrowserPermissions());
+  ipcMain.handle('zen:browser:grant', () => grantBrowserPermission('agent-permissions-page'));
+  ipcMain.handle('zen:browser:revoke', (_event, id) => revokeBrowserPermission(id));
+  ipcMain.handle('zen:browser:handoff-status', () => handoffStatus());
+  // confirmed must be explicitly true for 'current-window' -- setHandoffMode itself throws
+  // otherwise, so this handler does not add a second, looser check.
+  ipcMain.handle('zen:browser:set-handoff', (_event, mode, confirmed) => setHandoffMode(mode, confirmed));
 
   createWindow();
   createTray();

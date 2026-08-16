@@ -24,12 +24,18 @@ function configurePermissions(userDataPath) {
   permissionsPath = path.join(userDataPath, 'folder-permissions.json');
 }
 
+// Block G, Step 27: the browser-access permission (Section 3's "browser" kind) is stored in the
+// SAME file as folder grants -- same generic record shape, just a different kind -- rather than
+// a third storage mechanism. readPermissions() now accepts either kind at the storage layer;
+// each kind-specific function below (folder vs. browser) re-filters by its own kind before using
+// a record, so a browser record can never be mistaken for a folder grant or vice versa even
+// though they share one file.
 function readPermissions() {
   if (!permissionsPath) throw new Error('Zen has not prepared local permissions yet.');
   try {
     const stored = JSON.parse(fs.readFileSync(permissionsPath, 'utf8'));
     if (!Array.isArray(stored)) throw new Error('Invalid permissions list.');
-    return stored.filter((entry) => entry && typeof entry.id === 'string' && entry.kind === 'folder'
+    return stored.filter((entry) => entry && typeof entry.id === 'string' && (entry.kind === 'folder' || entry.kind === 'browser')
       && typeof entry.scope === 'string' && typeof entry.grantedAt === 'string');
   } catch (error) {
     if (error.code === 'ENOENT') return [];
@@ -57,7 +63,7 @@ function grantFolderPermission(folderPath, grantedVia) {
   }
   const resolved = validateFolderPath(folderPath);
   const records = readPermissions();
-  const existingLive = records.find((entry) => entry.scope.toLowerCase() === resolved.toLowerCase() && !entry.revokedAt);
+  const existingLive = records.find((entry) => entry.kind === 'folder' && entry.scope.toLowerCase() === resolved.toLowerCase() && !entry.revokedAt);
   if (existingLive) return existingLive;
   const record = {
     id: folderPermissionId(resolved) + '_' + crypto.randomUUID().slice(0, 8),
@@ -74,7 +80,7 @@ function grantFolderPermission(folderPath, grantedVia) {
 
 function revokeFolderPermission(id) {
   const records = readPermissions();
-  const record = records.find((entry) => entry.id === id);
+  const record = records.find((entry) => entry.id === id && entry.kind === 'folder');
   if (!record) throw new Error('That permission no longer exists.');
   if (!record.revokedAt) record.revokedAt = new Date().toISOString();
   writePermissions(records);
@@ -85,7 +91,63 @@ function revokeFolderPermission(id) {
 // record (including revoked ones) so the permissions page can show grant history, not just
 // what's currently active.
 function listPermissions() {
-  return readPermissions().slice().sort((a, b) => b.grantedAt.localeCompare(a.grantedAt));
+  return readPermissions().filter((entry) => entry.kind === 'folder').sort((a, b) => b.grantedAt.localeCompare(a.grantedAt));
+}
+
+// Block G, Step 27: the browser-access permission. Unlike folder grants there is exactly one
+// meaningful scope ("browser" itself, per Section 3's schema row: "scope: <folder path, or app
+// id, or 'browser'>") -- this is a single persistent on/off consent, not a set of distinct
+// resources, so grantBrowserPermission is idempotent against ANY existing live browser record
+// rather than matching on scope equality the way folder grants do.
+const BROWSER_SCOPE = 'browser';
+
+function browserPermissionId() {
+  return crypto.createHash('sha256').update(`browser:${BROWSER_SCOPE}:${crypto.randomUUID()}`).digest('hex').slice(0, 24);
+}
+
+// grantedVia is deliberately restricted to 'agent-permissions-page' only -- there is no file/app
+// to pick for a browser grant (unlike folder's native-picker option), so accepting that value
+// here would be meaningless and is refused rather than silently ignored.
+function grantBrowserPermission(grantedVia) {
+  if (grantedVia !== 'agent-permissions-page') throw new Error('Invalid permission grant source.');
+  const records = readPermissions();
+  const existingLive = records.find((entry) => entry.kind === 'browser' && !entry.revokedAt);
+  if (existingLive) return existingLive;
+  const record = {
+    id: browserPermissionId(),
+    kind: 'browser',
+    scope: BROWSER_SCOPE,
+    grantedAt: new Date().toISOString(),
+    revokedAt: null,
+    grantedVia
+  };
+  records.push(record);
+  writePermissions(records);
+  return record;
+}
+
+function revokeBrowserPermission(id) {
+  const records = readPermissions();
+  const record = records.find((entry) => entry.id === id && entry.kind === 'browser');
+  if (!record) throw new Error('That permission no longer exists.');
+  if (!record.revokedAt) record.revokedAt = new Date().toISOString();
+  writePermissions(records);
+  return record;
+}
+
+function listBrowserPermissions() {
+  return readPermissions().filter((entry) => entry.kind === 'browser').sort((a, b) => b.grantedAt.localeCompare(a.grantedAt));
+}
+
+// The gate every browser-scoped action (browser-navigate/browser-read/browser-form-fill-draft)
+// calls immediately before executing -- same re-resolve-at-run-time convention as
+// resolveActiveFolderGrant, never a cached grant from earlier in the task.
+function requireActiveBrowserGrant() {
+  const live = readPermissions().find((entry) => entry.kind === 'browser' && !entry.revokedAt);
+  if (!live) {
+    throw new Error('Zen does not have permission to use the browser. Grant browser access first (Activity -> Browser permissions).');
+  }
+  return live;
 }
 
 // The gate every folder-scoped action calls immediately before executing. candidatePath must
@@ -98,7 +160,7 @@ function resolveActiveFolderGrant(candidatePath) {
     throw new Error('A folder or file path is required.');
   }
   const resolvedCandidate = path.resolve(candidatePath.trim());
-  const live = readPermissions().filter((entry) => !entry.revokedAt);
+  const live = readPermissions().filter((entry) => entry.kind === 'folder' && !entry.revokedAt);
   const grant = live.find((entry) => {
     const scope = entry.scope;
     return resolvedCandidate.toLowerCase() === scope.toLowerCase() || isPathInsideRoot(resolvedCandidate, scope);
@@ -114,5 +176,9 @@ module.exports = {
   grantFolderPermission,
   revokeFolderPermission,
   listPermissions,
-  resolveActiveFolderGrant
+  resolveActiveFolderGrant,
+  grantBrowserPermission,
+  revokeBrowserPermission,
+  listBrowserPermissions,
+  requireActiveBrowserGrant
 };

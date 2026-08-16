@@ -6,6 +6,14 @@ in the running app.
 
 ## [Unreleased] — Zen v2.0
 
+### Added — 2026-08-17
+- Block G browser control, live-verified end-to-end: found and fixed a real bug where
+  `browser-navigate` → `browser-read` → `browser-form-fill-draft` chained onto three different
+  tabs instead of one (own-window mode opened a fresh blank tab on every call), so a read right
+  after a navigate always came back empty. Fixed by caching and reusing the single Zen-owned tab
+  across a session; deterministic checks (`check-browser-control.js`) and a fresh live round trip
+  (`check-browser-control-live.js`, real Chrome, real profile) both pass now.
+
 ### Added — 2026-08-15
 - Instant invocation (Block B): system tray (icon, hide-on-close, Quit Zen), single-instance
   lock, global `Ctrl+Alt+Space` hotkey with conflict detection, and a compact command overlay
