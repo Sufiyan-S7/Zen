@@ -226,6 +226,19 @@
             <p class="settings-help" id="folder-permissions-help" aria-live="polite"></p>
             <div class="approved-app-list" id="folder-permissions-list" aria-live="polite"></div>
           </section>
+          <section class="settings-card danger-card" aria-labelledby="powershell-title">
+            <p class="settings-label">OFF BY DEFAULT · HIGH RISK</p>
+            <h2 id="powershell-title">Full System Control (PowerShell)</h2>
+            <p id="powershell-description">Off by default. When on, Task mode can run PowerShell commands on this computer. Zen always asks again, separately, before a command that deletes, formats, uninstalls, edits the registry, stops a process, or changes execution policy -- even while this is on. Type the exact phrase below to turn it on.</p>
+            <div class="setting-row" id="powershell-off-controls">
+              <input id="powershell-acknowledgment-input" type="text" autocomplete="off" placeholder="Type the required phrase" />
+              <button class="danger-button" id="enable-powershell" type="button">Enable</button>
+            </div>
+            <div class="setting-row" id="powershell-on-controls" hidden>
+              <button class="secondary-button" id="disable-powershell" type="button">Turn off</button>
+            </div>
+            <p class="settings-help" id="powershell-help" aria-live="polite">Checking PowerShell status…</p>
+          </section>
           <section class="settings-card" aria-labelledby="folder-search-title">
             <p class="settings-label">LOCAL FILE SEARCH</p>
             <h2 id="folder-search-title">Search a folder</h2>

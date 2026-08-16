@@ -68,6 +68,13 @@ const approvedAppsHelp = document.querySelector('#approved-apps-help');
 const approvedAppList = document.querySelector('#approved-app-list');
 const folderPermissionsHelp = document.querySelector('#folder-permissions-help');
 const folderPermissionsList = document.querySelector('#folder-permissions-list');
+const powershellOffControls = document.querySelector('#powershell-off-controls');
+const powershellOnControls = document.querySelector('#powershell-on-controls');
+const powershellAcknowledgmentInput = document.querySelector('#powershell-acknowledgment-input');
+const enablePowerShellButton = document.querySelector('#enable-powershell');
+const disablePowerShellButton = document.querySelector('#disable-powershell');
+const powershellHelp = document.querySelector('#powershell-help');
+let requiredPowerShellAcknowledgment = '';
 const commandBuilderForm = document.querySelector('#command-builder-form');
 const commandNameInput = document.querySelector('#command-name-input');
 const commandStepType = document.querySelector('#command-step-type');
@@ -599,6 +606,50 @@ async function revokeFolderPermissionEntry(record) {
     await loadFolderPermissions();
   } catch (error) {
     folderPermissionsHelp.textContent = error.message || 'Zen could not revoke that permission.';
+  }
+}
+
+function renderPowerShellStatus(status) {
+  requiredPowerShellAcknowledgment = status.requiredAcknowledgment || requiredPowerShellAcknowledgment;
+  powershellOffControls.hidden = status.enabled;
+  powershellOnControls.hidden = !status.enabled;
+  if (status.enabled) {
+    powershellHelp.textContent = 'On since ' + new Date(status.enabledAt).toLocaleString() + '. Task mode can run PowerShell commands; risky commands still ask again separately.';
+  } else {
+    powershellHelp.textContent = 'Off. Type the required phrase, then Enable, to turn this on: ' + requiredPowerShellAcknowledgment;
+  }
+}
+async function loadPowerShellStatus() {
+  try {
+    renderPowerShellStatus(await window.zen.getPowerShellStatus());
+  } catch {
+    powershellHelp.textContent = 'Zen could not load PowerShell control status.';
+  }
+}
+async function enablePowerShellControl() {
+  try {
+    const approved = await requestActionConfirmation({
+      title: 'Turn on Full System Control (PowerShell)?',
+      description: 'Task mode will be able to run PowerShell commands on this computer. Zen will still ask again, separately, before any command that deletes, formats, uninstalls, edits the registry, stops a process, or changes execution policy.',
+      destination: 'Typed acknowledgment: ' + powershellAcknowledgmentInput.value,
+      approveLabel: 'Enable'
+    });
+    if (!approved) { powershellHelp.textContent = 'Cancelled. PowerShell control was not enabled.'; return; }
+    await window.zen.enablePowerShell(powershellAcknowledgmentInput.value);
+    powershellAcknowledgmentInput.value = '';
+    await loadPowerShellStatus();
+  } catch (error) {
+    powershellHelp.textContent = error.message || 'Zen could not enable PowerShell control.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+async function disablePowerShellControl() {
+  try {
+    await window.zen.disablePowerShell();
+    await loadPowerShellStatus();
+  } catch (error) {
+    powershellHelp.textContent = error.message || 'Zen could not turn off PowerShell control.';
   }
 }
 function hexToRgb(hex) { return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)); }
@@ -2418,6 +2469,7 @@ async function initialise() {
   loadToolStatus();
   loadApprovedApps();
   loadFolderPermissions();
+  loadPowerShellStatus();
   loadCommands();
   renderStagedCommandSteps();
   updateCommandStepInputVisibility();
@@ -2582,6 +2634,8 @@ websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
 chooseFolderPermissionButton.addEventListener('click', grantFolderPermissionEntry);
+enablePowerShellButton.addEventListener('click', enablePowerShellControl);
+disablePowerShellButton.addEventListener('click', disablePowerShellControl);
 browserWebAppForm.addEventListener('submit', addBrowserWebApp);
 commandStepType.addEventListener('change', updateCommandStepInputVisibility);
 addCommandStepButton.addEventListener('click', addCommandStep);

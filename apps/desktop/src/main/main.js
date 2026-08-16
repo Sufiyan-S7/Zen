@@ -13,6 +13,7 @@ const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, 
 const { planTask } = require('./task-planner');
 const { configureAuditLog, appendAuditRecord, pruneAuditLog } = require('./audit-log');
 const { configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions } = require('./permissions');
+const { configurePowerShellControl, powerShellToggleStatus, enablePowerShell, disablePowerShell } = require('./powershell-control');
 
 let mainWindow = null;
 let overlayWindow = null;
@@ -525,6 +526,7 @@ app.whenReady().then(() => {
   configureWorkflows(app.getPath('userData'));
   configureAuditLog(app.getPath('userData'));
   configurePermissions(app.getPath('userData'));
+  configurePowerShellControl(app.getPath('userData'));
   pruneAuditLog();
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
@@ -845,6 +847,13 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('zen:permissions:list', () => listPermissions());
   ipcMain.handle('zen:permissions:revoke', (_event, id) => revokeFolderPermission(id));
+  // Block F, Step 26: off-by-default PowerShell toggle. enablePowerShell itself validates the
+  // typed acknowledgment (throws if it doesn't match exactly) -- this handler does not do a
+  // second, looser check. Deliberately NOT part of backup.js's export/restore scope; see
+  // docs/PowerShellControl.md.
+  ipcMain.handle('zen:powershell:status', () => powerShellToggleStatus());
+  ipcMain.handle('zen:powershell:enable', (_event, typedAcknowledgment) => enablePowerShell(typedAcknowledgment));
+  ipcMain.handle('zen:powershell:disable', () => disablePowerShell());
 
   createWindow();
   createTray();

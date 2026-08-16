@@ -1,9 +1,13 @@
 // Block D, Step 16 fixtures for apps/desktop/src/main/action-registry.js -- the initial action
 // registry subset (noop.wait, open-app, open-website, list-folder, read-file). Block E, Steps
 // 22-24 extended this file: read-file upgraded to accept filePath (permission-gated) alongside
-// documentId, plus search-folder, move-file, copy-file, rename-file, delete-file. Mirrors the
-// existing check-computer-control.js/check-documents.js style: real modules, temp sandboxes, no
-// mocks for anything that has no real-world side effect.
+// documentId, plus search-folder, move-file, copy-file, rename-file, delete-file. Block F, Steps
+// 25-26 added click-control, type-into-field (app-automation.js) and run-powershell
+// (powershell-control.js) -- their own per-module fixtures live in check-app-automation.js and
+// check-powershell-control.js; this file only covers their registry-level wiring (riskTier,
+// validateInput, describe, isStepSensitive escalation, redactForAudit). Mirrors the existing
+// check-computer-control.js/check-documents.js style: real modules, temp sandboxes, no mocks for
+// anything that has no real-world side effect.
 //
 // open-app.execute(), open-website.execute(), and delete-file.execute() are deliberately NOT
 // exercised here -- they spawn a real process / open a real browser / call Electron's
@@ -11,7 +15,11 @@
 // under plain `node`, exactly like this script runs -- so shell is undefined until actually
 // invoked. Only validateInput()/describe()/riskTier are checked for those three. Flagged per
 // INSTRUCTIONS.md Section 5 as a scope choice, not an oversight, matching the pre-existing
-// convention this file already used for open-app/open-website.
+// convention this file already used for open-app/open-website. click-control/type-into-field's
+// execute() is likewise not exercised here (real UI Automation against a real running app,
+// covered by check-app-automation.js instead) -- but run-powershell's off-toggle guard IS
+// exercised here (real, in-process, no spawn), since it's cheap and catches a real regression
+// class (the toggle check silently skipped).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -19,14 +27,17 @@ const path = require('node:path');
 const { ACTIONS, getAction, listActionsForPlanner } = require('../apps/desktop/src/main/action-registry');
 const { configureDocuments, importDocuments } = require('../apps/desktop/src/main/documents');
 const { configurePermissions, grantFolderPermission } = require('../apps/desktop/src/main/permissions');
+const { configurePowerShellControl } = require('../apps/desktop/src/main/powershell-control');
 
 (async () => {
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-action-registry-'));
 const permSandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-action-registry-perm-'));
+const psSandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-action-registry-ps-'));
 try {
   configurePermissions(permSandbox);
+  configurePowerShellControl(psSandbox);
 
-  // Registration surface -- now 10 actions total (incl. noop.wait), 9 offered to the planner.
+  // Registration surface -- now 13 actions total (incl. noop.wait), 12 offered to the planner.
   assert.equal(getAction('noop.wait').riskTier, 'routine');
   assert.equal(getAction('open-app').riskTier, 'routine');
   assert.equal(getAction('open-website').riskTier, 'routine');
@@ -37,15 +48,18 @@ try {
   assert.equal(getAction('copy-file').riskTier, 'routine');
   assert.equal(getAction('rename-file').riskTier, 'routine');
   assert.equal(getAction('delete-file').riskTier, 'sensitive', 'delete-file must be sensitive per AgentContract.md Section 7');
+  assert.equal(getAction('click-control').riskTier, 'routine', 'click-control is routine at the type level per AgentContract.md Section 7');
+  assert.equal(getAction('type-into-field').riskTier, 'routine', 'type-into-field is routine at the type level per AgentContract.md Section 7');
+  assert.equal(getAction('run-powershell').riskTier, 'routine', 'run-powershell is routine by default, sensitive only for trigger-pattern matches');
   assert.equal(getAction('not-a-real-action'), null, 'an unregistered action id must resolve to null, never throw or invent a default');
-  assert.equal(Object.keys(ACTIONS).length, 10, 'exactly the 10 v2.0 actions (incl. noop.wait) should be registered so far');
+  assert.equal(Object.keys(ACTIONS).length, 13, 'exactly the 13 v2.0 actions (incl. noop.wait) should be registered so far');
 
   const plannerActions = listActionsForPlanner();
-  assert.equal(plannerActions.length, 9, 'noop.wait is an internal test action and must never be offered to the planner');
+  assert.equal(plannerActions.length, 12, 'noop.wait is an internal test action and must never be offered to the planner');
   assert.ok(!plannerActions.some((action) => action.id === 'noop.wait'));
   assert.deepEqual(plannerActions.map((action) => action.id).sort(), [
-    'copy-file', 'delete-file', 'list-folder', 'move-file', 'open-app', 'open-website',
-    'read-file', 'rename-file', 'search-folder'
+    'click-control', 'copy-file', 'delete-file', 'list-folder', 'move-file', 'open-app', 'open-website',
+    'read-file', 'rename-file', 'run-powershell', 'search-folder', 'type-into-field'
   ]);
 
   // noop.wait: validateInput + execute (safe, in-process only).
@@ -188,9 +202,45 @@ try {
     await assert.rejects(() => action.execute(validated), /does not exist/, `${action.id} must fail at execute(), not validateInput(), for a missing file`);
   }
 
+  // click-control / type-into-field (Block F, Step 25): registry-level wiring only -- shape
+  // validation, describe(), and the isStepSensitive escalation. Real UI Automation against a
+  // real running app is app-automation.js's own job, covered in check-app-automation.js.
+  const clickControl = getAction('click-control');
+  assert.deepEqual(clickControl.validateInput({ appId: ' abc ', controlName: ' Save ' }), { appId: 'abc', controlName: 'Save' });
+  for (const bad of [{}, { appId: '' }, { appId: 'abc' }, { appId: 'abc', controlName: '' }, null]) {
+    assert.throws(() => clickControl.validateInput(bad));
+  }
+  assert.equal(clickControl.isStepSensitive({ controlName: 'Delete' }), true, 'a control literally named Delete must escalate click-control to sensitive');
+  assert.equal(clickControl.isStepSensitive({ controlName: 'Save' }), false, 'an ordinary control name must stay routine');
+  assert.match(clickControl.describe({ controlName: 'Save' }), /Save/);
+
+  const typeIntoField = getAction('type-into-field');
+  assert.deepEqual(typeIntoField.validateInput({ appId: 'abc', controlName: 'Notes', text: 'hello' }), { appId: 'abc', controlName: 'Notes', text: 'hello' });
+  for (const bad of [{}, { appId: 'abc', controlName: 'x' }, { appId: 'abc', controlName: 'x', text: '' }, { appId: 'abc', controlName: 'x', text: 'y'.repeat(4001) }]) {
+    assert.throws(() => typeIntoField.validateInput(bad));
+  }
+  assert.equal(typeIntoField.isStepSensitive({ controlName: 'Password' }), true, 'a credential-shaped field must escalate type-into-field to sensitive per AgentContract.md Section 7');
+  assert.equal(typeIntoField.isStepSensitive({ controlName: 'Notes' }), false);
+  const typeAudit = typeIntoField.redactForAudit({ appId: 'abc', controlName: 'Password', text: 'hunter2hunter2' });
+  assert.equal(typeAudit.characterCount, 14, 'redactForAudit must log a character count, never the raw typed text');
+  assert.equal('text' in typeAudit, false, 'redactForAudit must never carry the raw text field at all');
+
+  // run-powershell (Block F, Step 26): registry-level wiring + the toggle-off guard, which is
+  // cheap and in-process (no spawn), unlike the rest of powershell-control.js's own coverage.
+  const runPowershell = getAction('run-powershell');
+  assert.deepEqual(runPowershell.validateInput({ command: '  Get-Process  ' }), { command: 'Get-Process' });
+  for (const bad of [{}, { command: '' }, { command: 'x'.repeat(4001) }]) {
+    assert.throws(() => runPowershell.validateInput(bad));
+  }
+  assert.equal(runPowershell.isStepSensitive({ command: 'Remove-Item C:\\temp\\x.txt' }), true, 'a destructive command must escalate run-powershell to sensitive');
+  assert.equal(runPowershell.isStepSensitive({ command: 'Get-Process' }), false);
+  assert.match(runPowershell.redactForAudit({ command: 'Get-Content -Path x; password: hunter2hunter2' }).command, /\[redacted\]/);
+  await assert.rejects(() => runPowershell.execute({ command: 'Get-Process' }), /Full System Control.*turned off/i, 'run-powershell must refuse to execute while the toggle is off, checked fresh at execute() time');
+
   console.log('Action-registry checks passed.');
 } finally {
   fs.rmSync(sandbox, { recursive: true, force: true });
   fs.rmSync(permSandbox, { recursive: true, force: true });
+  fs.rmSync(psSandbox, { recursive: true, force: true });
 }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

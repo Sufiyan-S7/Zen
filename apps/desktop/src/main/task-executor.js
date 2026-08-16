@@ -13,6 +13,16 @@
 // is now live for delete-file. task.pendingConfirmation carries the blocked step's actionId +
 // input + a human describe() string so the task popup can render exactly what needs approval,
 // rather than the generic "blocked" state alone.
+//
+// Block F, Step 25/26: an action's `riskTier` stays fixed at registration time per
+// AgentContract.md Section 8 -- but click-control, type-into-field, and run-powershell are each
+// routine at the *type* level while a specific instance can hit a fixed-sensitive category
+// (Section 2). Each of those three actions may optionally export `isStepSensitive(input)`; if
+// present, it is consulted per-step alongside the fixed tier, and either one being true escalates
+// that step to a fresh confirmation. This does not change Section 8's rule (the *type*'s
+// registered tier never changes) -- it is the same runtime-pattern exception Section 7's table
+// already names for run-powershell's trigger-pattern classifier, generalized so click-control and
+// type-into-field use the identical mechanism instead of each inventing their own.
 const crypto = require('node:crypto');
 const { getAction } = require('./action-registry');
 
@@ -44,6 +54,23 @@ function redactInput(value) {
   } catch {
     return null;
   }
+}
+
+// Block F: an action may export `redactForAudit(input)` to fully replace the generic key-name
+// heuristic above with a hand-built audit representation -- used by type-into-field (never logs
+// the raw typed text, only its length) and run-powershell (scrubs embedded secrets from the
+// command text via powershell-control.js's own classifier, rather than the blunt whole-field
+// redaction redactInput would otherwise apply). Every other action keeps using redactInput
+// unchanged.
+function auditTarget(action, input) {
+  return typeof action.redactForAudit === 'function' ? action.redactForAudit(input) : redactInput(input);
+}
+
+// Block F, Step 25/26: an action is treated as sensitive for a given step if its *fixed*
+// riskTier says so, OR its optional isStepSensitive(input) predicate says so for this specific
+// input -- see the file-header comment above for why this doesn't reopen Section 8.
+function isStepSensitive(action, input) {
+  return action.riskTier === 'sensitive' || (typeof action.isStepSensitive === 'function' && action.isStepSensitive(input));
 }
 
 function proposeTask(goal, steps) {
@@ -113,7 +140,8 @@ function markInterrupted(task, fromIndex, auditFn) {
     step.status = outcome;
     auditFn({
       taskId: task.id, stepIndex: i, action: step.actionId,
-      riskTier: action ? action.riskTier : 'routine', target: redactInput(step.input),
+      riskTier: action ? (isStepSensitive(action, step.input) ? 'sensitive' : 'routine') : 'routine',
+      target: action ? auditTarget(action, step.input) : redactInput(step.input),
       confirmationId: null, outcome, startedAt: now, endedAt: now, errorSummary: null
     });
   }
@@ -145,8 +173,11 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
     const startedAt = new Date().toISOString();
 
     let confirmationId = null;
-    if (action.riskTier === 'sensitive') {
-      // Block E, Step 24: live for delete-file. pendingConfirmation carries enough for the
+    if (isStepSensitive(action, step.input)) {
+      // Block E, Step 24: live for delete-file. Block F: also live for click-control /
+      // type-into-field / run-powershell steps whose input matches their own runtime
+      // sensitive-pattern check (see isStepSensitive above), even though those three actions
+      // are registered routine at the type level. pendingConfirmation carries enough for the
       // popup to render exactly what needs approval (action id + validated input + a human
       // describe() string), and is cleared the moment the block resolves either way.
       task.state = 'blocked';
@@ -175,12 +206,17 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
     }
     const endedAt = new Date().toISOString();
 
+    // Block F: the audit record's riskTier reflects the effective (possibly escalated) tier
+    // for THIS step, not just the action's fixed registration tier -- so a routine-registered
+    // click-control step that hit a "Delete" control shows sensitive in the audit trail, matching
+    // what actually required a fresh confirmation above, not what the type defaults to.
+    const effectiveRiskTier = isStepSensitive(action, step.input) ? 'sensitive' : 'routine';
     if (outcome) {
       step.status = 'completed';
       step.result = outcome;
       auditFn({
-        taskId: task.id, stepIndex: i, action: step.actionId, riskTier: action.riskTier,
-        target: redactInput(step.input), confirmationId, outcome: 'completed', startedAt, endedAt, errorSummary: null
+        taskId: task.id, stepIndex: i, action: step.actionId, riskTier: effectiveRiskTier,
+        target: auditTarget(action, step.input), confirmationId, outcome: 'completed', startedAt, endedAt, errorSummary: null
       });
     } else {
       step.status = 'failed';
@@ -190,8 +226,8 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
       // elsewhere (see action-registry.js's requireNonEmptyPath/resolveExistingFile split).
       step.error = lastError ? lastError.message : 'Unknown error.';
       auditFn({
-        taskId: task.id, stepIndex: i, action: step.actionId, riskTier: action.riskTier,
-        target: redactInput(step.input), confirmationId, outcome: 'failed', startedAt, endedAt,
+        taskId: task.id, stepIndex: i, action: step.actionId, riskTier: effectiveRiskTier,
+        target: auditTarget(action, step.input), confirmationId, outcome: 'failed', startedAt, endedAt,
         errorSummary: lastError ? lastError.message : 'Unknown error.'
       });
       task.state = 'failed';

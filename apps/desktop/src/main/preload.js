@@ -67,5 +67,9 @@ contextBridge.exposeInMainWorld('zen', {
   // Block E, Step 22: persistent folder-permission grants, surfaced on the Activity page.
   chooseFolderPermission: () => ipcRenderer.invoke('zen:permissions:choose-folder'),
   listFolderPermissions: () => ipcRenderer.invoke('zen:permissions:list'),
-  revokeFolderPermission: (id) => ipcRenderer.invoke('zen:permissions:revoke', id)
+  revokeFolderPermission: (id) => ipcRenderer.invoke('zen:permissions:revoke', id),
+  // Block F, Step 26: off-by-default PowerShell toggle, surfaced on the Activity page.
+  getPowerShellStatus: () => ipcRenderer.invoke('zen:powershell:status'),
+  enablePowerShell: (typedAcknowledgment) => ipcRenderer.invoke('zen:powershell:enable', typedAcknowledgment),
+  disablePowerShell: () => ipcRenderer.invoke('zen:powershell:disable')
 });

@@ -1592,3 +1592,108 @@ mangling recurs. `check-task-planner.js` remains a gap (judgment call #2 above).
 **Exact next recommended step:** Day 2, Block F (system control + custom commands v2) per
 `docs/ZenV2-2Day-Sprint-Plan.md` -- includes the `click-control` gap flagged since Block A
 (`docs/AgentContract.md` Section 7) and the PowerShell off-by-default toggle referenced above.
+
+
+## v2.0 sprint -- Block F: app automation + PowerShell control (August 16, 2026)
+
+Resumed a session that had stopped mid-block, uncommitted, with no HANDOFF.md entry of its own --
+verified live via `git status`/`git diff`/direct file reads (`INSTRUCTIONS.md` Section 2) rather
+than trusting any prior summary, since none existed yet for this block. On arrival: real,
+syntactically valid, well-reasoned Block F code already sat on disk (`app-automation.js`,
+`powershell-control.js`, four checked-in `automation-scripts/*.ps1` files, plus the matching
+`action-registry.js`/`task-executor.js`/`task-planner.js`/`main.js`/`preload.js`/`renderer.js`/
+`index.html` wiring) -- but `npm run check` failed (`scripts/check-action-registry.js` still
+hard-asserted exactly 10 registered actions against a registry that now has 13) and
+`docs/PowerShellControl.md`, which the sprint plan requires authoring as part of Step 26, did not
+exist. Same failure class as the Block D token-budget stop documented earlier in this file --a
+check script silently not updated for new code.
+
+**What I did this session:**
+- Read every piece of Block F code in full against `docs/AgentContract.md` Section 7 and
+  `docs/ZenV2-2Day-Sprint-Plan.md` Blocks F Steps 25-26 before changing anything -- the code
+  matches the contract closely: `click-control`/`type-into-field` are UI-Automation-only (no
+  blind coordinate clicks, no SendKeys), scoped to apps already on the approved-apps list and
+  already running (never launched as a side effect); `run-powershell` is off by default, its
+  toggle lives in its own file untouched by `backup.js`, and both its sensitive-command
+  classifier and `click-control`'s sensitive-control-name classifier fail closed (match
+  liberally, never assume routine on ambiguity). Confirmed via direct `Select-String` that
+  `backup.js` contains zero references to PowerShell, matching the design's export/restore
+  exclusion claim.
+- Fixed `scripts/check-action-registry.js`: registration-count assertions updated 10->13 actions
+  / 9->12 planner-offered actions, plus new registry-level coverage for all three Block F actions
+  (`validateInput`, `describe`, `isStepSensitive` escalation for both the judgment-call
+  `click-control` keyword list and the contract-fixed `type-into-field` credential-field rule,
+  `redactForAudit`, and `run-powershell`'s toggle-off execute() guard).
+- Added `scripts/check-app-automation.js`: real coverage of `isControlNameSensitive`/
+  `isFieldCredential`'s full category lists (every fixed Section 2 category `click-control`'s
+  keyword list maps to, plus a routine-name spot check), `requireControlName` validation, the
+  4,000-character type cap, and a real (not mocked) spawn of the real, checked-in
+  `find-process.ps1` against a genuine approved-but-not-running app fixture -- deterministic and
+  side-effect-free, so safe for a headless/CI-style `npm run check` run. Actual UI Automation
+  against a real focused window (real clicking/typing) is deliberately NOT exercised by this
+  script -- flagged as a scope choice needing an interactive desktop session, not something this
+  session could safely automate into the check suite; see the manual smoke-test gap below.
+- Added `scripts/check-powershell-control.js`: off-by-default on a fresh sandbox (and a second,
+  independent sandbox, to prove it isn't shared/inherited), rejected/accepted typed
+  acknowledgments, restart persistence of both enabled and disabled state, the full
+  sensitive/routine command-classification list from `docs/AgentContract.md` Section 2, every
+  redaction shape (password/secret/token key=value, `ConvertTo-SecureString`, `Authorization:
+  Bearer`) plus a pass-through check for ordinary commands, and one real spawn of a harmless
+  `Write-Output` command to confirm the actual execution path (argv-array spawn, no `shell:
+  true`) works end to end, not just its call signature.
+- Wired both new check scripts and `node --check` for the two new source files into
+  `apps/desktop/package.json`'s `check` command, in the same order/pattern as every existing
+  entry -- the same class of wiring gap that caused Block D's original bug.
+- Authored `docs/PowerShellControl.md` fresh, per Step 26's explicit design-and-code-together
+  instruction: what the toggle gates and doesn't, off-by-default/never-inherited guarantees (with
+  a pointer to exactly which check proves each one), the classifier and redaction rules, the safe-
+  spawn execution pattern, and an explicit "what this does not do" section (no arbitrary shell for
+  any other action, no credential storage/injection, no elevation).
+- Updated `README.md`: added `docs/AgentContract.md`, `docs/ZenV2-2Day-Sprint-Plan.md`, and
+  `docs/PowerShellControl.md` to the documentation list (all three existed but weren't linked);
+  updated the sprint-status paragraph to describe Block F and to say "automated checks pass in
+  full" rather than "manually verified" for Day 2, since Block F's live in-app click-through
+  has not happened yet this session (see below) -- deliberately not overstating verification
+  level, per `INSTRUCTIONS.md` Section 3.
+
+**Flagged judgment calls inherited from the code as found, not made by me this session** (already
+flagged in-repo per `INSTRUCTIONS.md` Section 5, restated here since they're now part of what I'm
+handing off as verified-working): `click-control`'s sensitive-control-name keyword list
+(`app-automation.js`) and the exact PowerShell typed-acknowledgment phrase (`powershell-control.js`'s
+`REQUIRED_ACKNOWLEDGMENT`, currently `"I understand the risk"`) are both owner-facing defaults to
+confirm, not settled by the sprint plan text itself.
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passes in full -- all 15 `node --check`
+syntax passes plus 10 check scripts, including the two new ones (`App-automation checks passed.`,
+`PowerShell-control checks passed.`).
+
+**NOT done this session -- flagged, not silently skipped:**
+1. No live, in-app click-through. The Settings PowerShell toggle (type acknowledgment -> Enable),
+   a real Task-mode `click-control`/`type-into-field` step against a real running approved app,
+   and a real `run-powershell` step (both a routine command and one matching the sensitive
+   trigger list, confirming the fresh re-confirmation popup actually appears) have not been
+   manually run in the live desktop app this session. This mirrors Day 18's PDF live-click-through
+   gap and is the same category of "code + automated tests done, live UI walkthrough still owed"
+   noted there.
+2. Unrelated repo clutter noticed but out of scope for this task, not touched: `.backups/`
+   (assorted one-off probe scripts and two dated pre-fix snapshots from Aug 8) and `deliverables/`
+   (a `.pptx`, a small separate `zen-mobile-checklist` PWA, and a `dist/` build output folder) are
+   untracked in git. Not cleaned up or committed here since neither was part of Block F -- flagged
+   for the owner to decide whether either belongs in `docs/_unnecessary-files/`-style cleanup or
+   `.gitignore`.
+
+**Git state:** everything above staged for a Day 2 Block F boundary commit
+(`feat(agent): app automation + PowerShell control (Block F)`), covering the Block F source files
+as found (`app-automation.js`, `powershell-control.js`, `automation-scripts/*.ps1`, and the
+modified `action-registry.js`/`task-executor.js`/`task-planner.js`/`main.js`/`preload.js`/
+`renderer.js`/`index.html`) plus this session's additions (the two new check scripts, the
+`package.json` wiring fix, `docs/PowerShellControl.md`, this `HANDOFF.md` entry, and the `README.md`
+update). **Committing locally; holding the push** -- this change touches PowerShell/security
+directly, so it stops before pushing per `INSTRUCTIONS.md` Section 4 and
+`AGENT-UPDATE-PROTOCOL.md` Section 2's exception, regardless of the sprint's routine-push default.
+Owner's explicit go-ahead needed before pushing this one.
+
+**Exact next recommended step:** live in-app smoke test of Block F (PowerShell toggle on/off,
+a `click-control`/`type-into-field` task against a real running approved app, a routine and a
+sensitive-trigger `run-powershell` task) -- then Day 2 Block G (browser control) per
+`docs/ZenV2-2Day-Sprint-Plan.md`.

@@ -13,6 +13,8 @@ const { shell } = require('electron');
 const { approvedApp, websitePreview, listFolderContents, searchFolderNames } = require('./computer-control');
 const { readDocumentText, readArbitraryFile } = require('./documents');
 const { resolveActiveFolderGrant } = require('./permissions');
+const { clickControl, typeIntoField, isControlNameSensitive, isFieldCredential } = require('./app-automation');
+const { isPowerShellEnabled, classifyPowerShellCommand, redactCommandForAudit, runPowerShellCommand } = require('./powershell-control');
 
 function isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 
@@ -240,6 +242,82 @@ const ACTIONS = Object.freeze({
       // so no separate undo-stack is built for this action.
       await shell.trashItem(filePath);
       return { summary: `Moved ${filePath} to the Recycle Bin.` };
+    }
+  }),
+  // Block F, Step 25: accessibility-first UI automation (app-automation.js), scoped to an
+  // already-running, already-approved app. Both actions are registered routine at the type
+  // level per docs/AgentContract.md Section 7's table, and each carries its own runtime
+  // isStepSensitive() escalation -- click-control's keyword-list judgment call, type-into-field's
+  // contract-specified credential-field detection -- consulted by task-executor.js alongside the
+  // fixed tier (see that file's header comment for why this doesn't reopen Section 8).
+  'click-control': Object.freeze({
+    id: 'click-control',
+    riskTier: 'routine',
+    label: 'Click a control in an approved app',
+    validateInput(input) {
+      if (!isPlainObject(input) || typeof input.appId !== 'string' || !input.appId.trim()) {
+        throw new Error('click-control requires an appId from the approved-app list.');
+      }
+      if (typeof input.controlName !== 'string' || !input.controlName.trim()) throw new Error('click-control requires a controlName.');
+      return { appId: input.appId.trim(), controlName: input.controlName.trim() };
+    },
+    describe(input) { return `Click "${input.controlName}" in the approved app.`; },
+    isStepSensitive(input) { return isControlNameSensitive(input.controlName); },
+    async execute(input) {
+      const result = await clickControl(input.appId, input.controlName);
+      return { summary: `Clicked "${result.controlName}" in ${result.label}.`, method: result.method };
+    }
+  }),
+  'type-into-field': Object.freeze({
+    id: 'type-into-field',
+    riskTier: 'routine',
+    label: 'Type into a field in an approved app',
+    validateInput(input) {
+      if (!isPlainObject(input) || typeof input.appId !== 'string' || !input.appId.trim()) {
+        throw new Error('type-into-field requires an appId from the approved-app list.');
+      }
+      if (typeof input.controlName !== 'string' || !input.controlName.trim()) throw new Error('type-into-field requires a controlName.');
+      if (typeof input.text !== 'string' || !input.text.length) throw new Error('type-into-field requires text to type.');
+      if (input.text.length > 4000) throw new Error('Text to type must be under 4,000 characters.');
+      return { appId: input.appId.trim(), controlName: input.controlName.trim(), text: input.text };
+    },
+    describe(input) {
+      return isFieldCredential(input.controlName)
+        ? `Type into the "${input.controlName}" credential field (will ask again to confirm).`
+        : `Type ${input.text.length} character(s) into "${input.controlName}".`;
+    },
+    isStepSensitive(input) { return isFieldCredential(input.controlName); },
+    // Never logs the raw typed text -- only which control and how many characters. Section 4's
+    // "never raw content" rule, applied unconditionally here rather than only when the field
+    // happens to be a detected credential field (detection is a keyword heuristic, not a
+    // guarantee, so the safer default is to never log the literal text either way).
+    redactForAudit(input) { return { appId: input.appId, controlName: input.controlName, characterCount: input.text.length }; },
+    async execute(input) {
+      const result = await typeIntoField(input.appId, input.controlName, input.text);
+      return { summary: `Typed ${result.characterCount} character(s) into "${result.controlName}" in ${result.label}.` };
+    }
+  }),
+  // Block F, Step 26: the one action in this registry permitted to carry a free-text command,
+  // per docs/AgentContract.md Section 2's explicit PowerShell resolution -- see
+  // powershell-control.js and docs/PowerShellControl.md for the full design. Off by default;
+  // execute() re-checks the toggle fresh every time rather than trusting validateInput's earlier
+  // check, matching the project's own re-resolve-at-run-time convention (permissions.js).
+  'run-powershell': Object.freeze({
+    id: 'run-powershell',
+    riskTier: 'routine',
+    label: 'Run a PowerShell command',
+    validateInput(input) {
+      if (!isPlainObject(input) || typeof input.command !== 'string' || !input.command.trim()) throw new Error('run-powershell requires a command.');
+      if (input.command.length > 4000) throw new Error('The PowerShell command must be under 4,000 characters.');
+      return { command: input.command.trim() };
+    },
+    describe(input) { return `Run PowerShell: ${input.command.slice(0, 120)}${input.command.length > 120 ? '…' : ''}`; },
+    isStepSensitive(input) { return classifyPowerShellCommand(input.command).sensitive; },
+    redactForAudit(input) { return { command: redactCommandForAudit(input.command) }; },
+    async execute(input) {
+      if (!isPowerShellEnabled()) throw new Error('Full System Control (PowerShell) is turned off. Enable it in Settings before running this action.');
+      const result = await runPowerShellCommand(input.command);
+      return { summary: `PowerShell exited with code ${result.exitCode}.`, stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
     }
   })
 });

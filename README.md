@@ -293,8 +293,8 @@ planning, scoped file/app/browser automation, undo, and explicit safety controls
 
 As of August 16, 2026, this plan is being executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
-schedule. **Day 1 (Blocks A-D) and Day 2 Block E are complete and manually verified.** Day 1
-closed out the foundation and core agent loop: system tray, single-instance lock, the
+schedule. **Day 1 (Blocks A-D) and Day 2 Blocks E-F are complete; automated checks pass in full.**
+Day 1 closed out the foundation and core agent loop: system tray, single-instance lock, the
 `Ctrl+Alt+Space` global hotkey, the compact command overlay, push-to-talk voice input with typed
 fallback, and a working goal-to-plan-to-execution loop. Typing `Task: <goal>` in chat routes to a
 local-model planner, shows the plan in a separate top-right popup window, and on approval runs it
@@ -303,7 +303,13 @@ through a deterministic executor with per-step timeouts/retries, pause/resume/ca
 folder-permission grants (Activity page, grant/list/revoke) and real file actions on top of that
 loop: `search-folder`, `read-file` on any file inside a granted folder, and `move-file`/
 `copy-file`/`rename-file`/`delete-file` -- delete is Recycle-Bin-routed and asks for a fresh,
-distinct confirmation in the popup right before it runs. `docs/AgentModePlan.md` and
+distinct confirmation in the popup right before it runs. Block F added accessibility-first app
+automation (`click-control`/`type-into-field`, scoped to already-approved, already-running apps,
+UI Automation only -- no blind coordinate clicks or SendKeys) and an off-by-default
+**Full System Control (PowerShell)** channel (`run-powershell`): a typed acknowledgment to enable,
+a fail-closed sensitive-command classifier that always re-confirms a risky command even with the
+toggle on, and secret/credential redaction in the audit log -- see
+[docs/PowerShellControl.md](docs/PowerShellControl.md). `docs/AgentModePlan.md` and
 `docs/AgentModeChecklist.md`, previously described here as existing superseded draft files, do
 **not** actually exist in this repo — that was a stale reference from an earlier session and has
 been corrected (verified via direct filesystem check, Aug 15, 2026). `docs/ZenV2-2Day-Sprint-Plan.md`
@@ -331,6 +337,9 @@ contract. See [HANDOFF.md](HANDOFF.md) for the full audit.
 - [Accessibility & error-handling audit](docs/AccessibilityErrorHandling.md)
 - [GPL & voice-model license review](docs/VoiceLicenseReview.md)
 - [Zen v2.0 personal desktop agent plan](docs/ZenV2Plan.md)
+- [Agent contract (v2.0 task states, risk tiers, permissions, audit)](docs/AgentContract.md)
+- [2-day sprint plan](docs/ZenV2-2Day-Sprint-Plan.md)
+- [PowerShell control (Full System Control)](docs/PowerShellControl.md)
 - [Project handoff](HANDOFF.md)
 
 ## Project continuity
