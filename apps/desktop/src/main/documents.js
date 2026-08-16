@@ -118,6 +118,29 @@ function readTextDocument(file) {
   if (!extractedText) throw safeError(`${file.displayName} contains no readable text.`, 'EMPTY_TEXT');
   return extractedText;
 }
+// Block E, Step 23: bounded read of an arbitrary file path (as opposed to readDocumentText,
+// which only reads from Zen's own imported-document library by documentId). The caller
+// (action-registry.js's read-file action) is responsible for the permission-scope check
+// (permissions.js's resolveActiveFolderGrant) before this is ever invoked -- this function only
+// enforces file-shape safety (regular file, supported extension, size, encoding), the exact
+// same checks validateFiles already applies at import time, reused here rather than duplicated.
+const MAX_ARBITRARY_READ_CHARS = 8000;
+async function readArbitraryFile(filePath) {
+  if (typeof filePath !== 'string' || !filePath.trim()) throw safeError('A file path is required.', 'INVALID_PATH');
+  const resolved = path.resolve(filePath.trim());
+  const link = fs.lstatSync(resolved);
+  if (link.isSymbolicLink() || link.isDirectory() || !link.isFile()) throw safeError(`Choose a regular file: ${path.basename(resolved)}.`, 'UNSAFE_FILE');
+  const verified = fs.realpathSync(resolved);
+  const stat = fs.statSync(verified);
+  const extension = path.extname(verified).toLowerCase();
+  if (!SUPPORTED_EXTENSIONS.has(extension)) throw safeError(`${path.basename(verified)} is not a supported file type for reading.`, 'UNSUPPORTED_TYPE');
+  if (stat.size > MAX_FILE_BYTES) throw safeError(`${path.basename(verified)} is larger than 20 MiB.`, 'FILE_TOO_LARGE');
+  const file = { path: verified, displayName: path.basename(verified), extension, size: stat.size };
+  const text = await readDocumentContent(file);
+  const truncated = text.length > MAX_ARBITRARY_READ_CHARS;
+  return { path: verified, displayName: file.displayName, text: text.slice(0, MAX_ARBITRARY_READ_CHARS), truncated };
+}
+
 function readStoredDocuments() {
   try { const data = JSON.parse(fs.readFileSync(documentsPath, 'utf8')); return Array.isArray(data) ? data : []; }
   catch (error) { if (error.code === 'ENOENT') return []; throw safeError('Zen could not read its local document store.', 'STORE_READ_FAILED'); }
@@ -281,4 +304,4 @@ function restoreDocuments(rawDocuments) {
   return { restored: restored.length, skipped };
 }
 
-module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, readDocumentText, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument, exportDocuments, restoreDocuments };
+module.exports = { configureDocuments, previewDocuments, importDocuments, listDocuments, searchDocuments, documentPreview, readDocumentText, readArbitraryFile, prepareDocumentQuestion, verifyDocumentQuestion, removeDocument, exportDocuments, restoreDocuments };

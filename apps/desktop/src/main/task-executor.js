@@ -8,6 +8,11 @@
 // none of Block D's four real actions have a separate observable postcondition beyond "the call
 // succeeded," so a second check step is not invented here (flagged per INSTRUCTIONS.md Section
 // 5 -- Block E/F/G actions with real side effects, e.g. delete-file, may need one).
+//
+// Block E, Step 24: the sensitive-step gate below (previously unexercised by any Block D action)
+// is now live for delete-file. task.pendingConfirmation carries the blocked step's actionId +
+// input + a human describe() string so the task popup can render exactly what needs approval,
+// rather than the generic "blocked" state alone.
 const crypto = require('node:crypto');
 const { getAction } = require('./action-registry');
 
@@ -49,7 +54,8 @@ function proposeTask(goal, steps) {
     const action = getAction(step.actionId);
     if (!action) throw new Error(`Step ${index + 1} references an unregistered action "${step.actionId}".`);
     const validInput = action.validateInput(step.input);
-    return { index, actionId: step.actionId, input: validInput, status: 'pending', result: null };
+    const summary = typeof action.describe === 'function' ? action.describe(validInput) : undefined;
+    return { index, actionId: step.actionId, input: validInput, summary, status: 'pending', result: null, error: null };
   });
   const task = {
     id: `task_${crypto.randomUUID()}`,
@@ -62,7 +68,8 @@ function proposeTask(goal, steps) {
     endedAt: null,
     currentStepIndex: 0,
     cancelRequested: false,
-    pauseRequested: false
+    pauseRequested: false,
+    pendingConfirmation: null
   };
   tasks.set(task.id, task);
   return task;
@@ -139,11 +146,17 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
 
     let confirmationId = null;
     if (action.riskTier === 'sensitive') {
-      // Not exercised by any of Block D's four actions (all routine) -- implemented now so
-      // Block E's delete-file lands on a working gate rather than a second implementation.
+      // Block E, Step 24: live for delete-file. pendingConfirmation carries enough for the
+      // popup to render exactly what needs approval (action id + validated input + a human
+      // describe() string), and is cleared the moment the block resolves either way.
       task.state = 'blocked';
+      task.pendingConfirmation = {
+        stepIndex: i, actionId: step.actionId, input: step.input,
+        summary: typeof action.describe === 'function' ? action.describe(step.input) : step.actionId
+      };
       onUpdate(task);
       confirmationId = await confirmSensitiveStep(task, step);
+      task.pendingConfirmation = null;
       if (!confirmationId) { markInterrupted(task, i, auditFn); onUpdate(task); return task; }
       task.state = 'running';
       onUpdate(task);
@@ -171,6 +184,11 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
       });
     } else {
       step.status = 'failed';
+      // Attached to the step itself (not just the audit log) so the popup can show WHY this
+      // one step failed -- previously only the audit log had this, and the popup showed a bare
+      // ✕ with no reason, which is exactly as unhelpful as the plan-time failure this fixes
+      // elsewhere (see action-registry.js's requireNonEmptyPath/resolveExistingFile split).
+      step.error = lastError ? lastError.message : 'Unknown error.';
       auditFn({
         taskId: task.id, stepIndex: i, action: step.actionId, riskTier: action.riskTier,
         target: redactInput(step.input), confirmationId, outcome: 'failed', startedAt, endedAt,

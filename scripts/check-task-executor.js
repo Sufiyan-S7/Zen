@@ -110,9 +110,11 @@ function waitForTerminal(taskId) {
 
     const hooks = collectHooks();
     let confirmCalls = 0;
+    let pendingConfirmationSeen = null;
     hooks.confirmSensitiveStep = async (t, step) => {
       confirmCalls += 1;
       assert.equal(step.actionId, 'test.sensitive', 'only the sensitive step should ever ask for a fresh confirmation');
+      pendingConfirmationSeen = executor.getTask(t.id).pendingConfirmation;
       return 'confirm_test_1';
     };
 
@@ -133,6 +135,9 @@ function waitForTerminal(taskId) {
     assert.equal(finalTask.state, 'completed');
     assert.equal(confirmCalls, 1, 'the sensitive step must get exactly one fresh confirmation');
     assert.ok(hooks.states.includes('blocked'), 'the sensitive step must pass through the blocked state to request confirmation');
+    assert.ok(pendingConfirmationSeen, 'task.pendingConfirmation must be populated while blocked, for the popup to render');
+    assert.equal(pendingConfirmationSeen.actionId, 'test.sensitive');
+    assert.equal(finalTask.pendingConfirmation, null, 'pendingConfirmation must be cleared once the block resolves');
 
     const routineAudit = hooks.audits.find((a) => a.action === 'noop.wait');
     const sensitiveAudit = hooks.audits.find((a) => a.action === 'test.sensitive');

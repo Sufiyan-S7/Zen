@@ -63,5 +63,9 @@ contextBridge.exposeInMainWorld('zen', {
   // Block D, Step 17-19: goal -> plan -> popup. proposeTask resolves once Ollama has decided
   // whether the message is a task at all; if it is, the plan popup (a separate window) takes
   // over approve/pause/cancel from there -- nothing further comes back through this bridge.
-  proposeTask: (goal) => ipcRenderer.invoke('zen:task:propose', goal)
+  proposeTask: (goal) => ipcRenderer.invoke('zen:task:propose', goal),
+  // Block E, Step 22: persistent folder-permission grants, surfaced on the Activity page.
+  chooseFolderPermission: () => ipcRenderer.invoke('zen:permissions:choose-folder'),
+  listFolderPermissions: () => ipcRenderer.invoke('zen:permissions:list'),
+  revokeFolderPermission: (id) => ipcRenderer.invoke('zen:permissions:revoke', id)
 });

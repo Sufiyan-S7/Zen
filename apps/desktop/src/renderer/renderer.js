@@ -60,11 +60,14 @@ const folderSearchInput = document.querySelector('#folder-search-input');
 const folderSearchHelp = document.querySelector('#folder-search-help');
 const folderSearchResults = document.querySelector('#folder-search-results');
 const chooseApprovedAppButton = document.querySelector('#choose-approved-app');
+const chooseFolderPermissionButton = document.querySelector('#choose-folder-permission');
 const browserWebAppForm = document.querySelector('#browser-web-app-form');
 const browserWebAppName = document.querySelector('#browser-web-app-name');
 const browserWebAppUrl = document.querySelector('#browser-web-app-url');
 const approvedAppsHelp = document.querySelector('#approved-apps-help');
 const approvedAppList = document.querySelector('#approved-app-list');
+const folderPermissionsHelp = document.querySelector('#folder-permissions-help');
+const folderPermissionsList = document.querySelector('#folder-permissions-list');
 const commandBuilderForm = document.querySelector('#command-builder-form');
 const commandNameInput = document.querySelector('#command-name-input');
 const commandStepType = document.querySelector('#command-step-type');
@@ -534,6 +537,69 @@ function renderApprovedApps(apps = []) {
     row.append(label, path, ...(destination ? [destination] : []), actions);
     approvedAppList.append(row);
   });
+}
+// Block E, Step 22: mirrors renderApprovedApps' layout/pattern exactly for folder-permission
+// grants -- one row per record (including revoked ones, per AgentContract.md Section 6's
+// retention rule), Revoke only offered on a still-live record.
+function renderFolderPermissions(records = []) {
+  folderPermissionsList.innerHTML = '';
+  if (!records.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No folders granted yet.';
+    folderPermissionsList.append(empty);
+    return;
+  }
+  records.forEach((record) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app';
+    const label = document.createElement('strong');
+    label.textContent = record.scope;
+    const status = document.createElement('p');
+    status.textContent = record.revokedAt ? `Revoked ${new Date(record.revokedAt).toLocaleString()}` : `Granted ${new Date(record.grantedAt).toLocaleString()}`;
+    row.append(label, status);
+    if (!record.revokedAt) {
+      const actions = document.createElement('div');
+      actions.className = 'approved-app-actions';
+      const revoke = document.createElement('button');
+      revoke.type = 'button';
+      revoke.className = 'secondary-button';
+      revoke.textContent = 'Revoke';
+      revoke.addEventListener('click', () => revokeFolderPermissionEntry(record));
+      actions.append(revoke);
+      row.append(actions);
+    }
+    folderPermissionsList.append(row);
+  });
+}
+async function loadFolderPermissions() {
+  try {
+    renderFolderPermissions(await window.zen.listFolderPermissions());
+  } catch {
+    folderPermissionsHelp.textContent = 'Zen could not load your folder permissions.';
+  }
+}
+async function grantFolderPermissionEntry() {
+  folderPermissionsHelp.textContent = '';
+  try {
+    const granted = await window.zen.chooseFolderPermission();
+    if (!granted) {
+      folderPermissionsHelp.textContent = 'No folder was selected.';
+      return;
+    }
+    folderPermissionsHelp.textContent = `${granted.scope} is granted.`;
+    await loadFolderPermissions();
+  } catch (error) {
+    folderPermissionsHelp.textContent = error.message || 'Zen could not grant that folder.';
+  }
+}
+async function revokeFolderPermissionEntry(record) {
+  try {
+    await window.zen.revokeFolderPermission(record.id);
+    await loadFolderPermissions();
+  } catch (error) {
+    folderPermissionsHelp.textContent = error.message || 'Zen could not revoke that permission.';
+  }
 }
 function hexToRgb(hex) { return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)); }
 function relativeLuminance(hex) {
@@ -2351,6 +2417,7 @@ async function initialise() {
   loadVoiceStatus();
   loadToolStatus();
   loadApprovedApps();
+  loadFolderPermissions();
   loadCommands();
   renderStagedCommandSteps();
   updateCommandStepInputVisibility();
@@ -2514,6 +2581,7 @@ memoryForm.addEventListener('submit', (event) => {
 websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
+chooseFolderPermissionButton.addEventListener('click', grantFolderPermissionEntry);
 browserWebAppForm.addEventListener('submit', addBrowserWebApp);
 commandStepType.addEventListener('change', updateCommandStepInputVisibility);
 addCommandStepButton.addEventListener('click', addCommandStep);

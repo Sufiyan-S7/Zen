@@ -1482,3 +1482,113 @@ persistent folder-permission grant + permissions page, `search-folder`/`read-fil
 arbitrary-path) registry actions, and `move-file`/`copy-file`/`rename-file`/`delete-file` as a
 file-organize plan with preview-before-execute, Recycle-Bin-routed deletes, and Undo where
 supported.
+
+
+## v2.0 sprint — Block E: file/folder + permissions (August 16, 2026)
+
+Executing `docs/ZenV2-2Day-Sprint-Plan.md` Steps 22-24. Verified live repo state before starting
+(HANDOFF.md's Day 1 entry, `git status`, full check suite) per `INSTRUCTIONS.md` Section 2 --
+Day 1 (Blocks A-D) confirmed clean and unchanged.
+
+**What changed:**
+- Step 22: `permissions.js` -- new module, persistent folder-permission grants matching
+  `docs/AgentContract.md` Section 3's record schema exactly (id/kind/scope/grantedAt/revokedAt/
+  grantedVia). Mirrors v1.0's approved-apps persistent-JSON-file pattern rather than a second
+  mechanism. A revoked record is kept, never deleted, per Section 6's retention rule --
+  confirmed live in testing (the owner revoked and re-granted the same folder; the revoked
+  record stayed visible with its timestamp). `resolveActiveFolderGrant()` is the single gate
+  every folder/file action calls, fresh, immediately before it runs -- never a cached grant.
+  Surfaced on the Activity page as a new "Folder permissions" card (grant/list/revoke),
+  mirroring the existing approved-apps card's layout and conventions exactly.
+- Step 23: `search-folder` added; `read-file` upgraded to accept either the original Block D
+  `documentId` (unchanged) or a new `filePath` (permission-gated via `documents.js`'s new
+  `readArbitraryFile()`, reusing the existing text/PDF extraction pipeline) -- one action, two
+  input shapes, per `docs/ActionRegistrySkeleton.md` row 3.
+- Step 24: `move-file`/`copy-file`/`rename-file` (routine) and `delete-file` (sensitive) added.
+  Move is cross-drive-safe (EXDEV fallback to copy+unlink). Copy/rename refuse to silently
+  overwrite an existing destination. Delete is Recycle-Bin-routed via Electron's own
+  `shell.trashItem` -- deliberately not PowerShell, since Block F's run-powershell
+  off-by-default toggle doesn't exist yet and this action has no reason to depend on it. The
+  Recycle Bin is also this action's "Undo where supported": no separate undo-stack was built,
+  since restoring from the Recycle Bin already covers it.
+- Sensitive-step re-confirmation (Step 19's gate, unexercised by any Block D action) is now
+  live: `confirmSensitiveStep` in `main.js` was a stub returning null; it now tracks a real
+  pending-confirmation Promise per task, resolved by a new distinct Approve/Deny control pair
+  in the task popup (`task.pendingConfirmation`, set/cleared around the blocked state in
+  `task-executor.js`). Cancelling a blocked task also resolves the pending confirmation as a
+  denial, so Cancel remains a single working control even mid-block.
+
+**Bugs found and fixed during this session's live testing (real, owner-caught, not
+speculative):**
+1. `move-file`/`copy-file`/`rename-file`/`delete-file` originally checked real file existence
+   inside `validateInput()`, which runs at *planning* time (`proposeTask()`), before any popup
+   is shown. A stale or slightly-off filename therefore killed the entire task silently --
+   generic "couldn't turn that into a plan," no detail, indistinguishable from a genuine
+   planner miss. Fixed: `validateInput` is shape-only now (`requireNonEmptyPath`); the real
+   filesystem check moved into each action's `execute()` (`resolveExistingFile`), so a bad path
+   now fails as one clearly-labeled step, with a reason, after Start -- matching every other
+   action's existing convention. Added a dedicated regression test in
+   `scripts/check-action-registry.js` so this can't silently return.
+2. A failed step's reason was written to the audit log but never attached to the step itself,
+   so the popup showed a bare X with no explanation. Fixed: `task-executor.js` now sets
+   `step.error`; the popup renders it in red under the failed step.
+3. The task popup never surfaced a completed step's actual result (`search-folder`'s matches,
+   `read-file`'s text) -- only the pre-execution plan label, so a successful search or read
+   looked identical to any other completed step with zero information gained. Fixed:
+   `task-popup.js` now prefers the post-execution `result.summary` once a step completes, and
+   renders `result.matches`/`result.text` underneath it.
+4. `main.js`'s `zen:task:propose` handler had no defense around `proposeTask()` at all -- any
+   validation throw (before fix #1, a raw fs `ENOENT`; after, still possible for a malformed
+   plan shape) reached the renderer as a raw "Error invoking remote method..." string instead
+   of Zen's normal graceful "couldn't turn that into a plan" message. Now caught and normalized.
+5. Renderer polish bug introduced this same session: granting/revoking a folder set a
+   confirmation message in the help paragraph, which the immediately-following list reload then
+   silently wiped before the owner could read it. Fixed by separating the list's own
+   empty-state row (matching `renderApprovedApps`' existing pattern) from the help paragraph,
+   which is now only ever touched by grant/revoke's own success/error text.
+6. Local-planner accuracy, found via live testing, not a code defect: for a plan naming an
+   exact file and destination, the model sometimes padded the plan with irrelevant
+   list-folder/search-folder/read-file/open-app steps and truncated a multi-word filename
+   ("Zen Feature.txt" -> "Feature.txt"). Tightened `task-planner.js`'s system prompt with an
+   explicit "one step is enough, no exploratory steps" rule, a "copy filenames verbatim" rule,
+   and two concrete few-shot examples. Confirmed via live retest: the same goal that previously
+   produced six steps and a mangled filename now produces exactly one correctly-named step.
+   This is inherent to running a small local model rather than a large cloud one and may need
+   further iteration in a later block -- flagged, not claimed fully solved.
+
+**Flagged judgment calls (`INSTRUCTIONS.md` Section 5):**
+1. Folder grants are additive per exact resolved path, not hierarchical -- granting a parent
+   folder does not retroactively cover a previously-revoked child grant as a separate record,
+   though `resolveActiveFolderGrant`'s containment check does mean a live parent grant already
+   covers any child path. Not specified by the sprint plan; matches the simplest interpretation
+   of Section 3's schema.
+2. No dedicated `check-task-planner.js` exists -- a pre-existing Block D gap (task-planner.js
+   was never covered by its own check script even when first written), not something Step 22-24
+   required fixing. Flagged for a future block; task-planner.js is presently syntax-checked but
+   not independently unit-tested the way every other main-process module is.
+
+**Manual smoke test (owner-performed, extensive, this session):** folder grant/revoke/re-grant
+(including confirming a revoked record persists visibly); `search-folder` (found real matches,
+shown in the popup); `read-file` with an arbitrary `filePath` (real file content shown, verified
+against the file's actual contents); `move-file`/`copy-file`/`rename-file` (all confirmed against
+real filesystem state, not just the popup's "completed" status); the permission gate correctly
+failing closed for an ungranted folder; `delete-file`'s Approve path (file moved to Recycle Bin,
+confirmed) and Deny path (file untouched, task cancelled) both confirmed by the owner. Every bug
+listed above was caught through this real testing, not code review alone -- code review after
+each fix then found additional related issues before they could surface in testing (documented
+above).
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passes in full -- 8 check scripts,
+including the new `check-permissions.js` and the regenerated `check-action-registry.js` (now
+with a dedicated regression test for bug #1 above).
+
+**Git state:** committing as the Block E close on `zen-2.0`; will push -- routine change, no
+deletions/config/credential/security-sensitive content beyond the sprint's own scope.
+
+**Known issues / open items:** local-planner accuracy (bug #6 above) is improved but not
+guaranteed solved -- worth re-evaluating during Block F/G if similar padding or filename
+mangling recurs. `check-task-planner.js` remains a gap (judgment call #2 above).
+
+**Exact next recommended step:** Day 2, Block F (system control + custom commands v2) per
+`docs/ZenV2-2Day-Sprint-Plan.md` -- includes the `click-control` gap flagged since Block A
+(`docs/AgentContract.md` Section 7) and the PowerShell off-by-default toggle referenced above.

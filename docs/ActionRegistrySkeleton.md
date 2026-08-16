@@ -10,15 +10,15 @@ registered/implemented — don't pre-fill them now.
 
 | # | Action ID | Risk Tier | Confirmation Type | Implemented in Block/Step | Status |
 |---|---|---|---|---|---|
-| 1 | `open-app` | routine | standing task approval | Block D, Step 16 | Schema drafted |
-| 2 | `open-website` | routine | standing task approval | Block D, Step 16 | Schema drafted |
-| 3 | `read-file` | routine | standing task approval | Block D Step 16 (subset) / Block E Step 23 (full) | Schema drafted |
-| 4 | `list-folder` | routine | standing task approval | Block D, Step 16 | Schema drafted |
-| 5 | `search-folder` | routine | standing task approval | Block E, Step 23 | Schema drafted |
-| 6 | `move-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Schema drafted |
-| 7 | `copy-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Schema drafted |
-| 8 | `rename-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Schema drafted |
-| 9 | `delete-file` | sensitive | fresh confirmation, Recycle-Bin-routed | Block E, Step 24 | Schema drafted |
+| 1 | `open-app` | routine | standing task approval | Block D, Step 16 | Implemented |
+| 2 | `open-website` | routine | standing task approval | Block D, Step 16 | Implemented |
+| 3 | `read-file` | routine | standing task approval | Block D Step 16 (subset) / Block E Step 23 (full) | Implemented |
+| 4 | `list-folder` | routine | standing task approval | Block D, Step 16 | Implemented |
+| 5 | `search-folder` | routine | standing task approval | Block E, Step 23 | Implemented |
+| 6 | `move-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Implemented |
+| 7 | `copy-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Implemented |
+| 8 | `rename-file` | routine | standing approval + preview-before-execute | Block E, Step 24 | Implemented |
+| 9 | `delete-file` | sensitive | fresh confirmation, Recycle-Bin-routed | Block E, Step 24 | Implemented |
 | 10 | `click-control` | routine (gap flagged, see `AgentContract.md` §7) | standing task approval | Block F, Step 25 [High risk] | Schema drafted |
 | 11 | `type-into-field` | routine, sensitive for credential fields | fresh confirmation for credential fields | Block F, Step 25 [High risk] | Schema drafted |
 | 12 | `run-powershell` | routine by default, sensitive on trigger-pattern match | typed enable acknowledgment + fresh confirmation on match | Block F, Step 26 | Schema drafted |

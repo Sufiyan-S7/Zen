@@ -25,7 +25,8 @@ html, body { height: 100%; margin: 0; background: transparent; overflow: hidden;
 .task-goal { font-size: 14px; line-height: 1.4; color: #f2f7ee; }
 
 .task-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
-.task-step { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.35; }
+.task-step { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.35; }
+.task-step-header { display: flex; align-items: flex-start; gap: 8px; }
 .task-step-icon { flex: none; width: 16px; text-align: center; }
 .task-step-label { color: #d8e6da; }
 .task-step[data-status="completed"] .task-step-icon { color: #b9f55b; }
@@ -34,8 +35,12 @@ html, body { height: 100%; margin: 0; background: transparent; overflow: hidden;
 .task-step[data-status="cancelled"] .task-step-icon,
 .task-step[data-status="skipped"] .task-step-icon { color: #6f8c7a; }
 .task-step[data-status="pending"] .task-step-icon { color: #4d6a58; }
+.task-step-detail-list { margin: 2px 0 0 24px; padding: 0; list-style: disc; font-size: 11px; color: #9fb8a7; }
+.task-step-detail-text { margin: 2px 0 0 24px; font-size: 11px; line-height: 1.4; color: #9fb8a7; white-space: pre-wrap; }
+.task-step-error { color: #ef7a6b; }
 
 .task-actions { display: flex; gap: 8px; }
+.task-sensitive-notice { margin: 0; font-size: 12px; line-height: 1.4; color: #f5c46a; }
 .task-actions button {
   flex: 1;
   padding: 7px 0;

@@ -9,9 +9,10 @@ const { configureDocuments, previewDocuments, importDocuments, listDocuments, se
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
-const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, requestCancel } = require('./task-executor');
+const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
 const { planTask } = require('./task-planner');
 const { configureAuditLog, appendAuditRecord, pruneAuditLog } = require('./audit-log');
+const { configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions } = require('./permissions');
 
 let mainWindow = null;
 let overlayWindow = null;
@@ -84,6 +85,9 @@ const pendingAppSelections = new Map();
 const pendingBrowserWebAppSelections = new Map();
 const pendingFolderSelections = new Map();
 const pendingDocumentSelections = new Map();
+// Block E, Step 24: taskId -> the confirmSensitiveStep Promise's resolve function, while a task
+// is "blocked" awaiting fresh confirmation on a sensitive step (currently only delete-file).
+const pendingSensitiveConfirmations = new Map();
 const pendingDocumentQuestions = new Map();
 const pendingBackupRestores = new Map();
 
@@ -520,6 +524,7 @@ app.whenReady().then(() => {
   configureCustomCommands(app.getPath('userData'));
   configureWorkflows(app.getPath('userData'));
   configureAuditLog(app.getPath('userData'));
+  configurePermissions(app.getPath('userData'));
   pruneAuditLog();
   ipcMain.handle('zen:status', () => ({ model: DEFAULT_MODEL }));
   ipcMain.handle('zen:tools:status', () => toolRegistryStatus());
@@ -781,9 +786,20 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('zen:task:propose', async (_event, goal) => {
     if (typeof goal !== 'string' || !goal.trim()) throw new Error('A task needs a non-empty goal.');
-    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments() });
+    const grantedFolders = listPermissions().filter((entry) => !entry.revokedAt).map((entry) => entry.scope);
+    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders });
     if (!plan.isTask) return { isTask: false };
-    const task = proposeTask(goal.trim(), plan.steps);
+    // Defense-in-depth: proposeTask's validateInput is shape-only for every action now (see
+    // action-registry.js), so this should rarely fire -- but if the model ever names an
+    // unregistered actionId or sends a malformed input object, this still turns that into the
+    // same graceful "couldn't turn that into a plan" outcome as any other planner miss, rather
+    // than a raw IPC error string reaching the renderer.
+    let task;
+    try {
+      task = proposeTask(goal.trim(), plan.steps);
+    } catch {
+      return { isTask: false };
+    }
     showTaskPopup(task);
     return { isTask: true, task };
   });
@@ -791,17 +807,44 @@ app.whenReady().then(() => {
     const task = approveTask(taskId, {
       auditFn: appendAuditRecord,
       onUpdate: pushTaskUpdate,
-      // Not exercised by any Block D action (all routine) -- see task-executor.js's runTask.
-      // A future sensitive action surfaces its fresh-confirmation prompt through this same
-      // popup rather than a second dialog system.
-      confirmSensitiveStep: async () => null
+      // Block E, Step 24: delete-file is the first sensitive action to actually exercise this.
+      // The Promise resolves via zen:task:confirm-sensitive below (popup Approve/Deny), or via
+      // zen:task:cancel resolving it as a denial if the owner cancels while blocked.
+      confirmSensitiveStep: async () => new Promise((resolve) => {
+        pendingSensitiveConfirmations.set(taskId, resolve);
+      })
     });
     return task;
   });
+  ipcMain.handle('zen:task:confirm-sensitive', (_event, taskId, approved) => {
+    const resolve = pendingSensitiveConfirmations.get(taskId);
+    if (!resolve) return null;
+    pendingSensitiveConfirmations.delete(taskId);
+    const confirmationId = approved ? `confirm_${crypto.randomUUID()}` : null;
+    resolve(confirmationId);
+    return confirmationId;
+  });
   ipcMain.handle('zen:task:pause', (_event, taskId) => requestPause(taskId));
   ipcMain.handle('zen:task:resume', (_event, taskId) => requestResume(taskId));
-  ipcMain.handle('zen:task:cancel', (_event, taskId) => requestCancel(taskId));
+  ipcMain.handle('zen:task:cancel', (_event, taskId) => {
+    const task = requestCancel(taskId);
+    // Unblock a task currently awaiting sensitive confirmation -- otherwise Cancel while
+    // "blocked" would set cancelRequested but the executor stays parked on the awaited Promise
+    // until the popup separately answers Deny, defeating the point of a single Cancel control.
+    const resolve = pendingSensitiveConfirmations.get(taskId);
+    if (resolve) { pendingSensitiveConfirmations.delete(taskId); resolve(null); }
+    return task;
+  });
   ipcMain.on('zen:task:popup-close', () => hideTaskPopup());
+  ipcMain.handle('zen:permissions:choose-folder', async (event) => {
+    const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+      title: 'Grant Zen access to a folder', properties: ['openDirectory']
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return grantFolderPermission(result.filePaths[0], 'native-picker');
+  });
+  ipcMain.handle('zen:permissions:list', () => listPermissions());
+  ipcMain.handle('zen:permissions:revoke', (_event, id) => revokeFolderPermission(id));
 
   createWindow();
   createTray();

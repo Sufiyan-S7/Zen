@@ -298,6 +298,7 @@ module.exports = {
   approvedApp,
   validateSearchQuery,
   validateFolderPath,
+  isPathInsideRoot,
   searchFolderNames,
   isBrowserLauncher,
   validateBrowserWebAppLabel,
