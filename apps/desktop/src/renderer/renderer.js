@@ -30,11 +30,23 @@ const settingsPage = document.querySelector('#settings-page');
 const activityPage = document.querySelector('#activity-page');
 const memoryPage = document.querySelector('#memory-page');
 const documentsPage = document.querySelector('#documents-page');
+const agentPage = document.querySelector('#agent-page');
 const chatButton = document.querySelector('#chat-button');
+const agentButton = document.querySelector('#agent-button');
 const settingsButton = document.querySelector('#settings-button');
 const activityButton = document.querySelector('#activity-button');
 const memoryButton = document.querySelector('#memory-button');
 const documentsButton = document.querySelector('#documents-button');
+const routineBuilderForm = document.querySelector('#routine-builder-form');
+const routineNameInput = document.querySelector('#routine-name-input');
+const routineGoalInput = document.querySelector('#routine-goal-input');
+const routineBuilderHelp = document.querySelector('#routine-builder-help');
+const routineListElement = document.querySelector('#routine-list');
+const agentTaskListElement = document.querySelector('#agent-task-list');
+const agentTaskHistoryElement = document.querySelector('#agent-task-history');
+const agentPermissionListElement = document.querySelector('#agent-permission-list');
+const agentOpenActivityButton = document.querySelector('#agent-open-activity');
+let routinesCache = [];
 const memoryForm = document.querySelector('#memory-form');
 const memoryText = document.querySelector('#memory-text');
 const memoryHelp = document.querySelector('#memory-help');
@@ -934,7 +946,9 @@ function showPage(page) {
   activityPage.hidden = page !== 'activity';
   memoryPage.hidden = page !== 'memory';
   documentsPage.hidden = page !== 'documents';
+  agentPage.hidden = page !== 'agent';
   chatButton.classList.toggle('active', showingChat);
+  agentButton.classList.toggle('active', page === 'agent');
   settingsButton.classList.toggle('active', showingSettings);
   activityButton.classList.toggle('active', page === 'activity');
   memoryButton.classList.toggle('active', page === 'memory');
@@ -2545,6 +2559,192 @@ function setBusy(busy = Boolean(generationForConversation())) {
   sendButton.innerHTML = busy ? 'Thinking <span class="spinner"></span>' : 'Send <span>↗</span>';
 }
 
+function renderRoutineList(routines = []) {
+  routineListElement.innerHTML = '';
+  if (!routines.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No routines saved yet.';
+    routineListElement.append(empty);
+    return;
+  }
+  routines.forEach((routine) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app workflow-entry';
+    const name = document.createElement('strong');
+    name.textContent = routine.name;
+    const created = document.createElement('p');
+    created.textContent = `Saved ${new Date(routine.createdAt).toLocaleString()}`;
+    const steps = document.createElement('ol');
+    routine.steps.forEach((step) => {
+      const item = document.createElement('li');
+      item.textContent = step.unavailable ? `Unavailable — ${step.reason}` : step.summary;
+      if (step.unavailable) item.className = 'unavailable';
+      steps.append(item);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'approved-app-actions';
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'secondary-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => removeRoutine(routine));
+    actions.append(remove);
+    row.append(name, created, steps, actions);
+    routineListElement.append(row);
+  });
+}
+
+async function loadRoutines() {
+  try {
+    routinesCache = await window.zen.listRoutines();
+    renderRoutineList(routinesCache);
+  } catch (error) {
+    routineBuilderHelp.textContent = error.message || 'Zen could not load your routines.';
+  }
+}
+
+async function saveRoutine(event) {
+  event.preventDefault();
+  routineBuilderHelp.textContent = '';
+  const name = routineNameInput.value.trim();
+  const goal = routineGoalInput.value.trim();
+  if (!name || !goal) { routineBuilderHelp.textContent = 'Enter both a routine name and what it should do.'; return; }
+  try {
+    const preview = await window.zen.planRoutine(name, goal);
+    const approved = await requestActionConfirmation({
+      title: `Save "${preview.name}"?`,
+      description: 'Zen will save these exact local steps. It grants no new access: every step is re-validated when the routine runs, and sensitive steps still ask again.',
+      destination: preview.steps.map((step, index) => `${index + 1}. ${step.summary}`).join('\n'),
+      approveLabel: 'Save routine'
+    });
+    if (!approved) { routineBuilderHelp.textContent = 'Routine not saved.'; return; }
+    await window.zen.createRoutine(preview.name, preview.steps.map((step) => ({ actionId: step.actionId, input: step.input })));
+    routineNameInput.value = '';
+    routineGoalInput.value = '';
+    routineBuilderHelp.textContent = `"${preview.name}" saved locally. Say “Task: run ${preview.name}” to invoke it.`;
+    await loadRoutines();
+  } catch (error) {
+    routineBuilderHelp.textContent = error.message || 'Zen could not save that routine.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+async function removeRoutine(routine) {
+  try {
+    const approved = await requestActionConfirmation({
+      title: `Remove "${routine.name}"?`,
+      description: 'Zen will remove this saved routine. It will not change the apps, folders, browser access, or other permissions it referenced.',
+      destination: routine.name,
+      approveLabel: 'Remove routine'
+    });
+    if (!approved) { routineBuilderHelp.textContent = 'Removal cancelled.'; return; }
+    await window.zen.removeRoutine(routine.id);
+    routineBuilderHelp.textContent = `"${routine.name}" removed locally.`;
+    await loadRoutines();
+  } catch (error) {
+    routineBuilderHelp.textContent = error.message || 'Zen could not remove that routine.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+function renderAgentTasks(tasks = []) {
+  agentTaskListElement.innerHTML = '';
+  if (!tasks.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No Task-mode plans have been created since Zen was started.';
+    agentTaskListElement.append(empty);
+    return;
+  }
+  tasks.forEach((task) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app';
+    const goal = document.createElement('strong');
+    goal.textContent = task.goal;
+    const state = document.createElement('p');
+    state.textContent = `${task.state} · ${task.steps.filter((step) => step.status === 'completed').length}/${task.stepCount} steps complete`;
+    const steps = document.createElement('ol');
+    task.steps.forEach((step) => {
+      const item = document.createElement('li');
+      item.textContent = `${step.summary} — ${step.status}${step.error ? ` (${step.error})` : ''}`;
+      if (step.status === 'failed' || step.status === 'cancelled') item.className = 'unavailable';
+      steps.append(item);
+    });
+    row.append(goal, state, steps);
+    agentTaskListElement.append(row);
+  });
+}
+
+function renderAgentHistory(records = []) {
+  agentTaskHistoryElement.innerHTML = '';
+  if (!records.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No task steps have run in the last 30 days.';
+    agentTaskHistoryElement.append(empty);
+    return;
+  }
+  records.slice(0, 30).forEach((record) => {
+    const row = document.createElement('article');
+    row.className = 'activity-entry';
+    const heading = document.createElement('strong');
+    heading.textContent = `${record.action} — ${record.outcome}`;
+    const detail = document.createElement('p');
+    detail.textContent = `${record.riskTier} · ${new Date(record.endedAt || record.startedAt).toLocaleString()}${record.errorSummary ? ` · ${record.errorSummary}` : ''}`;
+    row.append(heading, detail);
+    agentTaskHistoryElement.append(row);
+  });
+}
+
+async function loadAgentHome() {
+  await Promise.all([loadRoutines(), (async () => {
+    try { renderAgentTasks(await window.zen.listTasks()); }
+    catch { agentTaskListElement.textContent = 'Zen could not load this session’s tasks.'; }
+  })(), (async () => {
+    try { renderAgentHistory(await window.zen.listTaskAudit()); }
+    catch { agentTaskHistoryElement.textContent = 'Zen could not load task history.'; }
+  })(), (async () => {
+    try { renderAgentPermissions(await window.zen.listFolderPermissions(), await window.zen.getBrowserPermissionStatus()); }
+    catch { agentPermissionListElement.textContent = 'Zen could not load permissions.'; }
+  })()]);
+}
+
+function renderAgentPermissions(folderRecords = [], browserRecords = []) {
+  agentPermissionListElement.innerHTML = '';
+  const records = [...folderRecords, ...browserRecords].filter((record) => !record.revokedAt);
+  if (!records.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No active folder or browser permissions.';
+    agentPermissionListElement.append(empty);
+    return;
+  }
+  records.forEach((record) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app';
+    const label = document.createElement('strong');
+    label.textContent = record.kind === 'browser' ? 'Browser access' : record.scope;
+    const detail = document.createElement('p');
+    detail.textContent = `Granted ${new Date(record.grantedAt).toLocaleString()}`;
+    const revoke = document.createElement('button');
+    revoke.type = 'button';
+    revoke.className = 'secondary-button';
+    revoke.textContent = 'Revoke';
+    revoke.addEventListener('click', async () => {
+      try {
+        if (record.kind === 'browser') await window.zen.revokeBrowserPermission(record.id);
+        else await window.zen.revokeFolderPermission(record.id);
+        await loadAgentHome();
+      } catch (error) { routineBuilderHelp.textContent = error.message || 'Zen could not revoke that permission.'; }
+    });
+    row.append(label, detail, revoke);
+    agentPermissionListElement.append(row);
+  });
+}
+
 async function initialise() {
   applyTheme();
   loadVoiceInputs();
@@ -2570,6 +2770,7 @@ async function initialise() {
   loadWorkflows();
   renderStagedWorkflowSteps();
   updateWorkflowStepInputVisibility();
+  loadAgentHome();
   renderActivityLog();
   try {
     const status = await window.zen.getStatus();
@@ -2706,10 +2907,13 @@ document.querySelector('#new-chat').addEventListener('click', () => {
 });
 
 chatButton.addEventListener('click', () => showPage('chat'));
+agentButton.addEventListener('click', () => { showPage('agent'); loadAgentHome(); });
+agentOpenActivityButton.addEventListener('click', () => { showPage('activity'); renderActivityLog(); });
 settingsButton.addEventListener('click', () => { showPage('settings'); loadVoiceInputs(); });
 activityButton.addEventListener('click', () => { showPage('activity'); renderActivityLog(); });
 memoryButton.addEventListener('click', () => { showPage('memory'); renderMemories(); });
 documentsButton.addEventListener('click', () => { showPage('documents'); loadDocuments(); });
+routineBuilderForm.addEventListener('submit', saveRoutine);
 chooseDocumentsButton.addEventListener('click', chooseDocuments);
 documentSearchForm.addEventListener('submit', searchImportedDocuments);
 documentQaForm.addEventListener('submit', askAboutDocumentResults);

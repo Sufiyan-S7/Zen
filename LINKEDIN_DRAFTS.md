@@ -1,3 +1,13 @@
+## 2026-08-17 — Zen v2.0, Day 2: safe local automation
+
+Added the Day 2 agent controls to Zen v2.0: scoped file actions, accessibility-first app control,
+permissioned Chrome work, and saved routines you can review before they run. Routines re-check
+current permissions every time and never skip the confirmation required for a sensitive step.
+
+The new Agent Home makes that safety model visible: recent tasks, redacted local history, saved
+routines, and one-click revoke controls for folder or browser access. Still building this fully
+local, zero-telemetry. 🧵
+
 ## 2026-08-15 — Zen v2.0, Day 1: from chat app to agent
 
 Been heads-down on Zen v2.0 today — here's what shipped:

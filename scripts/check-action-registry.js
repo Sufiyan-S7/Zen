@@ -37,7 +37,12 @@ try {
   configurePermissions(permSandbox);
   configurePowerShellControl(psSandbox);
 
-  // Registration surface -- now 13 actions total (incl. noop.wait), 12 offered to the planner.
+  // Registration surface -- Block H adds run-routine on top of Block G's 16 actions, so there
+  // are now 17 actions total (including noop.wait), 16 offered to the planner. The browser-*
+  // actions' own validateInput/describe/
+  // redactForAudit/riskTier surface is exercised in check-browser-control.js instead (it already
+  // imports the real ACTIONS object) -- this file only needed its count/list assertions kept
+  // current so the two files' registry views of the world don't silently diverge again.
   assert.equal(getAction('noop.wait').riskTier, 'routine');
   assert.equal(getAction('open-app').riskTier, 'routine');
   assert.equal(getAction('open-website').riskTier, 'routine');
@@ -51,15 +56,17 @@ try {
   assert.equal(getAction('click-control').riskTier, 'routine', 'click-control is routine at the type level per AgentContract.md Section 7');
   assert.equal(getAction('type-into-field').riskTier, 'routine', 'type-into-field is routine at the type level per AgentContract.md Section 7');
   assert.equal(getAction('run-powershell').riskTier, 'routine', 'run-powershell is routine by default, sensitive only for trigger-pattern matches');
+  assert.equal(getAction('run-routine').riskTier, 'routine', 'run-routine delegates each contained step to its own runtime risk gate');
   assert.equal(getAction('not-a-real-action'), null, 'an unregistered action id must resolve to null, never throw or invent a default');
-  assert.equal(Object.keys(ACTIONS).length, 13, 'exactly the 13 v2.0 actions (incl. noop.wait) should be registered so far');
+  assert.equal(Object.keys(ACTIONS).length, 17, 'exactly the 17 v2.0 actions (incl. noop.wait) should be registered so far');
 
   const plannerActions = listActionsForPlanner();
-  assert.equal(plannerActions.length, 12, 'noop.wait is an internal test action and must never be offered to the planner');
+  assert.equal(plannerActions.length, 16, 'noop.wait is an internal test action and must never be offered to the planner');
   assert.ok(!plannerActions.some((action) => action.id === 'noop.wait'));
   assert.deepEqual(plannerActions.map((action) => action.id).sort(), [
-    'click-control', 'copy-file', 'delete-file', 'list-folder', 'move-file', 'open-app', 'open-website',
-    'read-file', 'rename-file', 'run-powershell', 'search-folder', 'type-into-field'
+    'browser-form-fill-draft', 'browser-navigate', 'browser-read', 'click-control', 'copy-file', 'delete-file',
+    'list-folder', 'move-file', 'open-app', 'open-website', 'read-file', 'rename-file', 'run-powershell', 'run-routine',
+    'search-folder', 'type-into-field'
   ]);
 
   // noop.wait: validateInput + execute (safe, in-process only).

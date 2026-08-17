@@ -16,6 +16,7 @@ const { resolveActiveFolderGrant, requireActiveBrowserGrant } = require('./permi
 const { clickControl, typeIntoField, isControlNameSensitive, isFieldCredential } = require('./app-automation');
 const { isPowerShellEnabled, classifyPowerShellCommand, redactCommandForAudit, runPowerShellCommand } = require('./powershell-control');
 const { browserNavigate, browserRead, browserFormFillDraft } = require('./browser-control');
+const { routineNameOrNull } = require('./routines');
 
 function isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 
@@ -378,6 +379,33 @@ const ACTIONS = Object.freeze({
       requireActiveBrowserGrant();
       const result = await browserFormFillDraft(input.fieldIndex, input.value);
       return { summary: `Draft-filled field #${result.fieldIndex} (${result.characterCount} character(s)). Not submitted.`, url: result.url };
+    }
+  }),
+  // Block H, Step 29: task-executor.js splices this routine's live-resolved steps into the
+  // running task in place of this step BEFORE the sensitive-gate/execute block ever runs (see
+  // runTask's run-routine branch) -- per docs/AgentContract.md's run-routine row, each spliced
+  // step then resolves its own risk tier and permission at run time exactly like a directly
+  // planned step, no bulk exemption. validateInput only checks shape here; routines.js's
+  // prepareRoutineRun re-validates the routine's steps fresh against the live registry at splice
+  // time, same re-resolve-at-run-time convention as every folder/browser action above.
+  'run-routine': Object.freeze({
+    id: 'run-routine',
+    riskTier: 'routine',
+    label: 'Run a saved routine',
+    validateInput(input) {
+      if (!isPlainObject(input) || typeof input.routineId !== 'string' || !/^[a-f0-9-]{36}$/i.test(input.routineId)) {
+        throw new Error('run-routine requires a valid routineId.');
+      }
+      return { routineId: input.routineId };
+    },
+    describe(input) {
+      const name = routineNameOrNull(input.routineId);
+      return name ? `Run routine: ${name}` : 'Run routine (unavailable).';
+    },
+    // Defensive guard only -- task-executor.js's run-routine branch splices before this would
+    // ever be reached in normal operation.
+    async execute() {
+      throw new Error('run-routine must be expanded by the task executor before execution.');
     }
   })
 });

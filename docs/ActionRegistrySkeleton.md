@@ -25,7 +25,7 @@ registered/implemented — don't pre-fill them now.
 | 13 | `browser-navigate` | routine | standing task approval | Block G, Step 28 [High risk] | Schema drafted |
 | 14 | `browser-read` | routine | standing task approval | Block G, Step 28 [High risk] | Schema drafted |
 | 15 | `browser-form-fill-draft` | routine | standing task approval (no submit) | Block G, Step 28 [High risk] | Schema drafted |
-| 16 | `run-routine` | routine | standing approval; steps re-check own tier | Block H, Step 29 | Schema drafted |
+| 16 | `run-routine` | routine | standing approval; steps re-check own tier | Block H, Step 29 | Implemented and covered |
 
 ## Rules that apply to every row (from `docs/AgentContract.md`)
 

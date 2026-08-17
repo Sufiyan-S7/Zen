@@ -25,6 +25,7 @@
 // type-into-field use the identical mechanism instead of each inventing their own.
 const crypto = require('node:crypto');
 const { getAction } = require('./action-registry');
+const { prepareRoutineRun } = require('./routines');
 
 const TERMINAL_STATES = new Set(['completed', 'failed', 'cancelled']);
 const tasks = new Map();
@@ -108,6 +109,31 @@ function listActiveTasks() {
   return [...tasks.values()].filter((task) => task.state !== 'proposed' && !TERMINAL_STATES.has(task.state));
 }
 
+// Agent Home needs progress, not raw action inputs (which can include typed text or a
+// PowerShell command). Keep that UI projection deliberately small and local: task state,
+// goal, dates, and step outcomes only. Tasks are in-memory by design; durable execution detail
+// remains in the privacy-redacted audit log.
+function taskSummary(task) {
+  return {
+    id: task.id,
+    goal: task.goal,
+    state: task.state,
+    createdAt: task.createdAt,
+    startedAt: task.startedAt,
+    endedAt: task.endedAt,
+    currentStepIndex: task.currentStepIndex,
+    stepCount: task.steps.length,
+    steps: task.steps.map((step) => ({ actionId: step.actionId, summary: step.summary || step.actionId, status: step.status, error: step.error || null }))
+  };
+}
+
+function listTaskSummaries() {
+  return [...tasks.values()]
+    .sort((a, b) => Date.parse(b.endedAt || b.startedAt || b.createdAt) - Date.parse(a.endedAt || a.startedAt || a.createdAt))
+    .slice(0, 20)
+    .map(taskSummary);
+}
+
 function requestCancel(taskId) {
   const task = tasks.get(taskId);
   if (!task) return null;
@@ -169,6 +195,45 @@ async function runTask(taskId, { auditFn, onUpdate, confirmSensitiveStep }) {
     task.state = 'running';
 
     const step = task.steps[i];
+
+    // Block H, Step 29: expand a run-routine step into its routine's live-resolved steps
+    // in place, before the sensitive-gate/execute block below ever sees it -- so each spliced
+    // step then goes through that same gate individually (no bulk exemption from Section 8).
+    // prepareRoutineRun re-validates the routine fresh against the live registry right here,
+    // never trusting whatever was true when the routine was created or last previewed.
+    if (step.actionId === 'run-routine' && step.status === 'pending') {
+      const startedAt = new Date().toISOString();
+      let routine;
+      try {
+        routine = prepareRoutineRun(step.input.routineId);
+      } catch (error) {
+        step.status = 'failed';
+        step.error = error.message;
+        auditFn({
+          taskId: task.id, stepIndex: i, action: 'run-routine', riskTier: 'routine',
+          target: { routineId: step.input.routineId }, confirmationId: null, outcome: 'failed',
+          startedAt, endedAt: new Date().toISOString(), errorSummary: error.message
+        });
+        task.state = 'failed';
+        task.endedAt = new Date().toISOString();
+        onUpdate(task);
+        return task;
+      }
+      const expandedSteps = routine.steps.map((resolved) => ({
+        actionId: resolved.actionId, input: resolved.input, summary: resolved.summary,
+        status: 'pending', result: null, error: null
+      }));
+      task.steps.splice(i, 1, ...expandedSteps);
+      auditFn({
+        taskId: task.id, stepIndex: i, action: 'run-routine', riskTier: 'routine',
+        target: { routineId: routine.id, name: routine.name, stepCount: expandedSteps.length },
+        confirmationId: null, outcome: 'completed', startedAt, endedAt: new Date().toISOString(), errorSummary: null
+      });
+      onUpdate(task);
+      i -= 1;
+      continue;
+    }
+
     const action = getAction(step.actionId);
     const startedAt = new Date().toISOString();
 
@@ -259,7 +324,7 @@ function approveTask(taskId, hooks) {
 }
 
 module.exports = {
-  proposeTask, getTask, listActiveTasks, approveTask,
+  proposeTask, getTask, listActiveTasks, listTaskSummaries, approveTask,
   requestPause, requestResume, requestCancel,
   TERMINAL_STATES
 };

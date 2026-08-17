@@ -49,6 +49,11 @@ contextBridge.exposeInMainWorld('zen', {
   removeWorkflow: (id) => ipcRenderer.invoke('zen:workflows:remove', id),
   prepareWorkflowRun: (id) => ipcRenderer.invoke('zen:workflows:prepare-run', id),
   runWorkflow: (id) => ipcRenderer.invoke('zen:workflows:run', id),
+  listRoutines: () => ipcRenderer.invoke('zen:routines:list'),
+  previewRoutine: (name, steps) => ipcRenderer.invoke('zen:routines:preview', name, steps),
+  createRoutine: (name, steps) => ipcRenderer.invoke('zen:routines:create', name, steps),
+  removeRoutine: (id) => ipcRenderer.invoke('zen:routines:remove', id),
+  planRoutine: (name, goal) => ipcRenderer.invoke('zen:routines:plan', name, goal),
   getBackupStoreCounts: () => ipcRenderer.invoke('zen:backup:store-counts'),
   exportBackup: (localData) => ipcRenderer.invoke('zen:backup:export', localData),
   chooseBackupFile: () => ipcRenderer.invoke('zen:backup:choose-file'),
@@ -64,6 +69,8 @@ contextBridge.exposeInMainWorld('zen', {
   // whether the message is a task at all; if it is, the plan popup (a separate window) takes
   // over approve/pause/cancel from there -- nothing further comes back through this bridge.
   proposeTask: (goal) => ipcRenderer.invoke('zen:task:propose', goal),
+  listTasks: () => ipcRenderer.invoke('zen:task:list'),
+  listTaskAudit: () => ipcRenderer.invoke('zen:task:audit'),
   // Block E, Step 22: persistent folder-permission grants, surfaced on the Activity page.
   chooseFolderPermission: () => ipcRenderer.invoke('zen:permissions:choose-folder'),
   listFolderPermissions: () => ipcRenderer.invoke('zen:permissions:list'),

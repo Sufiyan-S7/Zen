@@ -7,6 +7,17 @@ in the running app.
 ## [Unreleased] — Zen v2.0
 
 ### Added — 2026-08-17
+- Block H routines and Agent Home: create a named, reviewable routine from a local task plan;
+  each saved routine is limited to 10 linear actions, re-validates against the live action
+  registry when it runs, cannot nest, and never bypasses a constituent sensitive step's fresh
+  confirmation. Routines are included in local backup/restore.
+- Agent Home shows saved routines, active/recent session tasks, 30-day redacted step history,
+  folder/browser access with direct revoke controls, and the current undo boundaries. It adds no
+  background runs or new permissions.
+- `npm run check` now syntax-checks and exercises routines, including backup round-trip,
+  invalid/nested routine rejection, and per-step confirmation after routine expansion.
+
+### Added — 2026-08-17
 - Block G browser control, live-verified end-to-end: found and fixed a real bug where
   `browser-navigate` → `browser-read` → `browser-form-fill-draft` chained onto three different
   tabs instead of one (own-window mode opened a fresh blank tab on every call), so a read right

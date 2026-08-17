@@ -293,7 +293,9 @@ planning, scoped file/app/browser automation, undo, and explicit safety controls
 
 As of August 16, 2026, this plan is being executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
-schedule. **Day 1 (Blocks A-D) and Day 2 Blocks E-F are complete; automated checks pass in full.**
+schedule. **Blocks A-H are implemented and automated checks pass in full. The final manual
+desktop smoke test for the PowerShell and accessibility-automation paths remains a release gate;
+v2.0 is not tagged until that walkthrough passes.**
 Day 1 closed out the foundation and core agent loop: system tray, single-instance lock, the
 `Ctrl+Alt+Space` global hotkey, the compact command overlay, push-to-talk voice input with typed
 fallback, and a working goal-to-plan-to-execution loop. Typing `Task: <goal>` in chat routes to a

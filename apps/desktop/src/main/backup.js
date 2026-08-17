@@ -2,6 +2,7 @@ const { exportApprovedApps, restoreApprovedApps } = require('./computer-control'
 const { exportCommands, restoreCommands } = require('./custom-commands');
 const { exportWorkflows, restoreWorkflows } = require('./workflows');
 const { exportDocuments, restoreDocuments } = require('./documents');
+const { exportRoutines, restoreRoutines } = require('./routines');
 
 const FORMAT_VERSION = 1;
 // Generous sanity ceiling per localStorage-derived section -- not a real limit on normal use,
@@ -34,7 +35,8 @@ function buildEnvelope(localData) {
       approvedApps: exportApprovedApps(),
       customCommands: exportCommands(),
       workflows: exportWorkflows(),
-      documents: exportDocuments()
+      documents: exportDocuments(),
+      routines: exportRoutines()
     }
   };
 }
@@ -52,6 +54,7 @@ function summarizeEnvelope(envelope) {
     customCommands: Array.isArray(data.customCommands) ? data.customCommands.length : 0,
     workflows: Array.isArray(data.workflows) ? data.workflows.length : 0,
     documents: Array.isArray(data.documents) ? data.documents.length : 0,
+    routines: Array.isArray(data.routines) ? data.routines.length : 0,
     activityLogEntries: Array.isArray(data.activityLog) ? data.activityLog.length : 0,
     hasSettings: !!(data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length)
   };
@@ -81,11 +84,13 @@ function applyEnvelope(envelope) {
   const customCommands = restoreCommands(data.customCommands);
   const workflows = restoreWorkflows(data.workflows);
   const documents = restoreDocuments(data.documents);
+  const routines = restoreRoutines(data.routines);
   return {
     approvedApps,
     customCommands,
     workflows,
     documents,
+    routines,
     localData: {
       conversations: Array.isArray(data.conversations) ? data.conversations : [],
       settings: data.settings && typeof data.settings === 'object' ? data.settings : {},

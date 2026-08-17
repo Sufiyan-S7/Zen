@@ -1792,3 +1792,78 @@ bugfix.
 
 **Exact next recommended step:** owner go-ahead to push, then Day 2 Block H (routines, Agent Home
 page, final full pass) per `docs/ZenV2-2Day-Sprint-Plan.md` -- Block H has not been started yet.
+
+
+## Project status audit (August 17, 2026)
+
+Performed a read-only project audit at the owner's request, verifying the live branch, working
+tree, sprint plan, current implementation, and automated-check result rather than relying only
+on prior handoff entries.
+
+**Completed and committed:** v2.0 Blocks A-G are on `zen-2.0` at `0f748d4`, matching
+`origin/zen-2.0`. This includes the tray/hotkey/overlay, local task planning and deterministic
+execution, folder-scoped file actions, accessibility-based app automation, off-by-default
+PowerShell control, and Chrome control. Block G's browser navigate/read/form-draft round trip
+was live-verified against Chrome before its commit.
+
+**In progress:** Block H Step 29 has a substantial but uncommitted backend implementation:
+`routines.js`, registry and executor support, IPC exposure, and backup/restore support. A saved
+routine is capped at 10 linear steps, re-validates every step against the live action registry at
+run time, cannot nest routines, and expands into ordinary task steps so sensitive actions still
+prompt individually. It is not yet user-accessible: no Agent Home/routine renderer UI exists,
+no dedicated routine test exists, and the main check command does not syntax-check `routines.js`.
+
+**Validation performed:** `npm.cmd --prefix apps\\desktop run check` was run. It currently
+fails in `scripts/check-action-registry.js`: its Block G assertion still expects 16 actions while
+the in-progress `run-routine` registration makes 17. Earlier checks through backup/export passed,
+including the changed backup test's routine round-trip. `git diff --check` passed.
+
+**Git state:** eight tracked files modified and `apps/desktop/src/main/routines.js` untracked,
+all apparently part of unfinished Block H. Pre-existing unrelated untracked items remain
+`.backups/`, `.cursorrules.txt`, and `deliverables/`; they were not changed. No commit or push
+was made by this audit.
+
+**Known verification gaps:** Block F still lacks the previously documented manual in-app test of
+the PowerShell toggle and real app-automation/PowerShell task runs. Block H additionally needs
+its Agent Home UI, routine tests, an end-to-end manual run, the sprint-wide smoke test, final
+documentation/changelog/LinkedIn draft, commit, and v2.0 tag.
+
+**Exact next recommended step:** finish Block H in this order: repair and expand automated
+coverage for routines, build the Agent Home UI and its revoke/history/undo views, run the full
+check suite, manually test the remaining Block F and all feature areas, then complete the
+close-out documentation and commit/tag only if all release gates pass.
+
+
+## v2.0 sprint -- Block H implementation and automated verification (August 17, 2026)
+
+**What changed:** completed Block H's named routines and Agent Home surface. `routines.js`
+persists up to 50 local routines of 1--10 linear registered actions, rejects nested routines,
+and re-validates every stored step against the live action registry immediately before a run.
+`run-routine` expands into ordinary executor steps, so a sensitive constituent action still
+stops for its own fresh confirmation; it does not receive a bulk permission exemption. Routines
+round-trip through local backup/restore. Agent Home now has a reviewed-routine builder, saved
+routine removal, active/recent session tasks, 30-day redacted execution history, undo guidance,
+and direct folder/browser revoke controls (with the existing Activity page retaining approved-app
+and Full System Control controls). Fixed the stale action-registry count (17 actions, 16 planner
+actions), added `check-routines.js`, added routine expansion/confirmation coverage to the
+executor check, and wired routines into the main check command and syntax check.
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passes in full (computer control,
+documents, commands, workflows, backup, action registry, task executor, permissions, app
+automation, PowerShell control, browser control, and routines). `git diff --check` passes.
+The first restricted-environment run could not read the existing Chrome-profile fixture; the same
+unchanged full check was then re-run with the required local read access and passed.
+
+**Known release gate:** automated checks do not substitute for the previously outstanding live
+desktop walkthrough. Still manually verify: enabling/disabling Full System Control with its typed
+acknowledgment; a routine and sensitive `run-powershell` confirmation; `click-control` and
+`type-into-field` against a real running approved app; plus one Agent Home routine create/run,
+folder/browser revoke, and task-history check. Do not create the `v2.0` tag until these pass.
+
+**Git state:** Block H is ready for a scoped local commit. It is security-adjacent because a
+routine can include the permission-gated PowerShell/browser actions, so commit locally and hold
+the push for owner approval under `INSTRUCTIONS.md` / `AGENT-UPDATE-PROTOCOL.md`.
+
+**Exact next recommended step:** complete the listed manual desktop smoke test, record its
+results here, then create the v2.0 tag and request approval before pushing the security-adjacent
+Block H commit.

@@ -12,6 +12,7 @@
         <a class="brand" href="#home"><span class="brand-mark">Z</span><span>Zen</span></a>
         <div class="nav-group">
           <button class="nav-item active" id="chat-button" type="button">Chat</button>
+          <button class="nav-item" id="agent-button" type="button">Agent Home <span aria-hidden="true">◈</span></button>
           <button class="nav-item" id="new-chat" type="button">New conversation <span aria-hidden="true">+</span></button>
           <button class="nav-item" id="settings-button" type="button">Settings <span aria-hidden="true">⚙</span></button>
           <button class="nav-item" id="memory-button" type="button">Memory <span aria-hidden="true">✦</span></button>
@@ -185,6 +186,58 @@
           </section>
         </div>
         <p class="footer">Document access is local and per import. Zen does not watch folders or change source files.</p>
+      </section>
+      <section class="content agent-page" id="agent-page" hidden aria-labelledby="agent-title">
+        <header>
+          <p class="eyebrow">ZEN / AGENT HOME</p>
+          <h1 id="agent-title">See what Zen can do.</h1>
+          <p class="intro">Tasks, routines, and permissions stay on this computer. Every routine re-checks its permissions when it runs; sensitive steps still require a fresh confirmation.</p>
+        </header>
+        <div class="settings-stack">
+          <section class="settings-card" aria-labelledby="routine-builder-title">
+            <p class="settings-label">SAVED, REVIEWABLE ROUTINES</p>
+            <h2 id="routine-builder-title">Create a routine</h2>
+            <p>Describe a repeatable task. Zen creates a local draft from the tools you have already approved; you review its exact steps before saving. Saying “Task: run &lt;routine name&gt;” in Chat or the voice overlay invokes it.</p>
+            <form id="routine-builder-form" class="website-form">
+              <label for="routine-name-input">Routine name</label>
+              <input id="routine-name-input" type="text" autocomplete="off" placeholder="Morning setup" maxlength="60" required />
+              <label for="routine-goal-input">What should it do?</label>
+              <textarea id="routine-goal-input" rows="3" maxlength="4000" placeholder="Open my approved calendar and navigate to https://example.com" required></textarea>
+              <div class="setting-row"><button type="submit">Review routine</button><span class="settings-help" id="routine-builder-help" aria-live="polite"></span></div>
+            </form>
+          </section>
+          <section class="settings-card" aria-labelledby="saved-routines-title">
+            <p class="settings-label">LOCAL ONLY</p>
+            <h2 id="saved-routines-title">Saved routines</h2>
+            <p>Saved routines do not grant any new access. If an app, folder, browser grant, or system-control setting changes, Zen fails the affected step closed.</p>
+            <div class="approved-app-list" id="routine-list" aria-live="polite"></div>
+          </section>
+          <section class="settings-card" aria-labelledby="active-tasks-title">
+            <p class="settings-label">THIS SESSION</p>
+            <h2 id="active-tasks-title">Active and recent tasks</h2>
+            <p>Task details are held only while Zen is running. The privacy-redacted execution history below remains local for 30 days.</p>
+            <div class="approved-app-list" id="agent-task-list" aria-live="polite"></div>
+          </section>
+          <section class="settings-card" aria-labelledby="agent-permissions-title">
+            <p class="settings-label">REVOKE ANY TIME</p>
+            <h2 id="agent-permissions-title">Access summary</h2>
+            <p>Revoke folder or browser access here any time. Removing an approved app or disabling Full System Control remains available in Activity.</p>
+            <div class="approved-app-list" id="agent-permission-list" aria-live="polite"></div>
+            <button class="secondary-button" id="agent-open-activity" type="button">Manage permissions in Activity</button>
+          </section>
+          <section class="settings-card" aria-labelledby="undo-title">
+            <p class="settings-label">UNDO AVAILABILITY</p>
+            <h2 id="undo-title">What can be undone</h2>
+            <p>Delete-file actions go to the Windows Recycle Bin, where Windows may restore them. Copy, move, rename, app, browser, and PowerShell actions do not yet have a one-click Zen undo. Review each task plan before approval.</p>
+          </section>
+          <section class="settings-card" aria-labelledby="task-history-title">
+            <p class="settings-label">30-DAY LOCAL HISTORY</p>
+            <h2 id="task-history-title">Recent executed steps</h2>
+            <p>Zen stores outcomes and redacted targets locally. It never records passwords, credential-field text, or unredacted secrets from PowerShell commands.</p>
+            <div class="activity-log" id="agent-task-history" aria-live="polite"></div>
+          </section>
+        </div>
+        <p class="footer">Routine steps are re-checked immediately before execution. No background monitoring or automatic runs.</p>
       </section>
       <section class="content activity-page" id="activity-page" hidden aria-labelledby="activity-title">
         <header>

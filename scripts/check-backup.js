@@ -6,6 +6,7 @@ const control = require('../apps/desktop/src/main/computer-control');
 const commands = require('../apps/desktop/src/main/custom-commands');
 const workflows = require('../apps/desktop/src/main/workflows');
 const documents = require('../apps/desktop/src/main/documents');
+const routines = require('../apps/desktop/src/main/routines');
 const backup = require('../apps/desktop/src/main/backup');
 
 function mustReject(work, expectedMessage) {
@@ -19,6 +20,7 @@ async function main() {
   commands.configureCustomCommands(sandbox);
   workflows.configureWorkflows(sandbox);
   documents.configureDocuments(sandbox);
+  routines.configureRoutines(sandbox);
 
   // configureApprovedApps auto-seeds a default explorer.exe approval on a brand-new store
   // (existing Day 1 behavior) -- remove it so this test's counts are deterministic regardless
@@ -40,6 +42,9 @@ async function main() {
   const docFile = path.join(sandbox, 'note.txt');
   fs.writeFileSync(docFile, 'Backup and export design notes.');
   const [importedDoc] = await documents.importDocuments([docFile]);
+  const routine = routines.createRoutine('Open docs', [
+    { actionId: 'open-website', input: { url: 'https://example.com/docs' } }
+  ]);
   const localData = {
     conversations: [{ id: 'c1', title: 'Hello', messages: [{ role: 'user', content: 'hi' }] }],
     settings: { theme: 'deep-violet', model: 'llama3.2:3b' },
@@ -55,6 +60,7 @@ async function main() {
   assert.equal(summary.customCommands, 1);
   assert.equal(summary.workflows, 1);
   assert.equal(summary.documents, 1);
+  assert.equal(summary.routines, 1);
   assert.equal(summary.conversations, 1);
   assert.equal(summary.memories, 1);
   assert.equal(summary.activityLogEntries, 1);
@@ -71,10 +77,12 @@ async function main() {
   commands.removeCommand(command.id);
   workflows.removeWorkflow(workflow.id);
   documents.removeDocument(importedDoc.id);
+  routines.removeRoutine(routine.id);
   assert.equal(control.listApprovedApps().length, 0);
   assert.equal(commands.listCommands().length, 0);
   assert.equal(workflows.listWorkflows().length, 0);
   assert.equal(documents.listDocuments().length, 0);
+  assert.equal(routines.listRoutines().length, 0);
 
   const applied = backup.applyEnvelope(envelope);
   assert.equal(applied.approvedApps.restored, 1);
@@ -85,6 +93,8 @@ async function main() {
   assert.equal(applied.workflows.skipped.length, 0);
   assert.equal(applied.documents.restored, 1);
   assert.equal(applied.documents.skipped.length, 0);
+  assert.equal(applied.routines.restored, 1);
+  assert.equal(applied.routines.skipped.length, 0);
   assert.deepEqual(applied.localData.conversations, localData.conversations);
   assert.deepEqual(applied.localData.memories, localData.memories);
 
@@ -96,6 +106,8 @@ async function main() {
   assert.equal(workflows.listWorkflows()[0].name, 'Morning with fallback');
   assert.equal(documents.listDocuments().length, 1);
   assert.equal(documents.listDocuments()[0].displayName, 'note.txt');
+  assert.equal(routines.listRoutines().length, 1);
+  assert.equal(routines.listRoutines()[0].name, 'Open docs');
 
   // --- Restore replaces, it does not merge: restoring an envelope with fewer items must
   // leave the store at exactly that count, not the sum of old + new. ---
@@ -130,6 +142,7 @@ async function main() {
     exportedAt: new Date().toISOString(),
     data: {
       conversations: [], settings: {}, activityLog: [], memories: [], approvedApps: [], customCommands: [], workflows: [],
+      routines: [],
       documents: [{ id: 'tampered', displayName: 'tampered.txt', extractedText: 'changed text', contentHash: 'deadbeef'.repeat(8) }]
     }
   };

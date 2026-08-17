@@ -11,6 +11,7 @@
 const assert = require('node:assert/strict');
 
 const registryPath = require.resolve('../apps/desktop/src/main/action-registry');
+const routinesPath = require.resolve('../apps/desktop/src/main/routines');
 let trackedExecutions = 0;
 require.cache[registryPath] = {
   id: registryPath,
@@ -50,7 +51,33 @@ require.cache[registryPath] = {
           async execute() { trackedExecutions += 1; await new Promise((resolve) => setTimeout(resolve, 30)); return { summary: 'tracked' }; }
         };
       }
+      if (id === 'run-routine') {
+        return {
+          id: 'run-routine',
+          riskTier: 'routine',
+          validateInput(input) {
+            if (!input || input.routineId !== 'routine_fixture') throw new Error('run-routine requires a valid routineId.');
+            return { routineId: input.routineId };
+          },
+          async execute() { throw new Error('routine fixture must be expanded before execution'); }
+        };
+      }
       return null;
+    }
+  }
+};
+
+// The executor's Block H behavior is tested without reading a real routine store: a routine
+// resolves to a sensitive constituent action, proving the executor splices it before applying
+// the same per-step confirmation gate rather than treating the wrapper itself as permission.
+require.cache[routinesPath] = {
+  id: routinesPath,
+  filename: routinesPath,
+  loaded: true,
+  exports: {
+    prepareRoutineRun(id) {
+      if (id !== 'routine_fixture') throw new Error('That routine is not stored in Zen.');
+      return { id, name: 'Sensitive fixture', steps: [{ actionId: 'test.sensitive', input: {}, summary: 'Sensitive fixture step' }] };
     }
   }
 };
@@ -170,6 +197,26 @@ function waitForTerminal(taskId) {
     const finalTask = executor.getTask(task.id);
     assert.equal(finalTask.state, 'cancelled', 'a declined sensitive confirmation must cancel, never fail, the task');
     assert.equal(hooks.audits[0].outcome, 'cancelled');
+  }
+
+  // --- Block H: a routine wrapper expands before execution and cannot bypass the confirmation
+  // gate belonging to one of its sensitive constituent steps. ---
+  {
+    const task = executor.proposeTask('Run fixture routine', [{ actionId: 'run-routine', input: { routineId: 'routine_fixture' } }]);
+    const hooks = collectHooks();
+    let confirmations = 0;
+    hooks.confirmSensitiveStep = async (_task, step) => {
+      confirmations += 1;
+      assert.equal(step.actionId, 'test.sensitive');
+      return 'confirm_routine_fixture';
+    };
+    executor.approveTask(task.id, hooks);
+    const finalTask = await waitForTerminal(task.id);
+    assert.equal(finalTask.state, 'completed');
+    assert.equal(confirmations, 1, 'a sensitive routine constituent must still require its own confirmation');
+    assert.equal(finalTask.steps[0].actionId, 'test.sensitive', 'the routine wrapper must be replaced with its resolved live step');
+    assert.ok(hooks.audits.some((record) => record.action === 'run-routine' && record.outcome === 'completed'));
+    assert.ok(hooks.audits.some((record) => record.action === 'test.sensitive' && record.confirmationId === 'confirm_routine_fixture'));
   }
 
   // --- Fixture: emergency stop -- cancel requested before any of 3 remaining steps execute.

@@ -9,15 +9,16 @@ const { configureDocuments, previewDocuments, importDocuments, listDocuments, se
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
-const { proposeTask, listActiveTasks, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
+const { proposeTask, listActiveTasks, listTaskSummaries, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
 const { planTask } = require('./task-planner');
-const { configureAuditLog, appendAuditRecord, pruneAuditLog } = require('./audit-log');
+const { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords } = require('./audit-log');
 const {
   configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions,
   grantBrowserPermission, revokeBrowserPermission, listBrowserPermissions
 } = require('./permissions');
 const { configurePowerShellControl, powerShellToggleStatus, enablePowerShell, disablePowerShell } = require('./powershell-control');
 const { setHandoffMode, handoffStatus, onBrowserActiveChange } = require('./browser-control');
+const { configureRoutines, previewRoutine, createRoutine, listRoutines, removeRoutine } = require('./routines');
 
 let mainWindow = null;
 let overlayWindow = null;
@@ -573,6 +574,7 @@ app.whenReady().then(() => {
   configureWorkflows(app.getPath('userData'));
   configureAuditLog(app.getPath('userData'));
   configurePermissions(app.getPath('userData'));
+  configureRoutines(app.getPath('userData'));
   configurePowerShellControl(app.getPath('userData'));
   // Block G, Step 27: the "Zen is active" indicator's show/hide is driven entirely by
   // browser-control.js's own handoff state (set/cleared/auto-reverted there) -- main.js only
@@ -841,7 +843,7 @@ app.whenReady().then(() => {
     if (typeof goal !== 'string' || !goal.trim()) throw new Error('A task needs a non-empty goal.');
     const grantedFolders = listPermissions().filter((entry) => !entry.revokedAt).map((entry) => entry.scope);
     const browserGranted = listBrowserPermissions().some((entry) => !entry.revokedAt);
-    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders, browserGranted });
+    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders, browserGranted, routines: listRoutines() });
     if (!plan.isTask) return { isTask: false };
     // Defense-in-depth: proposeTask's validateInput is shape-only for every action now (see
     // action-registry.js), so this should rarely fire -- but if the model ever names an
@@ -880,6 +882,8 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('zen:task:pause', (_event, taskId) => requestPause(taskId));
   ipcMain.handle('zen:task:resume', (_event, taskId) => requestResume(taskId));
+  ipcMain.handle('zen:task:list', () => listTaskSummaries());
+  ipcMain.handle('zen:task:audit', () => listAuditRecords().slice(-100).reverse());
   ipcMain.handle('zen:task:cancel', (_event, taskId) => {
     const task = requestCancel(taskId);
     // Unblock a task currently awaiting sensitive confirmation -- otherwise Cancel while
@@ -890,6 +894,18 @@ app.whenReady().then(() => {
     return task;
   });
   ipcMain.on('zen:task:popup-close', () => hideTaskPopup());
+  ipcMain.handle('zen:routines:list', () => listRoutines());
+  ipcMain.handle('zen:routines:preview', (_event, name, steps) => previewRoutine(name, steps));
+  ipcMain.handle('zen:routines:create', (_event, name, steps) => createRoutine(name, steps));
+  ipcMain.handle('zen:routines:remove', (_event, id) => removeRoutine(id));
+  ipcMain.handle('zen:routines:plan', async (_event, name, goal) => {
+    if (typeof goal !== 'string' || !goal.trim() || goal.length > 4_000) throw new Error('Describe what this routine should do in up to 4,000 characters.');
+    const grantedFolders = listPermissions().filter((entry) => !entry.revokedAt).map((entry) => entry.scope);
+    const browserGranted = listBrowserPermissions().some((entry) => !entry.revokedAt);
+    const plan = await planTask(goal.trim(), { model: DEFAULT_MODEL, approvedApps: listApprovedApps(), documents: listDocuments(), grantedFolders, browserGranted, routines: [] });
+    if (!plan.isTask) throw new Error('Zen could not turn that into a safe routine. Describe a concrete action using an approved app, site, folder, or browser permission.');
+    return previewRoutine(name, plan.steps);
+  });
   ipcMain.handle('zen:permissions:choose-folder', async (event) => {
     const result = await require('electron').dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
       title: 'Grant Zen access to a folder', properties: ['openDirectory']
