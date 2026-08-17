@@ -1917,3 +1917,50 @@ withheld until the manual release checks below are confirmed.
 **Exact next recommended step:** manually test “Open YouTube”, an approved app, one granted
 folder search/read request, and a browser navigate/read request; then confirm a move/delete or
 PowerShell request still opens review/confirmation before creating the v2.0 tag.
+
+
+## v2.0 release verification and finalization (August 17, 2026)
+
+**What was verified this session (live repo state, not memory):** confirmed `zen-2.0` synced
+with `origin/zen-2.0`. Reviewed every claim from the prior session directly against source:
+
+- `docs/AgentContract.md` Section 9 Fixture 2 correction matched the described fix exactly
+  (unregistered-action rejection now correctly expects `proposeTask` to throw synchronously
+  during step validation, before a `taskId` exists, with zero audit records -- not the
+  structurally-impossible "one audit record for the rejected attempt itself"). Committed as
+  `4d614c3`.
+- `npm.cmd --prefix apps\desktop run check` passes in full (13 check scripts, all green),
+  including `check-routines.js` and `check-browser-control.js`, both correctly wired into
+  `package.json`'s `check` script.
+- `run-routine` splicing verified directly in `task-executor.js`: calls `prepareRoutineRun`,
+  splices resolved steps in place via `task.steps.splice(i, 1, ...expandedSteps)`, and each
+  spliced step re-resolves its own risk tier/confirmation at run time -- no bulk exemption, per
+  `AgentContract.md` Section 8.
+- Routine IPC (`list/preview/create/remove/plan`) and folder-permission bridge methods confirmed
+  wired through `preload.js` and consumed live in `renderer.js`/`index.html`.
+- Owner completed the manual smoke test (routines standalone + spliced, Agent Home live checks,
+  real click-through automation, delete-file re-confirmation via Recycle Bin) -- all passed.
+
+**Known gap, logged and owner-accepted (deferred to v2.1):** Sprint Plan Step 5/Step 30 called
+for "list recent/terminal tasks," "clear task history," and "clear audit log" in Agent Home.
+Direct code search of `task-executor.js`, `audit-log.js`, `main.js`, `preload.js`, and
+`index.html` confirms `listTaskSummaries()` exists, but **no clear-task-history or
+clear-audit-log function, IPC handler, or UI control exists anywhere in the codebase.** This is
+a real, verified gap -- not a documentation lag. Owner reviewed and explicitly chose to log it
+here and defer to v2.1 rather than block the v2.0 release on it. Task history remains
+view-only and unbounded (append-only audit log) in v2.0; no data-loss risk from this gap, only
+a missing convenience/privacy control.
+
+**Git state:** `zen-2.0` synced with `origin/zen-2.0` at this session's start; one new local
+commit (`4d614c3`, the AgentContract fixture fix) made and pushed this session with owner
+approval. All prior Block E-H commits already on `origin/zen-2.0`.
+
+**Release decision:** all 30 implemented sprint steps automated-check green; manual smoke test
+passed live by owner; one scoped, documented, owner-accepted gap (clear-history/clear-audit-log)
+deferred to v2.1. Tagged `v2.0` on `zen-2.0` at commit `4d614c3`.
+
+**Exact next recommended step for v2.1:** implement `clearTaskHistory()` /
+`clearAuditLog()` in `task-executor.js`/`audit-log.js`, wire IPC + preload bridge methods
+mirroring the existing routine/permission pattern, add history list + clear buttons to Agent
+Home in `index.html`/`renderer.js`, and add a `check-task-history.js` (or extend
+`check-task-executor.js`) covering the clear behavior before it is called done.
