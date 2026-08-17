@@ -1869,3 +1869,19 @@ PowerShell/browser actions, so the push remains held for owner approval under `I
 **Exact next recommended step:** complete the listed manual desktop smoke test, record its
 results here, then create the v2.0 tag and request approval before pushing the security-adjacent
 Block H commit.
+
+
+## v2.0 sprint-plan completion audit (August 17, 2026)
+
+Audited every requirement in `docs/ZenV2-2Day-Sprint-Plan.md` against the live branch, commits,
+automated checks, and prior manual-test records. Steps 1--30 are implemented; Block B's hotkey
+smoke test and Block G's live Chrome round trip are recorded as passed, and the full automated
+suite is green. **The sprint is not fully complete:** Step 31 requires one manual end-to-end task
+per feature area plus the final `v2.0` tag. The remaining explicit gap is the live PowerShell
+toggle/routine/sensitive-confirmation and approved-app `click-control`/`type-into-field` test,
+along with an Agent Home create/run/revoke/history walkthrough. `v2.0` has not been tagged and
+the local commits after `origin/zen-2.0` have not been pushed, correctly held for the
+security-adjacent change approval rule.
+
+**Exact next recommended step:** complete and record those manual tests; if they pass, tag the
+release `v2.0` and request approval to push.
