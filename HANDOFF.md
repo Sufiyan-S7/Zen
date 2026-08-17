@@ -1860,9 +1860,11 @@ acknowledgment; a routine and sensitive `run-powershell` confirmation; `click-co
 `type-into-field` against a real running approved app; plus one Agent Home routine create/run,
 folder/browser revoke, and task-history check. Do not create the `v2.0` tag until these pass.
 
-**Git state:** Block H is ready for a scoped local commit. It is security-adjacent because a
-routine can include the permission-gated PowerShell/browser actions, so commit locally and hold
-the push for owner approval under `INSTRUCTIONS.md` / `AGENT-UPDATE-PROTOCOL.md`.
+**Git state:** Block H is committed locally as `6c34ffc` (`feat(agent): add routines and Agent
+Home (Block H)`). It is security-adjacent because a routine can include the permission-gated
+PowerShell/browser actions, so the push remains held for owner approval under `INSTRUCTIONS.md`
+/ `AGENT-UPDATE-PROTOCOL.md`. Pre-existing untracked `.backups/`, `.cursorrules.txt`, and
+`deliverables/` remain excluded.
 
 **Exact next recommended step:** complete the listed manual desktop smoke test, record its
 results here, then create the v2.0 tag and request approval before pushing the security-adjacent
