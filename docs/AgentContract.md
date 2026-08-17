@@ -28,7 +28,7 @@ A task moves through a fixed, closed set of states:
 | State | Meaning | Entered from |
 | --- | --- | --- |
 | `proposed` | Zen has produced a structured plan from the owner's goal; nothing has run | New task |
-| `approved` | Owner gave the one-time per-task approval | `proposed` |
+| `approved` | Owner approved the task, or Zen's direct-request policy classified every step as auto-run eligible | `proposed` |
 | `running` | The executor is actively executing steps | `approved`, `paused`, `blocked` |
 | `paused` | Owner-initiated pause; no step is executing | `running` |
 | `blocked` | A step needs a fresh confirmation (sensitive action) or hit an unrecoverable, non-fatal snag and needs owner input to continue | `running` |
@@ -77,8 +77,11 @@ in this `sensitive` list once the toggle exists; everything else it can run is `
 toggle itself is registered as a `sensitive` action in Section 3's permission-record sense —
 enabling it requires the same typed-acknowledgment weight as any other sensitive action.
 
-**Routine** — everything else. Once a task is approved, routine steps execute and report without
-re-prompting.
+**Routine** — everything else. Direct requests containing only `open-app`, `open-website`,
+`list-folder`, `search-folder`, `read-file`, `browser-navigate`, or `browser-read` can start
+without the old task-level Start click, but only after their normal live app/folder/browser grant
+checks pass. Other routine action types remain plan-review-gated. Once started, routine steps
+execute and report without re-prompting.
 
 Every action in the registry (Section 7) carries a fixed risk tier at registration time. A step's
 tier is never decided at runtime by the model — the executor looks it up from the registry.
@@ -180,11 +183,11 @@ tracker: `docs/ActionRegistrySkeleton.md` (fill in Status per action as it's act
 | Action ID | Risk tier | Confirmation |
 | --- | --- | --- |
 | `noop.wait` | routine | standing task approval (test action; touches nothing outside Zen's own process) |
-| `open-app` | routine | standing task approval |
-| `open-website` | routine | standing task approval |
-| `read-file` | routine | standing task approval; scoped to a live, unrevoked folder/app permission (Section 3) |
-| `list-folder` | routine | standing task approval |
-| `search-folder` | routine | standing task approval |
+| `open-app` | routine | direct-request auto-run when the app remains approved; otherwise standing task approval |
+| `open-website` | routine | direct-request auto-run for validated HTTPS URLs; otherwise standing task approval |
+| `read-file` | routine | direct-request auto-run inside a live, unrevoked folder permission; otherwise standing task approval |
+| `list-folder` | routine | direct-request auto-run inside a live, unrevoked folder permission; otherwise standing task approval |
+| `search-folder` | routine | direct-request auto-run inside a live, unrevoked folder permission; otherwise standing task approval |
 | `move-file` | routine | standing task approval + preview-before-execute (Block E Step 24) |
 | `copy-file` | routine | standing task approval + preview-before-execute |
 | `rename-file` | routine | standing task approval + preview-before-execute |
@@ -192,8 +195,8 @@ tracker: `docs/ActionRegistrySkeleton.md` (fill in Status per action as it's act
 | `click-control` | routine | standing task approval — see flagged gap below |
 | `type-into-field` | routine, except credential/password fields | fresh confirmation when the target field is a credential/password field ("entering credentials" is fixed-sensitive in Section 2); standing approval otherwise |
 | `run-powershell` | routine by default; **sensitive** for trigger-pattern matches | one-time typed acknowledgment to enable the toggle, plus a fresh confirmation whenever a step matches the delete/format/uninstall/registry-write/kill-process/execution-policy/disk trigger list (Section 2) |
-| `browser-navigate` | routine | standing task approval |
-| `browser-read` | routine | standing task approval; page content always treated as untrusted data, never instructions |
+| `browser-navigate` | routine | direct-request auto-run with live browser permission; otherwise standing task approval |
+| `browser-read` | routine | direct-request auto-run with live browser permission; page content always treated as untrusted data, never instructions |
 | `browser-form-fill-draft` | routine | standing task approval — draft only, no submit/checkout/password/CAPTCHA/2FA autonomy |
 | `run-routine` | routine at the registry level | standing task approval; each constituent step still resolves its own tier and permission at run time (no bulk exemption from Section 8) |
 

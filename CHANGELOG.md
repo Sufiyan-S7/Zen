@@ -6,6 +6,13 @@ in the running app.
 
 ## [Unreleased] — Zen v2.0
 
+### Changed — 2026-08-17
+- Direct requests now use Zen's local planner: “Open YouTube” no longer needs a `Task:` prefix.
+  Validated low-impact plans auto-run while file changes, UI control, form drafts, routines, and
+  PowerShell remain review-gated; sensitive steps still require their fresh confirmation.
+- Folder access now presents one clear **Select folder** action. A selected folder is a persistent
+  grant for Zen's scoped file tools; deletion remains Recycle-Bin-routed and confirmation-gated.
+
 ### Added — 2026-08-17
 - Block H routines and Agent Home: create a named, reviewable routine from a local task plan;
   each saved routine is limited to 10 linear actions, re-validates against the live action

@@ -11,6 +11,7 @@ const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prep
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
 const { proposeTask, listActiveTasks, listTaskSummaries, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
 const { planTask } = require('./task-planner');
+const { shouldAutoRunPlan } = require('./auto-run-policy');
 const { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords } = require('./audit-log');
 const {
   configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions,
@@ -543,6 +544,16 @@ function pushTaskUpdate(task) {
   if (taskPopupWindow && !taskPopupWindow.isDestroyed()) taskPopupWindow.webContents.send('zen:task:update', task);
 }
 
+function taskExecutionHooks() {
+  return {
+    auditFn: appendAuditRecord,
+    onUpdate: pushTaskUpdate,
+    confirmSensitiveStep: async (task) => new Promise((resolve) => {
+      pendingSensitiveConfirmations.set(task.id, resolve);
+    })
+  };
+}
+
 // Block B, Step 9: global hotkey with conflict detection. register() returns false rather than
 // throwing when another application already owns the accelerator, so a failed registration is
 // surfaced (tray tooltip + log) instead of silently doing nothing when the owner later presses
@@ -856,20 +867,13 @@ app.whenReady().then(() => {
     } catch {
       return { isTask: false };
     }
+    const autoStarted = shouldAutoRunPlan(task.steps);
+    if (autoStarted) approveTask(task.id, taskExecutionHooks());
     showTaskPopup(task);
-    return { isTask: true, task };
+    return { isTask: true, autoStarted, task };
   });
   ipcMain.handle('zen:task:approve', (_event, taskId) => {
-    const task = approveTask(taskId, {
-      auditFn: appendAuditRecord,
-      onUpdate: pushTaskUpdate,
-      // Block E, Step 24: delete-file is the first sensitive action to actually exercise this.
-      // The Promise resolves via zen:task:confirm-sensitive below (popup Approve/Deny), or via
-      // zen:task:cancel resolving it as a denial if the owner cancels while blocked.
-      confirmSensitiveStep: async () => new Promise((resolve) => {
-        pendingSensitiveConfirmations.set(taskId, resolve);
-      })
-    });
+    const task = approveTask(taskId, taskExecutionHooks());
     return task;
   });
   ipcMain.handle('zen:task:confirm-sensitive', (_event, taskId, approved) => {

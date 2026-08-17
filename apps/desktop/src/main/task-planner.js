@@ -5,9 +5,10 @@
 // than a keyword/regex detector -- a multi-step plan across several registry actions is a
 // composition problem regex can't do reliably, which is why the sprint plan itself flags this
 // step as the one most likely to need iteration. Single-action requests (open one app, open one
-// website) keep using the existing lightweight detectors in renderer.js unchanged; this planner
-// is only reached for explicit multi-step task requests (see isTaskRequest() in renderer.js) so
-// nothing here doubles an Ollama call on ordinary chat.
+// website) originally used lightweight renderer detectors. Direct action requests now enter this
+// constrained planner too, so the local model can interpret ordinary language such as “open
+// YouTube” without a special command prefix; ordinary conversation still falls through when it
+// returns isTask:false.
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/chat';
 
 function buildSystemPrompt(approvedApps, documents, grantedFolders, browserGranted, routines = []) {
@@ -35,7 +36,7 @@ function buildSystemPrompt(approvedApps, documents, grantedFolders, browserGrant
     '',
     'Only use these actionIds, exactly as written, each with exactly this input shape:',
     '- "open-app": input {"appId": string} -- appId must be one of the approved apps listed below.',
-    '- "open-website": input {"url": string} -- a full https:// URL.',
+    '- "open-website": input {"url": string} -- a full https:// URL. For a well-known public website explicitly named by the owner (for example, YouTube), you may use its canonical HTTPS URL. Otherwise do not guess a domain; set isTask false.',
     '- "list-folder": input {"folderPath": string} -- must be one of the granted folders below, or a path inside one.',
     '- "search-folder": input {"folderPath": string, "query": string} -- folderPath must be granted (see above); query is a filename substring.',
     '- "read-file": input {"documentId": string} to read an imported document, OR {"filePath": string} for any other file -- filePath must be inside a granted folder.',

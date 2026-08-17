@@ -298,10 +298,13 @@ desktop smoke test for the PowerShell and accessibility-automation paths remains
 v2.0 is not tagged until that walkthrough passes.**
 Day 1 closed out the foundation and core agent loop: system tray, single-instance lock, the
 `Ctrl+Alt+Space` global hotkey, the compact command overlay, push-to-talk voice input with typed
-fallback, and a working goal-to-plan-to-execution loop. Typing `Task: <goal>` in chat routes to a
-local-model planner, shows the plan in a separate top-right popup window, and on approval runs it
-through a deterministic executor with per-step timeouts/retries, pause/resume/cancel, a global
-`Ctrl+Alt+Escape` emergency stop, and an append-only local audit log. Block E added persistent
+fallback, and a working goal-to-plan-to-execution loop. Direct requests such as “Open YouTube”
+now route to the local-model planner without a `Task:` prefix. Zen auto-runs validated low-impact
+actions (open approved apps/HTTPS sites, search or read inside selected folders, and browser
+research after browser access is granted); file changes, UI automation, form filling, routines,
+and PowerShell still show a task review, while sensitive actions always require a fresh
+confirmation. The task window shows progress, supports pause/resume/cancel, and works with the
+global `Ctrl+Alt+Escape` emergency stop and append-only local audit log. Block E added persistent
 folder-permission grants (Activity page, grant/list/revoke) and real file actions on top of that
 loop: `search-folder`, `read-file` on any file inside a granted folder, and `move-file`/
 `copy-file`/`rename-file`/`delete-file` -- delete is Recycle-Bin-routed and asks for a fresh,

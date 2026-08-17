@@ -1,3 +1,10 @@
+## 2026-08-17 — Zen v2.0, direct requests
+
+Added a more natural control flow to Zen v2.0: say “Open YouTube” instead of memorising a
+special command prefix. Zen's local planner now auto-runs validated, low-impact actions while
+keeping file changes, PowerShell, and sensitive actions behind the right review gates. Folder
+access is now a simple Select folder grant, still local and revocable. 🧵
+
 ## 2026-08-17 — Zen v2.0, Day 2: safe local automation
 
 Added the Day 2 agent controls to Zen v2.0: scoped file actions, accessibility-first app control,

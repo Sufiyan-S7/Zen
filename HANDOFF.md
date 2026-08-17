@@ -1885,3 +1885,33 @@ security-adjacent change approval rule.
 
 **Exact next recommended step:** complete and record those manual tests; if they pass, tag the
 release `v2.0` and request approval to push.
+
+
+## v2.0 direct-request and folder-grant update (August 17, 2026)
+
+**What changed:** owner requested natural-language execution without the `Task:` prefix and no
+approval dialog for small actions. Direct verb-led requests now reach the constrained local
+planner; plans made exclusively of open-approved-app, validated HTTPS open-website, live-grant
+folder list/search/read, or live-grant browser navigate/read actions auto-start and show progress
+in the task window. File moves/copies/renames, deletes, UI control, typed text, form drafts,
+routines, and PowerShell remain plan-review-gated; every sensitive action remains fresh-confirmed.
+The Activity folder-permission control is now labelled **Select folder**. Selecting it creates the
+existing persistent grant for all scoped file actions inside that folder; delete remains an
+explicit confirmation and Recycle-Bin operation, per the standing high-impact safety boundary.
+
+**Validation:** added `check-auto-run-policy.js`, which proves the allowed seven auto-run action
+types and rejects all review-gated types. `npm.cmd --prefix apps\desktop run check` passes in
+full, including the browser, PowerShell, executor, permission, and new policy checks;
+`git diff --check` passes.
+
+**Known issue / judgment call:** a well-known public site may be resolved to its canonical HTTPS
+URL by the local planner (for example, YouTube); it must return no task rather than guess when a
+site is not well known. This is an owner-authorized usability policy for direct requests, not a
+general permission to execute unregistered actions.
+
+**Git state:** update is ready for a scoped local commit; push remains held because it changes
+the execution/confirmation policy.
+
+**Exact next recommended step:** manually test “Open YouTube”, an approved app, one granted
+folder search/read request, and a browser navigate/read request; then confirm a move/delete or
+PowerShell request still opens review/confirmation before creating the v2.0 tag.

@@ -2027,17 +2027,16 @@ async function detectAppOpenIntent(content) {
   return { isRequest: isAppOpenRequest(content), match: null };
 }
 
-// Block D, Step 17: explicit trigger for the multi-step planner, kept separate from the
-// existing single-action detectors below (app-open, website-open, folder-search,
-// document-question) so those keep working exactly as before with no extra Ollama call on
-// ordinary chat messages. "Task:" is a deliberate, narrow interim gate -- not specified by the
-// sprint plan, flagged per INSTRUCTIONS.md Section 5 -- chosen for zero false-positive risk over
-// a fuzzier heuristic; a dedicated UI entry point can replace it once Agent Home (Block H) exists.
-function isTaskRequest(content) {
-  return /^\s*task\s*:/i.test(content);
+// Direct natural-language computer requests use the constrained local planner. This deliberately
+// has a verb gate so normal conversation remains normal chat; “Task:” is accepted only as a
+// backwards-compatible alias, never required.
+function looksLikeComputerRequest(content) {
+  return /^\s*task\s*:/i.test(content)
+    || /^\s*(?:open|launch|start|run|go to|visit|navigate|search|find|list|show|read|research|look up|copy|move|rename|delete|click|type)\b/i.test(content)
+    || /^\s*https:\/\//i.test(content);
 }
 
-async function handleChatTaskRequest(conversation, content) {
+async function tryDirectTaskRequest(conversation, content) {
   const pushAssistantMessage = (text) => {
     conversation.messages.push({ role: 'assistant', content: text, createdAt: new Date().toISOString() });
     updateConversationMetadata(conversation);
@@ -2045,18 +2044,17 @@ async function handleChatTaskRequest(conversation, content) {
     render();
   };
   const goal = content.replace(/^\s*task\s*:\s*/i, '').trim();
-  if (!goal) {
-    pushAssistantMessage('Tell Zen what to do after "Task:" -- for example, "Task: open Notepad and read my resume".');
-    return;
-  }
-  pushAssistantMessage('Working out a plan for that -- check the small window in the top-right corner to review and start it.');
+  if (!goal) return false;
   try {
     const result = await window.zen.proposeTask(goal);
-    if (!result || !result.isTask) {
-      pushAssistantMessage("Zen couldn't turn that into a plan using apps it's approved to open or documents it has imported. Try being more specific, or approve the app/import the document first.");
-    }
+    if (!result || !result.isTask) return false;
+    pushAssistantMessage(result.autoStarted
+      ? 'Zen is handling that now. Progress is shown in the task window.'
+      : 'Zen prepared that task. Review it in the task window before it starts.');
+    return true;
   } catch (error) {
     pushAssistantMessage(error.message || 'Zen could not plan that task.');
+    return true;
   }
 }
 
@@ -2841,10 +2839,7 @@ form.addEventListener('submit', async (event) => {
   input.style.height = 'auto';
   saveConversations();
   render();
-  if (isTaskRequest(content)) {
-    await handleChatTaskRequest(conversation, content);
-    return;
-  }
+  if (looksLikeComputerRequest(content) && await tryDirectTaskRequest(conversation, content)) return;
   const appIntent = await detectAppOpenIntent(content);
   if (appIntent.isRequest) {
     await handleChatAppOpenRequest(conversation, content, appIntent.match);
