@@ -1909,8 +1909,10 @@ URL by the local planner (for example, YouTube); it must return no task rather t
 site is not well known. This is an owner-authorized usability policy for direct requests, not a
 general permission to execute unregistered actions.
 
-**Git state:** update is ready for a scoped local commit; push remains held because it changes
-the execution/confirmation policy.
+**Git state:** committed locally as `a31fed6` (`feat(agent): allow direct low-impact requests`),
+following the Block H commits. Owner explicitly authorized pushing the Day 2 commits on August
+17; all commits through `a31fed6` pushed to `origin/zen-2.0` this session. The `v2.0` tag remains
+withheld until the manual release checks below are confirmed.
 
 **Exact next recommended step:** manually test “Open YouTube”, an approved app, one granted
 folder search/read request, and a browser navigate/read request; then confirm a move/delete or
