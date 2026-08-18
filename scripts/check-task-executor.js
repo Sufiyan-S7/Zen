@@ -253,6 +253,64 @@ function waitForTerminal(taskId) {
   {
     const proposedOnly = executor.proposeTask('Never approved', [{ actionId: 'noop.wait', input: { seconds: 0 } }]);
     assert.ok(!executor.listActiveTasks().some((t) => t.id === proposedOnly.id), 'a proposed (not yet approved) task must not count as active');
+
+    // --- v2.1: clearTaskHistory only drops terminal-state tasks. Every task proposed/approved
+    // in the fixtures above is either 'completed' or 'cancelled' by now except this one
+    // (still 'proposed', never approved) -- clearTaskHistory must remove all of those but leave
+    // this one untouched, proving the "never touch what's in flight" rule extends to proposed
+    // tasks too, not just running/paused/blocked ones. ---
+    const beforeClear = executor.listTaskSummaries();
+    assert.ok(beforeClear.some((t) => executor.TERMINAL_STATES.has(t.state)), 'sanity check: prior fixtures must have left at least one terminal task to clear');
+    const clearResult = executor.clearTaskHistory();
+    assert.ok(clearResult.cleared > 0, 'clearTaskHistory must report how many terminal tasks it removed');
+    const afterClear = executor.listTaskSummaries();
+    assert.ok(!afterClear.some((t) => executor.TERMINAL_STATES.has(t.state)), 'no terminal-state task may survive clearTaskHistory');
+    assert.ok(afterClear.some((t) => t.id === proposedOnly.id), 'a non-terminal (proposed) task must survive clearTaskHistory');
+
+    // Calling it again with nothing left to clear must be a safe no-op, not an error.
+    const secondClear = executor.clearTaskHistory();
+    assert.equal(secondClear.cleared, 0);
+  }
+
+  // --- v2.1: audit-log.js's clearAuditLog -- real module, real temp store (not stubbed, unlike
+  // action-registry.js/routines.js above, since audit-log.js has no dependency on either and is
+  // simple enough to exercise directly against a real file). Verifies it empties the log,
+  // reports the pre-clear count, and that pruneAuditLog/appendAuditRecord still work normally
+  // afterward (clearing must not corrupt the store for future writes). ---
+  {
+    const fs = require('node:fs');
+    const os = require('node:os');
+    const path = require('node:path');
+    const auditLog = require('../apps/desktop/src/main/audit-log');
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'zen-audit-'));
+    auditLog.configureAuditLog(sandbox);
+
+    auditLog.appendAuditRecord({
+      taskId: 'task_1', stepIndex: 0, action: 'noop.wait', riskTier: 'routine',
+      target: {}, outcome: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString()
+    });
+    auditLog.appendAuditRecord({
+      taskId: 'task_1', stepIndex: 1, action: 'noop.wait', riskTier: 'routine',
+      target: {}, outcome: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString()
+    });
+    assert.equal(auditLog.listAuditRecords().length, 2);
+
+    const clearResult = auditLog.clearAuditLog();
+    assert.equal(clearResult.cleared, 2, 'clearAuditLog must report how many records it removed');
+    assert.equal(auditLog.listAuditRecords().length, 0, 'the audit log must be empty immediately after clearing');
+
+    // Clearing an already-empty log is a safe no-op.
+    assert.equal(auditLog.clearAuditLog().cleared, 0);
+
+    // The store must still be writable/readable normally after being cleared once.
+    auditLog.appendAuditRecord({
+      taskId: 'task_2', stepIndex: 0, action: 'noop.wait', riskTier: 'routine',
+      target: {}, outcome: 'completed', startedAt: new Date().toISOString(), endedAt: new Date().toISOString()
+    });
+    assert.equal(auditLog.listAuditRecords().length, 1, 'appendAuditRecord must still work after a clear');
+    assert.equal(auditLog.pruneAuditLog().kept, 1, 'pruneAuditLog must still work normally after a clear');
+
+    fs.rmSync(sandbox, { recursive: true, force: true });
   }
 
   console.log('Task-executor checks passed.');

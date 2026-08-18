@@ -1,3 +1,10 @@
+## 2026-08-18 — Zen v2.1, clearing your own history
+
+Small but overdue addition to Zen v2.0's Agent Home: you can now clear finished task history and
+the local audit log yourself, each behind its own confirmation. Task history only ever drops
+completed/failed/cancelled runs — anything still in progress stays untouched. Still fully local,
+zero telemetry. 🧵
+
 ## 2026-08-17 — Zen v2.0, direct requests
 
 Added a more natural control flow to Zen v2.0: say “Open YouTube” instead of memorising a

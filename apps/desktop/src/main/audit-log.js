@@ -66,4 +66,18 @@ function listAuditRecords() {
   return readAuditRecords();
 }
 
-module.exports = { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords };
+// v2.1: Sprint Plan Step 5/30 + AgentContract.md Section 6 -- the one deliberate exception to
+// this file's header comment ("appendAuditRecord only appends; pruneAuditLog is the only
+// function that rewrites the file, and it only removes expired records"). The contract itself
+// carves this out explicitly: "the owner can manually clear task/audit history at any time...
+// the same pattern as the existing activity-log clear-with-confirmation control." Unlike
+// pruneAuditLog (automatic, age-based, partial), this is an explicit owner action that empties
+// the log entirely -- the caller (main.js) is responsible for gating it behind a confirmation
+// UI, same as any other destructive control.
+function clearAuditLog() {
+  const before = readAuditRecords().length;
+  writeAuditRecords([]);
+  return { cleared: before };
+}
+
+module.exports = { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords, clearAuditLog };

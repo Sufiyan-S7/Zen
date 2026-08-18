@@ -4,7 +4,22 @@ All notable changes to Zen are documented in this file. Zen is a local-first Win
 assistant; every entry below reflects work already implemented and, where noted, verified live
 in the running app.
 
-## [Unreleased] — Zen v2.0
+## [Unreleased] — Zen v2.1
+
+### Added — 2026-08-18
+- Agent Home can now clear its own history: **Clear finished task history** removes only
+  completed/failed/cancelled tasks (a task still in flight is never touched), and **Clear audit
+  log** empties Zen's local, append-only `task-audit.log`. Both are confirm-before-clearing and
+  local only; neither affects saved routines, permissions, or approvals.
+- Automated coverage for both new clears added to `scripts/check-task-executor.js`.
+
+### Fixed — 2026-08-18
+- `scripts/check-backup.js` never configured the routines store for its sandbox, so any
+  backup/restore path touching routines failed with a raw `ENOENT` rename error. Fixed, and the
+  backup round-trip test now covers routines the same way it already covers every other category
+  (approved apps, custom commands, workflows, documents).
+
+## [2.0.0] — 2026-08-17 — v2.0 sprint (Blocks A-H)
 
 ### Changed — 2026-08-17
 - Direct requests now use Zen's local planner: “Open YouTube” no longer needs a `Task:` prefix.

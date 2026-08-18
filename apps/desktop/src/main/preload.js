@@ -71,6 +71,10 @@ contextBridge.exposeInMainWorld('zen', {
   proposeTask: (goal) => ipcRenderer.invoke('zen:task:propose', goal),
   listTasks: () => ipcRenderer.invoke('zen:task:list'),
   listTaskAudit: () => ipcRenderer.invoke('zen:task:audit'),
+  // v2.1, Sprint Plan Step 5/30: explicit owner-triggered clears, gated behind a renderer-side
+  // confirm() dialog before either is ever invoked -- see renderer.js.
+  clearTaskHistory: () => ipcRenderer.invoke('zen:task:clear-history'),
+  clearTaskAudit: () => ipcRenderer.invoke('zen:task:clear-audit'),
   // Block E, Step 22: persistent folder-permission grants, surfaced on the Activity page.
   chooseFolderPermission: () => ipcRenderer.invoke('zen:permissions:choose-folder'),
   listFolderPermissions: () => ipcRenderer.invoke('zen:permissions:list'),

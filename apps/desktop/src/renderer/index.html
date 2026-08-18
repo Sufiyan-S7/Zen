@@ -217,6 +217,7 @@
             <h2 id="active-tasks-title">Active and recent tasks</h2>
             <p>Task details are held only while Zen is running. The privacy-redacted execution history below remains local for 30 days.</p>
             <div class="approved-app-list" id="agent-task-list" aria-live="polite"></div>
+            <button class="danger-button" id="clear-task-history" type="button">Clear finished task history</button>
           </section>
           <section class="settings-card" aria-labelledby="agent-permissions-title">
             <p class="settings-label">REVOKE ANY TIME</p>
@@ -235,6 +236,7 @@
             <h2 id="task-history-title">Recent executed steps</h2>
             <p>Zen stores outcomes and redacted targets locally. It never records passwords, credential-field text, or unredacted secrets from PowerShell commands.</p>
             <div class="activity-log" id="agent-task-history" aria-live="polite"></div>
+            <button class="danger-button" id="clear-task-audit" type="button">Clear audit log</button>
           </section>
         </div>
         <p class="footer">Routine steps are re-checked immediately before execution. No background monitoring or automatic runs.</p>

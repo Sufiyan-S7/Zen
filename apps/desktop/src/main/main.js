@@ -9,10 +9,10 @@ const { configureDocuments, previewDocuments, importDocuments, listDocuments, se
 const { configureCustomCommands, previewCommand, createCommand, listCommands, prepareCommandRun, removeCommand } = require('./custom-commands');
 const { configureWorkflows, previewWorkflow, createWorkflow, listWorkflows, prepareWorkflowRun, removeWorkflow, resolveRoute } = require('./workflows');
 const { buildEnvelope, summarizeEnvelope, validateEnvelope, applyEnvelope } = require('./backup');
-const { proposeTask, listActiveTasks, listTaskSummaries, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
+const { proposeTask, listActiveTasks, listTaskSummaries, clearTaskHistory, approveTask, requestPause, requestResume, requestCancel, getTask } = require('./task-executor');
 const { planTask } = require('./task-planner');
 const { shouldAutoRunPlan } = require('./auto-run-policy');
-const { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords } = require('./audit-log');
+const { configureAuditLog, appendAuditRecord, pruneAuditLog, listAuditRecords, clearAuditLog } = require('./audit-log');
 const {
   configurePermissions, grantFolderPermission, revokeFolderPermission, listPermissions,
   grantBrowserPermission, revokeBrowserPermission, listBrowserPermissions
@@ -888,6 +888,14 @@ app.whenReady().then(() => {
   ipcMain.handle('zen:task:resume', (_event, taskId) => requestResume(taskId));
   ipcMain.handle('zen:task:list', () => listTaskSummaries());
   ipcMain.handle('zen:task:audit', () => listAuditRecords().slice(-100).reverse());
+  // v2.1: Sprint Plan Step 5/30 + AgentContract.md Section 6 -- explicit owner-triggered clear,
+  // gated by renderer-side confirmation (same "clear-with-confirmation" pattern the contract
+  // names for the existing activity log), not auto-run. clearTaskHistory only ever drops
+  // terminal-state tasks -- an in-flight task is never affected. clearAuditLog empties the
+  // append-only log entirely; it is deliberately a separate control from task history since a
+  // task can be cleared from the UI list while its audit trail is kept, or vice versa.
+  ipcMain.handle('zen:task:clear-history', () => clearTaskHistory());
+  ipcMain.handle('zen:task:clear-audit', () => clearAuditLog());
   ipcMain.handle('zen:task:cancel', (_event, taskId) => {
     const task = requestCancel(taskId);
     // Unblock a task currently awaiting sensitive confirmation -- otherwise Cancel while

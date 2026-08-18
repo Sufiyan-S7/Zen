@@ -134,6 +134,22 @@ function listTaskSummaries() {
     .map(taskSummary);
 }
 
+// v2.1: Sprint Plan Step 5/30 + AgentContract.md Section 6 ("the owner can manually clear
+// task/audit history at any time from the future Agent home"). Only terminal-state tasks are
+// removed -- a proposed/approved/running/paused/blocked task is never dropped from `tasks` by
+// this call, matching the same "never touch what's in flight" rule requestPause/requestCancel
+// already follow above. Returns how many were removed so the caller can confirm to the owner.
+function clearTaskHistory() {
+  let cleared = 0;
+  for (const [id, task] of tasks) {
+    if (TERMINAL_STATES.has(task.state)) {
+      tasks.delete(id);
+      cleared += 1;
+    }
+  }
+  return { cleared };
+}
+
 function requestCancel(taskId) {
   const task = tasks.get(taskId);
   if (!task) return null;
@@ -324,7 +340,7 @@ function approveTask(taskId, hooks) {
 }
 
 module.exports = {
-  proposeTask, getTask, listActiveTasks, listTaskSummaries, approveTask,
+  proposeTask, getTask, listActiveTasks, listTaskSummaries, clearTaskHistory, approveTask,
   requestPause, requestResume, requestCancel,
   TERMINAL_STATES
 };

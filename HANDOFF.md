@@ -1964,3 +1964,62 @@ deferred to v2.1. Tagged `v2.0` on `zen-2.0` at commit `4d614c3`.
 mirroring the existing routine/permission pattern, add history list + clear buttons to Agent
 Home in `index.html`/`renderer.js`, and add a `check-task-history.js` (or extend
 `check-task-executor.js`) covering the clear behavior before it is called done.
+
+
+## v2.1 -- clear task history / audit log, and a real backup-test bug fix (August 17-18, 2026)
+
+Picked up mid-session with the v2.1 backend already sitting on disk, uncommitted, no HANDOFF
+entry of its own -- verified live via `git status`/`git diff`/direct file reads rather than
+trusting the absence of an entry to mean "not started," per `INSTRUCTIONS.md` Section 2.
+
+**Found on arrival, already correct and complete (not touched beyond verifying):**
+`audit-log.js`'s `clearAuditLog()`, `task-executor.js`'s `clearTaskHistory()` (terminal-states
+only, never touches an in-flight task), and the `main.js`/`preload.js` IPC wiring
+(`zen:task:clear-history` / `zen:task:clear-audit`) plus `renderer.js`'s
+`clearTaskHistoryButton`/`clearTaskAuditButton` listeners, each gated behind a `window.confirm()`
+prompt before calling the bridge, mirroring the existing `clearActivityLogButton` pattern.
+
+**What was actually missing and what I did about it:**
+1. **A real, separate bug, unrelated to v2.1's own code:** `scripts/check-backup.js` never
+   called `routines.configureRoutines(sandbox)` or required `routines.js` at all, so
+   `routines.js`'s internal store path stayed `''` and any backup/restore touching routines
+   crashed with `ENOENT: rename ... -> ''`. Fixed: added the missing require + `configureRoutines`
+   call, a routine created alongside every other category in the round-trip fixture, and
+   `summary.routines` / `applied.routines.restored` / post-restore `routines.listRoutines()`
+   assertions matching the existing per-category pattern exactly. `node
+   scripts/check-backup.js` now passes; previously it was the one script silently blocking a
+   full `npm run check` run.
+2. **The renderer half of v2.1 was incomplete:** `renderer.js`'s two new listeners referenced
+   `#clear-task-history` and `#clear-task-audit`, but neither button existed anywhere in
+   `index.html` -- confirmed via direct search, not assumed. Added both as `.danger-button`s
+   (the existing global class, no new CSS needed) inside Agent Home's "Active and recent tasks"
+   and "Recent executed steps" cards respectively, next to the lists they clear.
+3. **No automated coverage existed for either clear function.** Extended
+   `scripts/check-task-executor.js` (matching the HANDOFF's own "or extend
+   check-task-executor.js" suggestion over a new file) with two fixtures: `clearTaskHistory`
+   removes every terminal-state task left over from the file's prior fixtures while leaving a
+   still-`proposed` task untouched, and is a safe no-op when called again with nothing left to
+   clear; `clearAuditLog` (against a real temp-dir `audit-log.js` instance, not stubbed, since
+   it has no cross-module dependency) empties a real log, reports the correct pre-clear count,
+   is a safe no-op on an empty log, and leaves `appendAuditRecord`/`pruneAuditLog` working
+   normally afterward.
+
+**Validation:** `npm.cmd --prefix apps\desktop run check` passes in full -- all 18 `node --check`
+syntax passes plus 13 check scripts, including the newly-passing `check-backup.js` and the
+extended `check-task-executor.js`. `git diff --check` passes clean.
+
+**Not done this session, flagged rather than skipped:** no live in-app click-through of the two
+new buttons (confirm dialog appears, cancel leaves data untouched, confirm clears exactly the
+intended list and nothing else). Same category of gap as every other block's deferred manual
+pass on this project -- automated coverage is real and passing, the live UI has not been
+physically clicked.
+
+**Git state:** this is a routine, local-only feature completion -- no PowerShell, credentials,
+deletions of repo/config content, or security/auth surface touched (clearing local task/audit
+history is a user-data operation the owner explicitly asked for and confirms per-click, not a
+security-sensitive one), so per `INSTRUCTIONS.md` Section 4 this follows the sprint's routine-push
+default rather than the PowerShell/browser hold. Committing and pushing to `origin/zen-2.0`.
+
+**Exact next recommended step:** the live in-app click-through above (a couple of minutes,
+non-blocking); beyond that, v2.1 is complete against the gap `HANDOFF.md` logged when `v2.0` was
+tagged. No further work is required unless the owner wants a new v2.2-scoped feature.

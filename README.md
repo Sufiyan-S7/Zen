@@ -291,11 +291,19 @@ configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, st
 planning, scoped file/app/browser automation, undo, and explicit safety controls. See the
 [30-day v2.0 plan](docs/ZenV2Plan.md).
 
-As of August 16, 2026, this plan is being executed as a compressed 2-day sprint
+As of August 16-17, 2026, this plan was executed as a compressed 2-day sprint
 (`docs/ZenV2-2Day-Sprint-Plan.md`) under the finalized name **v2.0** rather than the full 30-day
-schedule. **Blocks A-H are implemented and automated checks pass in full. The final manual
-desktop smoke test for the PowerShell and accessibility-automation paths remains a release gate;
-v2.0 is not tagged until that walkthrough passes.**
+schedule. **Blocks A-H are complete: implemented, automated checks pass in full, the manual
+desktop smoke test (PowerShell toggle, accessibility automation, routines, Agent Home) passed
+live, and the release is tagged `v2.0`.** One scoped gap was logged and deferred rather than
+blocking the tag: Agent Home could view but not clear task history or the local audit log.
+
+**v2.1 (August 17-18, 2026)** closed that gap: Agent Home now has **Clear finished task
+history** and **Clear audit log** controls, each behind its own confirm-before-clearing prompt.
+Clearing task history only ever removes terminal-state (completed/failed/cancelled) tasks -- a
+task still in flight is never touched. Clearing the audit log empties Zen's local, append-only
+`task-audit.log` entirely; it does not affect saved routines, permissions, or approvals.
+
 Day 1 closed out the foundation and core agent loop: system tray, single-instance lock, the
 `Ctrl+Alt+Space` global hotkey, the compact command overlay, push-to-talk voice input with typed
 fallback, and a working goal-to-plan-to-execution loop. Direct requests such as “Open YouTube”

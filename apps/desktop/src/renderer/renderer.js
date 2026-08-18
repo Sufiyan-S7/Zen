@@ -46,6 +46,10 @@ const agentTaskListElement = document.querySelector('#agent-task-list');
 const agentTaskHistoryElement = document.querySelector('#agent-task-history');
 const agentPermissionListElement = document.querySelector('#agent-permission-list');
 const agentOpenActivityButton = document.querySelector('#agent-open-activity');
+// v2.1, Sprint Plan Step 5/30: explicit clear-with-confirmation controls for Agent Home's task
+// history / audit log, mirroring the existing clearActivityLogButton pattern below.
+const clearTaskHistoryButton = document.querySelector('#clear-task-history');
+const clearTaskAuditButton = document.querySelector('#clear-task-audit');
 let routinesCache = [];
 const memoryForm = document.querySelector('#memory-form');
 const memoryText = document.querySelector('#memory-text');
@@ -2961,6 +2965,24 @@ clearActivityLogButton.addEventListener('click', () => {
   activityLog = [];
   saveActivityLog();
   renderActivityLog();
+});
+// v2.1, Sprint Plan Step 5/30 + AgentContract.md Section 6: same clear-with-confirmation
+// pattern as clearActivityLogButton above. clearTaskHistory only drops terminal-state tasks
+// (an in-flight task is never affected); clearTaskAudit empties the append-only audit log.
+// Each re-renders only its own list -- clearing one does not implicitly clear the other.
+clearTaskHistoryButton?.addEventListener('click', async () => {
+  if (!window.confirm('Clear finished task history? This cannot be undone.')) return;
+  try {
+    await window.zen.clearTaskHistory();
+    renderAgentTasks(await window.zen.listTasks());
+  } catch { agentTaskListElement.textContent = 'Zen could not clear task history.'; }
+});
+clearTaskAuditButton?.addEventListener('click', async () => {
+  if (!window.confirm('Clear the local task audit log? This cannot be undone.')) return;
+  try {
+    await window.zen.clearTaskAudit();
+    renderAgentHistory(await window.zen.listTaskAudit());
+  } catch { agentTaskHistoryElement.textContent = 'Zen could not clear the audit log.'; }
 });
 voiceInputSelect.addEventListener('change', () => {
   settings.voiceInputId = voiceInputSelect.value;
