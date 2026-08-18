@@ -1,3 +1,10 @@
+## 2026-08-18 — Zen v2.1, browse installed apps
+
+Added a proper installed-apps picker to Zen v2.0's app-approval flow — no more hunting through
+Program Files in the native file dialog. Zen lists real installed apps resolved from your Start
+Menu, searchable by name; picking one runs through the exact same preview-then-confirm approval
+as before. Still fully local, zero telemetry. 🧵
+
 ## 2026-08-18 — Zen v2.1, clearing your own history
 
 Small but overdue addition to Zen v2.0's Agent Home: you can now clear finished task history and
