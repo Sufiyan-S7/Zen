@@ -2073,16 +2073,16 @@ clean. Confirmed the CSS classes the pre-existing `index.html` diff uses
 all already exist in `styles.css` -- no styling gap, matching how the rest of this feature was
 already built correctly before the session that wrote it died.
 
-**Not done this session, flagged rather than skipped:** no live in-app click-through (opening the
-Browse installed apps panel, searching, approving a real listed app, confirming it now appears
-under Approved apps). Same category of gap as every other block's deferred manual pass on this
-project -- the dedicated fixture-based check plus the full suite are real, passing, automated
-coverage; the live UI has not been physically clicked.
+**Live click-through: complete.** The owner tested it directly in the running desktop app after
+the session above and confirmed it works correctly. This closes the one item that session's
+automated coverage (the fixture-based `check-installed-apps.js` plus the full check suite)
+couldn't reach on its own -- the real Browse installed apps panel, the real preview/confirm
+dialog, and a real app ending up in the Approved apps list.
 
 **Git state:** routine, local, non-security-sensitive feature completion (no deletions, no config/
 credential/security-boundary changes -- this only adds a read-only discovery convenience feeding
 the same existing approval gate). Per `INSTRUCTIONS.md` Section 4 / `AGENT-UPDATE-PROTOCOL.md`
 Section 2, this follows the routine commit-and-push default.
 
-**Exact next recommended step:** the live in-app click-through above (a couple of minutes,
-non-blocking); beyond that, this v2.1 follow-up is complete.
+**Exact next recommended step:** none required for this feature -- it is fully closed, code and
+live-verified. Continue only with a new user-directed v2.2-scoped feature.
