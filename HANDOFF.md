@@ -2086,3 +2086,60 @@ Section 2, this follows the routine commit-and-push default.
 
 **Exact next recommended step:** none required for this feature -- it is fully closed, code and
 live-verified. Continue only with a new user-directed v2.2-scoped feature.
+
+## v2.1 follow-up -- real gap found on re-audit: browsers listed as approvable (August 18, 2026)
+
+Owner asked for a full recheck after the live click-through above passed. Rather than treat
+"tested, works" as the end of the audit, re-read every file fresh (not from memory of the earlier
+session) and cross-checked the dead session's own stated design intent (visible in the owner's
+original screenshots: "...filters out browser launchers for a cleaner list...") against what
+`listInstalledApps()` actually did. It did not filter browser launchers at all --
+`scripts/check-installed-apps.js`'s fixture set never covered this case either, so the passing
+check suite gave false confidence.
+
+**Confirmed live, not hypothetical:** ran a PowerShell/WScript.Shell COM probe against this
+machine's real Start Menu directories. `Brave.lnk`, `Google Chrome.lnk`, and `Microsoft Edge.lnk`
+all exist under `C:\ProgramData\Microsoft\Windows\Start Menu\Programs` and resolve to
+`brave.exe`/`chrome.exe`/`msedge.exe` respectively -- all three are in `computer-control.js`'s
+`BROWSER_LAUNCHER_NAMES` set. Without a filter, all three would have appeared in Browse installed
+apps with an **Approve** button that always fails (`appEntry()` unconditionally rejects browser
+executables, directing the owner to Activity -> Open a website instead). Not a security hole --
+the safety boundary itself held correctly -- but a real, reproducible dead-end in the UI that
+directly contradicted the feature's own stated design goal.
+
+**Fix:** `installed-apps.js` now requires `computer-control.js`'s existing `isBrowserLauncher()`
+and filters every resolved target through it, rather than keeping a second browser-name list that
+could drift out of sync with the one `appEntry()` actually enforces. Verified this is safe to
+require under plain `node` (no `electron` dependency in `computer-control.js`, same as every
+other check script that already requires it directly). Verified with `node -e` that all three real
+targets found on this machine (`brave.exe`, `chrome.exe`, `msedge.exe`) evaluate `true` through
+the reused function.
+
+**Added permanent regression coverage:** `scripts/check-installed-apps.js` now includes a
+real-file browser-launcher fixture (`chrome.exe`, actually present on disk in the sandbox, plus a
+`Google Chrome.lnk`-style shortcut resolving to it) asserting it never appears in results --
+modeled directly on what was found live on this machine, not a synthetic edge case, so this
+specific gap cannot silently return.
+
+**Validation:** `node --check installed-apps.js` passes; `node scripts/check-installed-apps.js`
+passes with the new fixture; `npm.cmd --prefix apps\desktop run check` passes in full (all 14
+check scripts); `git diff --check` clean. No circular-require risk (`computer-control.js` has no
+local requires of its own).
+
+**Also re-verified during this audit and found correct, not touched:** the `pendingAppSelections`
+token shape/expiry/`webContentsId` binding in `zen:tools:preview-installed-app` exactly matches
+the existing `zen:tools:choose-app` handler's pattern; the `finally` block resetting
+`confirmationApproveButton.textContent = 'Open website'` in the new `approveInstalledApp` is not a
+new bug -- it's copied verbatim from the pre-existing `addApprovedApp` (native-picker) function,
+is provably inert (`requestActionConfirmation()` always sets the button's label fresh on every
+call before showing the modal), and changing only the new copy while leaving the original as-is
+would create an inconsistency for no behavioral benefit, so it was left alone.
+
+**Git state:** routine, non-security-sensitive bug fix (no deletions/config/credentials; tightens
+an existing safety boundary's UI presentation, doesn't touch the boundary itself). Follows the
+routine commit-and-push default.
+
+**Exact next recommended step:** none required -- re-audit found and fixed the one real gap;
+everything else checked out. A quick live re-confirmation (open Browse installed apps, confirm
+Chrome/Edge/Brave no longer appear in the list) would close the loop but is non-blocking, same
+category as every other block's deferred manual pass on this project.

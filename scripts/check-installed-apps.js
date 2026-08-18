@@ -19,8 +19,10 @@ fs.mkdirSync(currentUserDir, { recursive: true });
 const notepadTarget = path.join(sandbox, 'Notepad.exe');
 const calcTarget = path.join(sandbox, 'Calculator.exe');
 const ghostTarget = path.join(sandbox, 'GhostApp.exe'); // deliberately never created
+const chromeTarget = path.join(sandbox, 'chrome.exe'); // real file on disk -- must still be excluded
 fs.writeFileSync(notepadTarget, 'fake exe');
 fs.writeFileSync(calcTarget, 'fake exe');
+fs.writeFileSync(chromeTarget, 'fake exe');
 
 // Shortcut files -- content doesn't matter, only their paths are used as keys into the fake
 // resolver map below. Two shortcuts point at the same target (Notepad, once at top level and
@@ -32,7 +34,12 @@ const brokenShortcut = path.join(allUsersDir, 'Broken.lnk'); // resolver throws 
 const missingTargetShortcut = path.join(allUsersDir, 'Uninstall Ghost App.lnk'); // target never created
 const nonExeShortcut = path.join(allUsersDir, 'Some Folder.lnk'); // target isn't an .exe
 const notAShortcut = path.join(allUsersDir, 'readme.txt'); // wrong extension, must be ignored entirely
-for (const p of [notepadShortcut1, notepadShortcut2, calcShortcut, brokenShortcut, missingTargetShortcut, nonExeShortcut, notAShortcut]) {
+// Real-world case: a Start Menu shortcut resolving to a real, existing chrome.exe -- confirmed
+// live on a real machine (Brave.lnk/Google Chrome.lnk/Microsoft Edge.lnk all resolve this way)
+// during the session that added this filter. Must be excluded so it never becomes a dead-end
+// "Approve" button -- computer-control.js's appEntry() rejects every browser launcher outright.
+const chromeShortcut = path.join(allUsersDir, 'Google Chrome.lnk');
+for (const p of [notepadShortcut1, notepadShortcut2, calcShortcut, brokenShortcut, missingTargetShortcut, nonExeShortcut, notAShortcut, chromeShortcut]) {
   fs.writeFileSync(p, '');
 }
 
@@ -41,7 +48,8 @@ const fakeTargets = new Map([
   [notepadShortcut2, notepadTarget],
   [calcShortcut, calcTarget],
   [missingTargetShortcut, ghostTarget],
-  [nonExeShortcut, path.join(sandbox, 'SomeFolder')]
+  [nonExeShortcut, path.join(sandbox, 'SomeFolder')],
+  [chromeShortcut, chromeTarget]
 ]);
 
 function fakeReadShortcutLink(shortcutPath) {
@@ -67,6 +75,14 @@ assert.ok(!apps.some((a) => a.target === ghostTarget), 'a shortcut whose target 
 // --- A shortcut resolving to a non-.exe target (e.g. a folder) must be excluded -- Zen's
 // approved-apps feature only ever supports real .exe files. ---
 assert.ok(!apps.some((a) => a.name === 'Some Folder'), 'a non-.exe target must be filtered out');
+
+// --- A shortcut resolving to a real, existing browser executable (chrome.exe) must be excluded
+// -- computer-control.js's appEntry() always rejects browser launchers, so surfacing one here
+// would only be a dead-end "Approve" button. This is a real gap confirmed live on a machine with
+// actual Chrome/Edge/Brave Start Menu shortcuts, not a hypothetical -- permanent coverage so it
+// cannot silently return. ---
+assert.ok(!apps.some((a) => a.target === chromeTarget), 'a browser-launcher target (chrome.exe) must be filtered out, not surfaced as a dead-end approve button');
+assert.ok(!apps.some((a) => a.name === 'Google Chrome'), 'the browser shortcut must not appear in the list at all');
 
 // --- Missing directories (e.g. a fresh Windows account with no all-users Start Menu access)
 // must not throw -- the listing degrades to whatever directories ARE readable. ---

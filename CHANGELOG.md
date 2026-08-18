@@ -19,6 +19,12 @@ in the running app.
 - Automated coverage for both new clears added to `scripts/check-task-executor.js`.
 
 ### Fixed — 2026-08-18
+- **Browse installed apps** could list browsers (Chrome, Edge, Brave, etc.) alongside real
+  approvable apps, even though approving one always fails — `computer-control.js` rejects every
+  browser executable by design. Confirmed live on a real machine before fixing: this machine's
+  own Start Menu shortcuts for Brave/Chrome/Edge would all have shown up with a dead-end Approve
+  button. Now filtered out using the same `isBrowserLauncher()` check the approval flow itself
+  enforces, with permanent regression coverage.
 - `scripts/check-backup.js` never configured the routines store for its sandbox, so any
   backup/restore path touching routines failed with a raw `ENOENT` rename error. Fixed, and the
   backup round-trip test now covers routines the same way it already covers every other category

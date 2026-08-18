@@ -15,6 +15,11 @@
 // a live Electron process.
 const fs = require('node:fs');
 const path = require('node:path');
+// Reuses computer-control.js's own browser-launcher list rather than keeping a second one --
+// this file requires only node:fs/node:path itself (no `electron`), so requiring it here is
+// exactly as safe under a plain `node scripts/check-*.js` process as it already is everywhere
+// else in this repo (check-computer-control.js, check-backup.js, etc. all require it directly).
+const { isBrowserLauncher } = require('./computer-control');
 
 const MAX_DEPTH = 6;
 
@@ -46,8 +51,11 @@ function defaultStartMenuDirs(env = process.env) {
 }
 
 // Resolves every .lnk shortcut under the given directories (default: the two standard Start
-// Menu locations) down to a deduped, sorted list of real, existing .exe targets. This is a pure
-// discovery convenience -- callers must still run a resolved entry through the exact same
+// Menu locations) down to a deduped, sorted list of real, existing .exe targets. Browser and
+// browser-web-app launchers (chrome.exe, msedge.exe, etc.) are excluded -- computer-control.js's
+// appEntry() always rejects those anyway (use Activity -> Open a website instead), so surfacing
+// them here would only produce a dead-end "Approve" button. This is a pure discovery
+// convenience -- callers must still run a resolved entry through the exact same
 // appEntry()/previewApp() validation as any native-picker-selected path before it can be
 // approved. Nothing here approves or launches anything.
 function listInstalledApps(readShortcutLink, dirs) {
@@ -72,6 +80,7 @@ function listInstalledApps(readShortcutLink, dirs) {
     }
     const target = resolved && resolved.target;
     if (!target || path.extname(target).toLowerCase() !== '.exe') continue; // non-.exe target (e.g. a folder)
+    if (isBrowserLauncher(target)) continue; // browsers/browser-launchers -- approve via Open a website instead
     if (byTarget.has(target)) continue; // already have an entry for this real app
     let details;
     try {
