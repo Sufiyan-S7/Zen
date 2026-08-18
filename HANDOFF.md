@@ -2023,3 +2023,66 @@ default rather than the PowerShell/browser hold. Committing and pushing to `orig
 **Exact next recommended step:** the live in-app click-through above (a couple of minutes,
 non-blocking); beyond that, v2.1 is complete against the gap `HANDOFF.md` logged when `v2.0` was
 tagged. No further work is required unless the owner wants a new v2.2-scoped feature.
+
+## v2.1 follow-up -- browse installed apps, completed after a dropped session (August 18, 2026)
+
+Picked up from a prior session that died mid-task with no HANDOFF entry of its own -- verified
+live via `git status`/direct file reads rather than trusting anything from chat scrollback (the
+owner supplied screenshots of the dead session's own reasoning as a starting pointer, not as a
+source of truth). Confirmed on arrival: `apps/desktop/src/main/main.js`, `preload.js`,
+`src/renderer/index.html`, and `renderer.js` already had the **entire** UI/IPC/preload stack for
+a "Browse installed apps" picker correctly implemented and uncommitted -- a **Browse installed
+apps** button and search box next to the existing native-picker button on the Approved Apps
+card, `zen:tools:list-installed-apps`/`zen:tools:preview-installed-app` IPC handlers, and matching
+`preload.js` bridge methods. Selecting a listed app reuses the *exact* same
+`previewApp()`/pendingAppSelections-token/`requestActionConfirmation()`/`approveApp(token)` flow
+as the native-picker path -- this feature only changes how a path gets INTO the picker, never how
+an app gets approved.
+
+**What was actually missing:** `apps/desktop/src/main/installed-apps.js` existed but was
+truncated mid-function -- only its header comment, `walkShortcuts()`, and `defaultStartMenuDirs()`
+were present; the `listInstalledApps()` function every other file already called, and
+`module.exports`, did not exist. `scripts/check-installed-apps.js` (also already on disk,
+untouched) gave a complete, precise behavioral contract for the missing function via its fixture
+set, so it was implemented to match that contract exactly rather than guessed at:
+`listInstalledApps(readShortcutLink, dirs)` walks `.lnk` files under the given Start Menu
+directories (or the two OS defaults), resolves each via the caller-supplied `readShortcutLink`,
+keeps only targets that are real, existing, `.exe` files, dedupes by resolved target (first
+shortcut seen wins the display name), sorts alphabetically, throws a specific message if no
+resolver function is given, and never throws on a missing/inaccessible directory or an individual
+broken shortcut -- it degrades that one entry silently instead.
+
+**Same wiring-gap bug class as Blocks D and G, caught before it recurred:**
+`apps/desktop/package.json`'s `check` script did not `node --check installed-apps.js` or run
+`check-installed-apps.js` at all -- `npm run check` was passing without ever touching this file,
+the same failure mode flagged twice earlier in this project. Fixed by adding both to the `check`
+command in the same order/pattern as every existing entry.
+
+**Deliberately not touched:** `backup.js`/`docs/BackupExport.md`'s four exported/restorable
+main-process stores. Installed-apps has no store of its own -- it's a stateless, live Start-Menu
+read on every call, nothing to export or restore -- so it correctly has no backup-export
+counterpart, unlike approved-apps/commands/workflows/documents.
+
+**Validation:** `node --check` on `installed-apps.js` passes; `node scripts/check-installed-apps.js`
+passes standalone (dedupe-by-target, missing-target filtering, non-.exe filtering, broken-shortcut
+skip, missing-directory tolerance, and the no-resolver failure message all individually asserted);
+`npm.cmd --prefix apps\desktop run check` passes in full -- all `node --check` syntax passes plus
+every check script, including the newly-wired `check-installed-apps.js`. `git diff --check` passes
+clean. Confirmed the CSS classes the pre-existing `index.html` diff uses
+(`.secondary-button`/`.setting-row`/`.approved-app-list`/`.approved-app`/`.approved-app-actions`)
+all already exist in `styles.css` -- no styling gap, matching how the rest of this feature was
+already built correctly before the session that wrote it died.
+
+**Not done this session, flagged rather than skipped:** no live in-app click-through (opening the
+Browse installed apps panel, searching, approving a real listed app, confirming it now appears
+under Approved apps). Same category of gap as every other block's deferred manual pass on this
+project -- the dedicated fixture-based check plus the full suite are real, passing, automated
+coverage; the live UI has not been physically clicked.
+
+**Git state:** routine, local, non-security-sensitive feature completion (no deletions, no config/
+credential/security-boundary changes -- this only adds a read-only discovery convenience feeding
+the same existing approval gate). Per `INSTRUCTIONS.md` Section 4 / `AGENT-UPDATE-PROTOCOL.md`
+Section 2, this follows the routine commit-and-push default.
+
+**Exact next recommended step:** the live in-app click-through above (a couple of minutes,
+non-blocking); beyond that, this v2.1 follow-up is complete.

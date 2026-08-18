@@ -304,6 +304,12 @@ Clearing task history only ever removes terminal-state (completed/failed/cancell
 task still in flight is never touched. Clearing the audit log empties Zen's local, append-only
 `task-audit.log` entirely; it does not affect saved routines, permissions, or approvals.
 
+A further v2.1 follow-up added **Browse installed apps** to Activity/Approved Apps: instead of
+only hand-navigating Program Files in the native picker, Zen can now list real, installed apps
+(resolved from Windows Start Menu shortcuts), searchable by name. Picking one goes through the
+exact same preview-then-confirm approval flow as the native picker -- it changes only how a path
+is found, never how an app gets approved.
+
 Day 1 closed out the foundation and core agent loop: system tray, single-instance lock, the
 `Ctrl+Alt+Space` global hotkey, the compact command overlay, push-to-talk voice input with typed
 fallback, and a working goal-to-plan-to-execution loop. Direct requests such as “Open YouTube”

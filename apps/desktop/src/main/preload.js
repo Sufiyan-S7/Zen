@@ -22,6 +22,12 @@ contextBridge.exposeInMainWorld('zen', {
   listApprovedApps: () => ipcRenderer.invoke('zen:tools:list-approved-apps'),
   chooseApprovedApp: () => ipcRenderer.invoke('zen:tools:choose-app'),
   approveApp: (token) => ipcRenderer.invoke('zen:tools:approve-app', token),
+  // v2.1 follow-up: browse installed apps (Start Menu shortcuts resolved to real targets)
+  // instead of only the native file picker. previewInstalledApp returns the same
+  // {token, label, executable} shape as chooseApprovedApp, so the renderer reuses the exact
+  // same confirm-then-approveApp(token) flow either way.
+  listInstalledApps: () => ipcRenderer.invoke('zen:tools:list-installed-apps'),
+  previewInstalledApp: (target) => ipcRenderer.invoke('zen:tools:preview-installed-app', target),
   chooseBrowserWebApp: (label, url) => ipcRenderer.invoke('zen:tools:choose-browser-web-app', label, url),
   approveBrowserWebApp: (token) => ipcRenderer.invoke('zen:tools:approve-browser-web-app', token),
   removeApprovedApp: (appId) => ipcRenderer.invoke('zen:tools:remove-approved-app', appId),

@@ -76,6 +76,12 @@ const folderSearchInput = document.querySelector('#folder-search-input');
 const folderSearchHelp = document.querySelector('#folder-search-help');
 const folderSearchResults = document.querySelector('#folder-search-results');
 const chooseApprovedAppButton = document.querySelector('#choose-approved-app');
+// v2.1 follow-up: browse-installed-apps controls, sibling to the native-picker button above.
+const browseInstalledAppsButton = document.querySelector('#browse-installed-apps');
+const installedAppsSearchRow = document.querySelector('#installed-apps-search-row');
+const installedAppsSearchInput = document.querySelector('#installed-apps-search');
+const installedAppsListElement = document.querySelector('#installed-apps-list');
+let installedAppsCache = null;
 const chooseFolderPermissionButton = document.querySelector('#choose-folder-permission');
 const browserWebAppForm = document.querySelector('#browser-web-app-form');
 const browserWebAppName = document.querySelector('#browser-web-app-name');
@@ -1235,6 +1241,94 @@ async function addApprovedApp() {
     approvedAppsHelp.textContent = `${app.label} is approved locally.`;
     await loadApprovedApps();
   } catch (error) {
+    approvedAppsHelp.textContent = error.message || 'Zen could not approve that app.';
+  } finally {
+    confirmationApproveButton.textContent = 'Open website';
+  }
+}
+
+// v2.1 follow-up: browse installed apps (resolved from Start Menu shortcuts) as an alternative
+// to the native file picker above. Selecting one goes through previewInstalledApp -> the exact
+// same requestActionConfirmation + approveApp(token) flow as addApprovedApp -- this only changes
+// how a path is found, never how it gets approved.
+function renderInstalledApps(apps) {
+  installedAppsListElement.innerHTML = '';
+  if (!apps.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-help';
+    empty.textContent = 'No matching installed apps found.';
+    installedAppsListElement.append(empty);
+    return;
+  }
+  apps.forEach((app) => {
+    const row = document.createElement('article');
+    row.className = 'approved-app';
+    const label = document.createElement('strong');
+    label.textContent = app.name;
+    const target = document.createElement('p');
+    target.textContent = app.target;
+    const actions = document.createElement('div');
+    actions.className = 'approved-app-actions';
+    const approve = document.createElement('button');
+    approve.type = 'button';
+    approve.textContent = 'Approve';
+    approve.addEventListener('click', () => approveInstalledApp(app));
+    actions.append(approve);
+    row.append(label, target, actions);
+    installedAppsListElement.append(row);
+  });
+}
+
+async function toggleBrowseInstalledApps() {
+  approvedAppsHelp.textContent = '';
+  const opening = installedAppsSearchRow.hidden;
+  if (!opening) {
+    installedAppsSearchRow.hidden = true;
+    installedAppsListElement.innerHTML = '';
+    installedAppsSearchInput.value = '';
+    return;
+  }
+  installedAppsSearchRow.hidden = false;
+  installedAppsListElement.textContent = 'Loading installed apps…';
+  try {
+    installedAppsCache = await window.zen.listInstalledApps();
+    renderInstalledApps(installedAppsCache);
+    installedAppsSearchInput.focus();
+  } catch (error) {
+    installedAppsCache = null;
+    installedAppsListElement.textContent = error.message || 'Zen could not list installed apps.';
+  }
+}
+
+function filterInstalledApps() {
+  if (!installedAppsCache) return;
+  const term = installedAppsSearchInput.value.trim().toLowerCase();
+  const filtered = term ? installedAppsCache.filter((app) => app.name.toLowerCase().includes(term)) : installedAppsCache;
+  renderInstalledApps(filtered);
+}
+
+async function approveInstalledApp(app) {
+  approvedAppsHelp.textContent = '';
+  const entry = createActivity('approve-app', app.target);
+  try {
+    const selected = await window.zen.previewInstalledApp(app.target);
+    const approved = await requestActionConfirmation({
+      title: `Approve ${selected.label}?`,
+      description: 'Zen will save this local approval. It will still ask before opening the app every time.',
+      destination: selected.executable,
+      approveLabel: 'Approve app'
+    });
+    if (!approved) {
+      updateActivity(entry, 'cancelled');
+      approvedAppsHelp.textContent = 'App approval cancelled.';
+      return;
+    }
+    const approvedApp = await window.zen.approveApp(selected.token);
+    updateActivity(entry, 'completed', { result: approvedApp.executable });
+    approvedAppsHelp.textContent = `${approvedApp.label} is approved locally.`;
+    await loadApprovedApps();
+  } catch (error) {
+    updateActivity(entry, 'failed', { error: error.message });
     approvedAppsHelp.textContent = error.message || 'Zen could not approve that app.';
   } finally {
     confirmationApproveButton.textContent = 'Open website';
@@ -2930,6 +3024,8 @@ memoryForm.addEventListener('submit', (event) => {
 websiteForm.addEventListener('submit', reviewWebsite);
 folderSearchForm.addEventListener('submit', reviewFolderSearch);
 chooseApprovedAppButton.addEventListener('click', addApprovedApp);
+browseInstalledAppsButton.addEventListener('click', toggleBrowseInstalledApps);
+installedAppsSearchInput.addEventListener('input', filterInstalledApps);
 chooseFolderPermissionButton.addEventListener('click', grantFolderPermissionEntry);
 enablePowerShellButton.addEventListener('click', enablePowerShellControl);
 disablePowerShellButton.addEventListener('click', disablePowerShellControl);

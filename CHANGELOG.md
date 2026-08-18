@@ -7,6 +7,11 @@ in the running app.
 ## [Unreleased] — Zen v2.1
 
 ### Added — 2026-08-18
+- Approving an app no longer requires hand-navigating Program Files in the native picker: a new
+  **Browse installed apps** option on the Approved Apps card lists real, installed apps resolved
+  from Windows Start Menu shortcuts, searchable by name. Picking one goes through the exact same
+  preview-then-confirm approval flow as the native picker — this only changes how a path is
+  found, never how an app gets approved.
 - Agent Home can now clear its own history: **Clear finished task history** removes only
   completed/failed/cancelled tasks (a task still in flight is never touched), and **Clear audit
   log** empties Zen's local, append-only `task-audit.log`. Both are confirm-before-clearing and

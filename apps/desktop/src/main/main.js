@@ -20,6 +20,7 @@ const {
 const { configurePowerShellControl, powerShellToggleStatus, enablePowerShell, disablePowerShell } = require('./powershell-control');
 const { setHandoffMode, handoffStatus, onBrowserActiveChange } = require('./browser-control');
 const { configureRoutines, previewRoutine, createRoutine, listRoutines, removeRoutine } = require('./routines');
+const { listInstalledApps, defaultStartMenuDirs } = require('./installed-apps');
 
 let mainWindow = null;
 let overlayWindow = null;
@@ -616,6 +617,21 @@ app.whenReady().then(() => {
     pendingAppSelections.delete(token);
     if (!selection || selection.webContentsId !== event.sender.id || selection.expiresAt < Date.now()) throw new Error('Choose the app again before approving it.');
     return approveApp(selection.executable);
+  });
+  // v2.1 follow-up: a read-only convenience listing (Start Menu shortcuts resolved to real
+  // .exe targets) so the owner can browse installed apps by name instead of hand-navigating
+  // Program Files in the native picker. This changes only how a path gets INTO the picker --
+  // selecting an entry from this list still goes through zen:tools:preview-installed-app below,
+  // which calls the exact same previewApp() validation and pendingAppSelections token flow as
+  // the native-dialog path, so it is still preview-then-confirm before anything is approved.
+  ipcMain.handle('zen:tools:list-installed-apps', () => {
+    return listInstalledApps((shortcutPath) => require('electron').shell.readShortcutLink(shortcutPath), defaultStartMenuDirs());
+  });
+  ipcMain.handle('zen:tools:preview-installed-app', (event, target) => {
+    const preview = previewApp(target);
+    const token = crypto.randomUUID();
+    pendingAppSelections.set(token, { webContentsId: event.sender.id, executable: preview.executable, expiresAt: Date.now() + 5 * 60_000 });
+    return { token, ...preview };
   });
   ipcMain.handle('zen:tools:choose-browser-web-app', async (event, label, url) => {
     validateBrowserWebAppLabel(label);

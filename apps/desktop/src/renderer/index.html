@@ -253,6 +253,11 @@
             <h2 id="approved-apps-title">Choose what Zen may open</h2>
             <p>Select a Windows application. Zen shows its exact path before saving your approval, asks again every time before launching it, and lets you remove approval at any time.</p>
             <button class="primary-button" id="choose-approved-app" type="button">Add an approved app</button>
+            <button class="secondary-button" id="browse-installed-apps" type="button">Browse installed apps</button>
+            <div class="setting-row" id="installed-apps-search-row" hidden>
+              <input id="installed-apps-search" type="text" autocomplete="off" placeholder="Search installed apps" />
+            </div>
+            <div class="approved-app-list" id="installed-apps-list" aria-live="polite"></div>
             <form id="browser-web-app-form" class="website-form">
               <label for="browser-web-app-name">Browser web-app name</label>
               <input id="browser-web-app-name" type="text" autocomplete="off" placeholder="My web app" maxlength="80" required />
