@@ -2143,3 +2143,43 @@ routine commit-and-push default.
 everything else checked out. A quick live re-confirmation (open Browse installed apps, confirm
 Chrome/Edge/Brave no longer appear in the list) would close the loop but is non-blocking, same
 category as every other block's deferred manual pass on this project.
+
+## Status audit + v3/v4/v5 planning docs received (August 20, 2026)
+
+Verified live repo state before reporting anything (per the Continuity Rule): `git status` on
+`zen-2.0` is clean and fully synced with `origin/zen-2.0`; `git log` head is `eed2e51` (the
+browser-launcher filter fix above); tags present are `v0.1.0`, `v1.0.0`, `v2.0` -- **v2.1's work
+(clear task history/audit log, browse installed apps, the two bugfixes) is committed and pushed
+but not yet tagged.**
+
+**Stale-doc correction:** the owner separately supplied an uploaded `Zen-Roadmap.md` describing
+v2.0 as "Blocks A-G done, Block H remaining." That is out of date against this repo -- Block H
+(routines + Agent Home) shipped and was tagged `v2.0` on August 17, and the v2.1 follow-on work
+above is also done. `docs/Roadmap.md` in this repo was even further behind (still only the
+original Week 1-4 MVP outline) and has been rewritten this session to reflect actual status
+through v2.1 and to fold in the v3.0/v4.0/v5.0 plan.
+
+**New planning material received, not yet implemented:** the owner supplied three planning docs
+covering the previously-open roadmap:
+- v3.0 "Companion" -- git-activity reader, stat/mood engine, diary generator, visual panel, share
+  card export (5 build steps, in order)
+- v4.0 "Unified Unsloth Core" -- Ollama-to-Unsloth migration with a parallel-run validation phase
+  before cutover, new AgentContract action types (code exec, web search) added through the
+  existing permission system rather than bypassing it, dual-tier model router, Vulkan/Intel Arc
+  tuning, UI redesign, then Ollama retirement (7 build steps)
+- v5.0 "Autonomous Digital Organism" -- explicitly framed as a direction to fragment into
+  sub-releases (5.1-5.5), not one version; every sub-agent/vision/ambient capability must still
+  pass through the v2.0 confirmation flow, no exceptions for being "background" or "proactive"
+  (7 build steps, ordered lowest-risk to highest-risk)
+
+These were not saved into `docs/` this session (only `docs/Roadmap.md` was updated, as a summary
+pointer) -- the owner may want the full master-plan/build-prompt text added as its own doc file in
+a future session; flagging rather than deciding that unilaterally.
+
+**Git state:** no code touched this session, documentation-only. `HANDOFF.md` (this entry) and
+`docs/Roadmap.md` updated; not yet committed as of writing this entry.
+
+**Exact next recommended step:** commit this documentation update, then tag current `zen-2.0` HEAD
+as `v2.1` (it has been feature-complete and pushed since August 18 but was never tagged), then
+begin v3.0 Prompt 1 (Git Activity Reader) as the first unblocked build step -- it has no
+dependency on anything not yet built and reuses the existing v2.0 folder-permission system as-is.
