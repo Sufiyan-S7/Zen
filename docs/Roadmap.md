@@ -78,27 +78,18 @@ this state `v2.1`** — it has been feature-complete since August 18 but the tag
 
 ---
 
-## v3.0 — Companion + Feature Expansion
-**Status: Planned, not started. Full master plan + ready-to-paste build prompts received
-August 20, 2026.**
+## v3.0 — Core Architecture Migration
+**Status: Phase 0 complete; Phase 1 ready.**
 
-Headline feature: an AI companion/pet fed by real local git activity — no new cost, no new
-permission model (reuses v2.0's existing folder-permission grants).
+V3 turns V2.1's proven local agent capabilities into a durable, modular personal-agent platform.
+It keeps the existing local-first safety contract while rebuilding the model, worker/capability,
+memory, task-resume, and conversation-state foundations. The approved decisions are one local
+SQLite persistence layer and a strict, domain-specific preload/IPC boundary. See the
+[V3 migration plan](ZenV3Plan.md) and its [architecture decisions](decisions/).
 
-Build order (5 steps, each its own commit before moving to the next):
-1. **Git Activity Reader** — local `git log` only, no network, no AI calls; rolling 7/30-day
-   windows of commit count/timing/message data, refreshed on start + daily
-2. **Stat Engine** — Discipline, Night-Owl Level, Bug-Fix Skill, Momentum (0–100 each); derived
-   Mood (Thriving / Content / Sleepy / Feral) with gradual decay after 2+ inactive days
-3. **Diary generator** — rule-based templates by default (zero cost); optional AI mode using the
-   already-running local model; three tone presets (Wholesome / Sarcastic / Roast)
-4. **Visual panel** — sprite/avatar + stat bars + diary text, embedded in existing UI (not a new
-   window), theme-aware; cosmetic evolution tiers unlocked by sustained Discipline
-5. **Share card export** — local PNG render (LinkedIn/social-sized), native save dialog, same
-   pattern as the existing v1.0 backup/export
-
-Reserved slot: whatever polish items get deferred from v1.0–v2.1 (e.g. signed installer, voice
-bundling resolution) — audit once v3.0 core is shipped.
+The Git-activity companion remains a V3 feature candidate, but it follows the core migration so
+it uses the unified storage and trusted-process architecture rather than creating another parallel
+data/UI path.
 
 ---
 

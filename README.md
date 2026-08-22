@@ -284,7 +284,7 @@ runtimes or Piper models until their GPL and individual model-license obligation
 reviewed. See the [release record](docs/Release.md), [code-signing guidance](docs/CodeSigning.md),
 and [voice rules](docs/Voice.md).
 
-## Next planned version
+## Current and next version
 
 Zen v2.0 is planned as a voice-first personal desktop agent: optional Windows startup, the
 configurable `Ctrl + Alt + Space` global shortcut, a compact command overlay, structured task
@@ -358,6 +358,8 @@ contract. See [HANDOFF.md](HANDOFF.md) for the full audit.
 - [Zen v2.0 personal desktop agent plan](docs/ZenV2Plan.md)
 - [Agent contract (v2.0 task states, risk tiers, permissions, audit)](docs/AgentContract.md)
 - [2-day sprint plan](docs/ZenV2-2Day-Sprint-Plan.md)
+- [V3 core architecture migration plan](docs/ZenV3Plan.md)
+- [V3 architecture decisions](docs/decisions/)
 - [PowerShell control (Full System Control)](docs/PowerShellControl.md)
 - [Project handoff](HANDOFF.md)
 

@@ -2183,3 +2183,40 @@ a future session; flagging rather than deciding that unilaterally.
 as `v2.1` (it has been feature-complete and pushed since August 18 but was never tagged), then
 begin v3.0 Prompt 1 (Git Activity Reader) as the first unblocked build step -- it has no
 dependency on anything not yet built and reuses the existing v2.0 folder-permission system as-is.
+
+## V3 architecture baseline and decision gate resolved (August 22, 2026)
+
+The owner authorized project-file updates after reviewing the V3 audit brief. The repository's
+existing V3 roadmap described only the earlier Git-activity companion concept, while the supplied
+audit defines V3 as the core architecture migration. This has been reconciled without deleting the
+companion idea: it remains a deferred V3 feature candidate after the foundation is in place.
+
+Added `docs/ZenV3Plan.md`, which records the phased migration of V2.1 into V3: core storage and
+process boundaries; provider-neutral model layer; worker/capability runtime; durable tasks;
+memory/context; permission evolution; verification/recovery; Halo UX; then integration,
+hardening, and validation. Updated `docs/Roadmap.md` and `README.md` to point to this current V3
+definition.
+
+Two explicit architecture decisions are now recorded:
+
+- `docs/decisions/ADR-001-v3-local-persistence.md`: a single local SQLite source of truth behind
+  a trusted main-process storage service, with transactional, idempotent V2 JSON/localStorage
+  migrations and no source-data deletion before validation.
+- `docs/decisions/ADR-002-v3-ipc-preload-boundary.md`: strict context isolation and narrow,
+  domain-specific preload APIs; renderer and model output never receive raw filesystem, shell,
+  database, worker, or IPC access.
+
+No application code, dependencies, configuration, or existing untracked files were changed. This
+is a documentation-only architecture baseline; it requires review before any SQLite binding is
+added or Phase 1 implementation begins.
+
+**Validation:** checked the new plan and ADR links against the live docs layout. Run `git diff
+--check` before committing.
+
+**Git state:** documentation-only changes are uncommitted. Existing untracked `.backups/`,
+`.cursorrules.txt`, `apps/desktop/src/main/companion-data-reader.js`, and `deliverables/` were
+preserved untouched.
+
+**Exact next recommended step:** review/commit the V3 architecture baseline, then implement Phase
+1 as a scoped storage and IPC-contract scaffold with migration tests before adding a SQLite
+dependency.
